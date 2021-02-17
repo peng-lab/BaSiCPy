@@ -18,7 +18,7 @@ def test_pybasic_config1(pybasic_config):
     assert pybasic_config.lambda_s == 0
     assert pybasic_config.estimation_mode == 'l0'
     assert pybasic_config.max_iterations == 500
-    assert pybasic_config.optimization_tolerance == 1e-5
+    assert pybasic_config.optimization_tolerance == 1e-6
     assert pybasic_config.darkfield == False
     assert pybasic_config.lambda_darkfield == 0
     assert pybasic_config.working_size == 128
