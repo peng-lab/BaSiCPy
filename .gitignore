@@ -1,0 +1,17 @@
+# test data
+/.pytest_cache/
+
+# Python files:
+__pycache__/
+*.pyc
+*.egg-info
+
+#tests
+/.pytest_cache/
+pybasic/test/units/*
+
+# OS files
+.DS_Store
+
+# IDE
+.spyproject/
