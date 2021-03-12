@@ -6,13 +6,14 @@ Created on Mon Aug 10 18:53:07 2020
 @author: mohammad.mirkazemi
 """
 from typing import List
-import cv2
+from skimage.transform import resize as skresize
 import numpy as np
 from ._settings import settings
 from .tools._dct2d_tools import dct2d
 from .tools.inexact_alm_rspca_l1 import inexact_alm_rspca_l1
+_resize_order = 1
+_resize_mode = "symmetric"
 
-    
 def background_timelapse(
         images: List,
         flatfield: np.ndarray = None,
@@ -33,20 +34,23 @@ def background_timelapse(
 
     # Reszing
     # cv2.INTER_LINEAR is not exactly the same method as 'bilinear' in MATLAB
-    resized_images = np.array([cv2.resize(_d, 
-                                 (nrows, ncols), 
-                                 interpolation = cv2.INTER_LINEAR)
+    resized_images = np.array([skresize(_d, 
+                              (nrows, ncols), 
+                              order = _resize_order,
+                              mode = _resize_mode)
                       for _d in images])
     
     resized_images = resized_images.reshape([-1, nrows * nrows], order = 'F')
-    resized_flatfield = np.array(cv2.resize(flatfield, 
-                                             (nrows, ncols), 
-                                             interpolation = cv2.INTER_LINEAR))
+    resized_flatfield = np.array(skresize(flatfield, 
+                                          (nrows, ncols), 
+                                          order = _resize_order,
+                                          mode = _resize_mode))
 
     if darkfield is not None:
-        resized_darkfield = cv2.resize(darkfield, 
-                                        (nrows, ncols), 
-                                        interpolation = cv2.INTER_LINEAR)
+        resized_darkfield = skresize(darkfield, 
+                                     (nrows, ncols), 
+                                     order = _resize_order,
+                                     mode = _resize_mode)
     else:
         resized_darkfield = np.zeros(resized_flatfield.shape, np.uint8)
             
@@ -136,10 +140,11 @@ def basic(images: np.array, segmentation: List,  **kwargs):
         setattr(settings, _key, _value)
     nrows = ncols = settings.working_size
     if images.shape[0] != nrows or images.shape[1] != ncols:
-        D = np.array([cv2.resize(images[:,:,i],
-                                              (nrows, ncols),
-                                              interpolation=cv2.INTER_LINEAR)
-                                   for i in range(images.shape[2])])
+        D = np.array([skresize(images[:,:,i],
+                               (nrows, ncols),
+                               order = _resize_order,
+                               mode = _resize_mode)
+                      for i in range(images.shape[2])])
         D = np.transpose(D, (1, 2, 0))
     else:
         D = images.copy()
@@ -208,10 +213,17 @@ def basic(images: np.array, segmentation: List,  **kwargs):
             flag_reweighting = False
 
     shading = np.mean(XA, 2) - XAoffset
-    flatfield = cv2.resize(shading, (images[:, :, 0].shape[0], images[:, :, 0].shape[1]), interpolation=cv2.INTER_LINEAR)
+    flatfield = skresize(shading, 
+                         (images[:, :, 0].shape[0], images[:, :, 0].shape[1]),
+                         order = _resize_order,
+                         mode = _resize_mode)
+
     flatfield = flatfield / np.mean(flatfield)
     if settings.darkfield:
-        darkfield = cv2.resize(XAoffset, (images[:,:,0].shape[0], images[:,:,0].shape[1]), interpolation=cv2.INTER_LINEAR)
+        darkfield = skresize(XAoffset, 
+                             (images[:,:,0].shape[0], images[:,:,0].shape[1]), 
+                             order = _resize_order,
+                             mode = _resize_mode)
         return flatfield, darkfield
     else:
         return flatfield
