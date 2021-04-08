@@ -3,7 +3,7 @@ import numpy as np
 from PIL import Image
 import PIL
 
-def load_data(dir, file_ext='.tif', working_size=(128,128), interpolation_method='bilinear'):
+def load_data_old(dir, file_ext='.tif', working_size=(128,128), interpolation_method='bilinear'):
     '''
     Load all image from given directory that have the same file extension
     :param dir: Directory of images
@@ -42,3 +42,28 @@ def load_data(dir, file_ext='.tif', working_size=(128,128), interpolation_method
         else:
             stack = np.concatenate((stack, np.expand_dims(temp_img, 2)), 2)
     return stack
+
+
+def load_data(dir, file_ext='.tif'):
+    '''
+    Load all image from given directory that have the same file extension
+    :param dir: Directory of images
+    :param file_ext: File extension
+    :return: a list of all images (a list of numpy arrays)
+    '''
+
+    all_files = os.listdir(dir)
+    image_files = []
+    images = []
+    for file in all_files:
+        if file.endswith(file_ext):
+            image_files.append(os.path.join(dir, file))
+    image_files.sort()
+    for i, image_file in enumerate(image_files):
+        if i % 10 == 0:
+            print(i, '/', len(image_files))
+        temp_img = Image.open(image_file)
+        temp_img = temp_img.convert('F')
+        images.append(np.array(temp_img))
+
+    return images
