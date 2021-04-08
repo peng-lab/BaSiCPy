@@ -6,16 +6,16 @@ Created on Mon Aug 10 18:53:07 2020
 @author: mohammad.mirkazemi
 """
 from typing import List
-from skimage.transform import resize as skresize
+#from skimage.transform import resize as skresize
 import numpy as np
 from ._settings import settings
+from .tools._resize import _resize_images_list, _resize_image
 from .tools._dct2d_tools import dct2d
 from .tools.inexact_alm_rspca_l1 import inexact_alm_rspca_l1
-_resize_order = 1
-_resize_mode = "symmetric"
+
 
 def background_timelapse(
-        images: List,
+        images_list: List,
         flatfield: np.ndarray = None,
         darkfield: np.ndarray = None,
         **kwargs
@@ -30,32 +30,26 @@ def background_timelapse(
     for _key, _value in kwargs.items():
         setattr(settings, _key, _value)
 
-    nrows = ncols = settings.working_size
+    nrows = ncols = _working_size = settings.working_size
 
     # Reszing
     # cv2.INTER_LINEAR is not exactly the same method as 'bilinear' in MATLAB
-    resized_images = np.array([skresize(_d, 
-                              (nrows, ncols), 
-                              order = _resize_order,
-                              mode = _resize_mode)
-                      for _d in images])
     
+    resized_images = np.dstack(_resize_images_list(images_list=images_list, side_size=_working_size))
+    print("defore reshape", resized_images.shape, resized_images[0][0][:10])
     resized_images = resized_images.reshape([-1, nrows * nrows], order = 'F')
-    resized_flatfield = np.array(skresize(flatfield, 
-                                          (nrows, ncols), 
-                                          order = _resize_order,
-                                          mode = _resize_mode))
 
+    resized_flatfield = _resize_image(image = flatfield, side_size = _working_size)
+    
     if darkfield is not None:
-        resized_darkfield = skresize(darkfield, 
-                                     (nrows, ncols), 
-                                     order = _resize_order,
-                                     mode = _resize_mode)
+        resized_darkfield = _resize_image(image = darkfield, side_size = _working_size)
     else:
         resized_darkfield = np.zeros(resized_flatfield.shape, np.uint8)
             
-            
-            
+    print('resized_images', resized_images.shape)        
+    print('resized_flatfield', resized_flatfield.shape)        
+    print('resized_darkfield', resized_darkfield.shape)        
+    print("0:10", resized_images[0][:10])        
     # reweighting     
     _weights = np.ones(resized_images.shape)
     eplson = 0.1
@@ -73,6 +67,7 @@ def background_timelapse(
         mu = 12.5/norm_two # this one can be tuned
         mu_bar = mu * 1e7
         rho = 1.5 # this one can be tuned
+        print('resized_images',resized_images.shape)
         d_norm = np.linalg.norm(resized_images, ord = 'fro')
         ent1 = 1
         _iter = 0
@@ -125,7 +120,7 @@ def background_timelapse(
     return A1_coeff
 
 
-def basic(images: np.array, segmentation: List,  **kwargs):
+def basic(images_list: List, segmentation: List = None,  **kwargs):
     """
     Estimation of flatfield for optical microscopy. Apply to a collection of monochromatic images. Multi-channel images
     should be separated, and each channel corrected separately.
@@ -138,7 +133,14 @@ def basic(images: np.array, segmentation: List,  **kwargs):
 
     for _key, _value in kwargs.items():
         setattr(settings, _key, _value)
-    nrows = ncols = settings.working_size
+
+    nrows = ncols = _working_size = settings.working_size
+    
+    _saved_size = images_list[0].shape
+
+    D = np.dstack(_resize_images_list(images_list=images_list, side_size=_working_size))
+    print(D.shape)
+    '''
     if images.shape[0] != nrows or images.shape[1] != ncols:
         D = np.array([skresize(images[:,:,i],
                                (nrows, ncols),
@@ -146,8 +148,10 @@ def basic(images: np.array, segmentation: List,  **kwargs):
                                mode = _resize_mode)
                       for i in range(images.shape[2])])
         D = np.transpose(D, (1, 2, 0))
+        print(D.shape)
     else:
         D = images.copy()
+    '''
     meanD = np.mean(D, axis=2)
     meanD = meanD / np.mean(meanD)
     W_meanD = dct2d(meanD.T)
@@ -213,17 +217,42 @@ def basic(images: np.array, segmentation: List,  **kwargs):
             flag_reweighting = False
 
     shading = np.mean(XA, 2) - XAoffset
-    flatfield = skresize(shading, 
-                         (images[:, :, 0].shape[0], images[:, :, 0].shape[1]),
-                         order = _resize_order,
-                         mode = _resize_mode)
 
+    flatfield = _resize_image(
+        image = shading, 
+        x_side_size = _saved_size[0], 
+        y_side_size = _saved_size[1]
+    )
     flatfield = flatfield / np.mean(flatfield)
+
     if settings.darkfield:
-        darkfield = skresize(XAoffset, 
-                             (images[:,:,0].shape[0], images[:,:,0].shape[1]), 
-                             order = _resize_order,
-                             mode = _resize_mode)
-        return flatfield, darkfield
+        darkfield = _resize_image(
+            image = XAoffset, 
+            x_side_size = _saved_size[0], 
+            y_side_size = _saved_size[1]
+        )
     else:
-        return flatfield
+        darkfield = np.zeros_like(flatfield)
+
+    return flatfield, darkfield
+
+def correct_illumination(images_list: List, flatfield: np.ndarray = None, darkfield: np.ndarray = None):
+    _saved_size = images_list[0].shape
+    
+    if not flatfield.shape == _saved_size:
+        flatfield = _resize_image(
+            image = flatfield, 
+            x_side_size = _saved_size[0], 
+            y_side_size = _saved_size[1]
+        )
+    
+    if darkfield is None:
+        return [_im / flatfield for _im in images_list]
+    else:
+        if not darkfield.shape == _saved_size:
+            darkfield = _resize_image(
+                image = darkfield, 
+                x_side_size = _saved_size[0], 
+                y_side_size = _saved_size[1]
+            )
+        return [(_im  - darkfield)/ flatfield for _im in images_list]
