@@ -120,7 +120,7 @@ def background_timelapse(
     return A1_coeff
 
 
-def basic(images_list: List, segmentation: List = None,  **kwargs):
+def basic(images_list: List, **kwargs):
     """
     Estimation of flatfield for optical microscopy. Apply to a collection of monochromatic images. Multi-channel images
     should be separated, and each channel corrected separately.
