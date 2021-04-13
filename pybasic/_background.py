@@ -35,7 +35,7 @@ def background_timelapse(
     # Reszing
     # cv2.INTER_LINEAR is not exactly the same method as 'bilinear' in MATLAB
     
-    resized_images = np.dstack(_resize_images_list(images_list=images_list, side_size=_working_size))
+    resized_images = np.stack(_resize_images_list(images_list=images_list, side_size=_working_size))
     print("defore reshape", resized_images.shape, resized_images[0][0][:10])
     resized_images = resized_images.reshape([-1, nrows * nrows], order = 'F')
 
@@ -226,6 +226,7 @@ def basic(images_list: List, segmentation: List = None,  **kwargs):
     flatfield = flatfield / np.mean(flatfield)
 
     if settings.darkfield:
+        print('tttt', type(XAoffset), XAoffset.shape)
         darkfield = _resize_image(
             image = XAoffset, 
             x_side_size = _saved_size[0], 
