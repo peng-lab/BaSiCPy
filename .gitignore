@@ -15,3 +15,6 @@ pybasic/test/units/*
 
 # IDE
 .spyproject/
+
+# venv
+.venv_pybasic/
