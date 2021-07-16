@@ -2,6 +2,7 @@ import os
 import numpy as np
 from PIL import Image
 import PIL
+from skimage.io import imread
 
 def load_data_old(dir, file_ext='.tif', working_size=(128,128), interpolation_method='bilinear'):
     '''
@@ -62,8 +63,5 @@ def load_data(dir, file_ext='.tif'):
     for i, image_file in enumerate(image_files):
         if i % 10 == 0:
             print(i, '/', len(image_files))
-        temp_img = Image.open(image_file)
-        temp_img = temp_img.convert('F')
-        images.append(np.array(temp_img))
-
+        images.append(imread(image_file))
     return images

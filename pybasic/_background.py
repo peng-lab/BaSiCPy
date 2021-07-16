@@ -13,7 +13,6 @@ from .tools._resize import _resize_images_list, _resize_image
 from .tools._dct2d_tools import dct2d
 from .tools.inexact_alm_rspca_l1 import inexact_alm_rspca_l1
 
-
 def background_timelapse(
         images_list: List,
         flatfield: np.ndarray = None,
@@ -36,7 +35,6 @@ def background_timelapse(
     # cv2.INTER_LINEAR is not exactly the same method as 'bilinear' in MATLAB
     
     resized_images = np.stack(_resize_images_list(images_list=images_list, side_size=_working_size))
-    print("defore reshape", resized_images.shape, resized_images[0][0][:10])
     resized_images = resized_images.reshape([-1, nrows * nrows], order = 'F')
 
     resized_flatfield = _resize_image(image = flatfield, side_size = _working_size)
@@ -46,11 +44,6 @@ def background_timelapse(
     else:
         resized_darkfield = np.zeros(resized_flatfield.shape, np.uint8)
             
-    print('resized_images', resized_images.shape)        
-    print('resized_flatfield', resized_flatfield.shape)        
-    print('resized_darkfield', resized_darkfield.shape)        
-    print("0:10", resized_images[0][:10])        
-    # reweighting     
     _weights = np.ones(resized_images.shape)
     eplson = 0.1
     tol = 1e-6
@@ -67,7 +60,6 @@ def background_timelapse(
         mu = 12.5/norm_two # this one can be tuned
         mu_bar = mu * 1e7
         rho = 1.5 # this one can be tuned
-        print('resized_images',resized_images.shape)
         d_norm = np.linalg.norm(resized_images, ord = 'fro')
         ent1 = 1
         _iter = 0
@@ -102,7 +94,6 @@ def background_timelapse(
             # stop Criterion  
             stopCriterion = np.linalg.norm(Z1, ord = 'fro') / d_norm
             # print(stopCriterion, tol)
-            print('Iteration', _iter, ':', stopCriterion)
             if stopCriterion < tol:
                 converged = True
             # if total_svd % 10 == 0:
@@ -130,7 +121,6 @@ def basic(images_list: List, segmentation: List = None,  **kwargs):
     #TODO: Explain possible inputs?
     :param images: array with shape [N,M,L], with [N,M] image dimensions, and L number of images
     """
-
     for _key, _value in kwargs.items():
         setattr(settings, _key, _value)
 
@@ -139,7 +129,7 @@ def basic(images_list: List, segmentation: List = None,  **kwargs):
     _saved_size = images_list[0].shape
 
     D = np.dstack(_resize_images_list(images_list=images_list, side_size=_working_size))
-    print(D.shape)
+
     '''
     if images.shape[0] != nrows or images.shape[1] != ncols:
         D = np.array([skresize(images[:,:,i],
@@ -180,7 +170,6 @@ def basic(images_list: List, segmentation: List = None,  **kwargs):
 
     while flag_reweighting:
         reweighting_iter += 1
-        print('Reweighting Iteration', reweighting_iter)
 
         initial_flatfield = False
         if initial_flatfield:
@@ -226,7 +215,6 @@ def basic(images_list: List, segmentation: List = None,  **kwargs):
     flatfield = flatfield / np.mean(flatfield)
 
     if settings.darkfield:
-        print('tttt', type(XAoffset), XAoffset.shape)
         darkfield = _resize_image(
             image = XAoffset, 
             x_side_size = _saved_size[0], 

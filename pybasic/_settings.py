@@ -48,6 +48,7 @@ class PyBasicConfig(FrozenClass):
     eplson                  = auto_property('_eplson')   
     varying_coeff           = auto_property('_varying_coeff')   
     reweight_tolerance      = auto_property('_reweight_tolerance')  
+
     def __init__(
             self, 
             lambda_s: float = 0,
@@ -60,7 +61,7 @@ class PyBasicConfig(FrozenClass):
             max_reweight_iterations: int = 10,
             eplson: float = 0.1,
             varying_coeff: bool = True,
-            reweight_tolerance: float = 1e-3
+            reweight_tolerance: float = 1e-3,
         ):
         self.lambda_s                = lambda_s
         self.estimation_mode         = estimation_mode
