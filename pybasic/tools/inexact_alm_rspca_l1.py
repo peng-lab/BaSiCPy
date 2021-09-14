@@ -147,14 +147,15 @@ def inexact_alm_rspca_l1(images, weight=None, **kwargs):
         stopCriterion = np.linalg.norm(Z1, ord='fro') / d_norm
         if stopCriterion < settings.optimization_tolerance:
             converged = True
-
+        """
         if total_svd % 10 == 0:
             print('Iteration', iter, ' |W|_0 ', np.sum(np.abs(W_hat) > 0), '|E1|_0', np.sum(np.abs(E1_hat) > 0), \
                   ' stopCriterion', stopCriterion, 'B1_offset', B1_offset)
-
+        """
         if not converged and iter >= settings.max_iterations:
             print('Maximum iterations reached')
             converged = True
+            
     A_offset = np.squeeze(A_offset)
     A_offset = A_offset + B1_offset * np.reshape(W_idct_hat, -1, order='F')
 

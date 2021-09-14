@@ -45,7 +45,7 @@ def load_data_old(dir, file_ext='.tif', working_size=(128,128), interpolation_me
     return stack
 
 
-def load_data(dir, file_ext='.tif'):
+def load_data(dir, file_ext='.tif', verbosity = True):
     '''
     Load all image from given directory that have the same file extension
     :param dir: Directory of images
@@ -61,7 +61,7 @@ def load_data(dir, file_ext='.tif'):
             image_files.append(os.path.join(dir, file))
     image_files.sort()
     for i, image_file in enumerate(image_files):
-        if i % 10 == 0:
+        if verbosity and (i % 10 == 0):
             print(i, '/', len(image_files))
         images.append(imread(image_file))
     return images

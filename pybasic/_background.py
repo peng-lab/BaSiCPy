@@ -17,6 +17,7 @@ def background_timelapse(
         images_list: List,
         flatfield: np.ndarray = None,
         darkfield: np.ndarray = None,
+        verbosity = True,
         **kwargs
         ):
     #TODO: Rename s.t. fluorescence is included? E.g. background_fluorescence?
@@ -103,15 +104,17 @@ def background_timelapse(
         # XE_norm = E1_hat / np.mean(A1_hat)
         XE_norm = E1_hat
         mean_vec = np.mean(A1_hat, axis=1)
-        XE_norm = np.transpose(np.tile(mean_vec, (16384, 1))) / XE_norm
+        if verbosity:
+            print("reweighting_iter", reweighting_iter)
+        XE_norm = np.transpose(np.tile(mean_vec, (settings.working_size**2, 1))) / (XE_norm + 1e-6)
         _weights = 1./(abs(XE_norm)+eplson)
 
         _weights = np.divide( np.multiply(_weights, _weights.shape[0] * _weights.shape[1]), np.sum(_weights))
 
-    return A1_coeff
+    return np.squeeze(A1_coeff) 
 
 
-def basic(images_list: List, segmentation: List = None,  **kwargs):
+def basic(images_list: List, segmentation: List = None, verbosity = True, **kwargs):
     """
     Estimation of flatfield for optical microscopy. Apply to a collection of monochromatic images. Multi-channel images
     should be separated, and each channel corrected separately.
@@ -170,7 +173,8 @@ def basic(images_list: List, segmentation: List = None,  **kwargs):
 
     while flag_reweighting:
         reweighting_iter += 1
-
+        if verbosity:
+            print("reweighting_iter", reweighting_iter)
         initial_flatfield = False
         if initial_flatfield:
             # TODO: implement inexact_alm_rspca_l1_intflat?

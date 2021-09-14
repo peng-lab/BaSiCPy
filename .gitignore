@@ -18,3 +18,5 @@ pybasic/test/units/*
 
 # venv
 .venv_pybasic/
+
+.ipynb_checkpoints
