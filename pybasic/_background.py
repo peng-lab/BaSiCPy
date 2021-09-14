@@ -106,7 +106,7 @@ def background_timelapse(
         mean_vec = np.mean(A1_hat, axis=1)
         if verbosity:
             print("reweighting_iter", reweighting_iter)
-        XE_norm = np.transpose(np.tile(mean_vec, (settings.working_size**2, 1))) / (XE_norm + 1e-6)
+        XE_norm = np.transpose(np.tile(mean_vec, (nrows * nrows, 1))) / (XE_norm + 1e-6)
         _weights = 1./(abs(XE_norm)+eplson)
 
         _weights = np.divide( np.multiply(_weights, _weights.shape[0] * _weights.shape[1]), np.sum(_weights))
