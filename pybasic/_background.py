@@ -105,7 +105,7 @@ def background_timelapse(
         XE_norm = E1_hat
         mean_vec = np.mean(A1_hat, axis=1)
         if verbosity:
-            print("reweighting_iter", reweighting_iter)
+            print("reweighting_iter:", reweighting_iter)
         XE_norm = np.transpose(np.tile(mean_vec, (nrows * nrows, 1))) / (XE_norm + 1e-6)
         _weights = 1./(abs(XE_norm)+eplson)
 
@@ -148,10 +148,10 @@ def basic(images_list: List, segmentation: List = None, verbosity = True, **kwar
     meanD = np.mean(D, axis=2)
     meanD = meanD / np.mean(meanD)
     W_meanD = dct2d(meanD.T)
-    if settings.lambda_s == 0:
-        setattr(settings, 'lambda_s', np.sum(np.abs(W_meanD)) / 400 * 0.5)
+    if settings.lambda_flatfield == 0:
+        setattr(settings, 'lambda_flatfield', np.sum(np.abs(W_meanD)) / 400 * 0.5)
     if settings.lambda_darkfield == 0:
-        setattr(settings, 'lambda_darkfield', settings.lambda_s * 0.2)
+        setattr(settings, 'lambda_darkfield', settings.lambda_flatfield * 0.2)
 
     # TODO: Ask Tingying whether to keep sorting? I remember the sorting caused some problems with some data.
     D = np.sort(D, axis=2)
@@ -174,7 +174,7 @@ def basic(images_list: List, segmentation: List = None, verbosity = True, **kwar
     while flag_reweighting:
         reweighting_iter += 1
         if verbosity:
-            print("reweighting_iter", reweighting_iter)
+            print("reweighting_iter:", reweighting_iter)
         initial_flatfield = False
         if initial_flatfield:
             # TODO: implement inexact_alm_rspca_l1_intflat?

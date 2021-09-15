@@ -86,7 +86,7 @@ def inexact_alm_rspca_l1(images, weight=None, **kwargs):
         temp_W = np.reshape(temp_W, (p, q, n), order='F')
         temp_W = np.mean(temp_W, axis=2)
         W_hat = W_hat + dct2d(temp_W.T)
-        W_hat = np.maximum(W_hat - settings.lambda_s / (ent1 * mu), 0) + np.minimum(W_hat + settings.lambda_s / (ent1 * mu), 0)
+        W_hat = np.maximum(W_hat - settings.lambda_flatfield / (ent1 * mu), 0) + np.minimum(W_hat + settings.lambda_flatfield / (ent1 * mu), 0)
         W_idct_hat = idct2d(W_hat.T)
         if len(A1_coeff.shape) == 1:
             A1_coeff = np.expand_dims(A1_coeff, 0)
@@ -155,7 +155,7 @@ def inexact_alm_rspca_l1(images, weight=None, **kwargs):
         if not converged and iter >= settings.max_iterations:
             print('Maximum iterations reached')
             converged = True
-            
+
     A_offset = np.squeeze(A_offset)
     A_offset = A_offset + B1_offset * np.reshape(W_idct_hat, -1, order='F')
 

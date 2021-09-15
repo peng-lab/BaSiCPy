@@ -37,7 +37,7 @@ class PyBasicConfig(FrozenClass):
     Manages the configuration of the PyBasic
     """
 
-    lambda_s                = auto_property('_lambda_s')
+    lambda_flatfield                = auto_property('_lambda_flatfield')
     estimation_mode         = auto_property('_estimation_mode')   
     max_iterations          = auto_property('_max_iterations')   
     optimization_tolerance  = auto_property('_optimization_tolerance')   
@@ -51,7 +51,7 @@ class PyBasicConfig(FrozenClass):
 
     def __init__(
             self, 
-            lambda_s: float = 0,
+            lambda_flatfield: float = 0,
             estimation_mode: str = 'l0',
             max_iterations: int = 500,
             optimization_tolerance: float = 1e-6,
@@ -63,7 +63,7 @@ class PyBasicConfig(FrozenClass):
             varying_coeff: bool = True,
             reweight_tolerance: float = 1e-3,
         ):
-        self.lambda_s                = lambda_s
+        self.lambda_flatfield                = lambda_flatfield
         self.estimation_mode         = estimation_mode
         self.max_iterations          = max_iterations   
         self.optimization_tolerance  = optimization_tolerance  

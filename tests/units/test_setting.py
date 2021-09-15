@@ -15,7 +15,7 @@ def pybasic_config():
 
 
 def test_pybasic_config1(pybasic_config):
-    assert pybasic_config.lambda_s == 0
+    assert pybasic_config.lambda_flatfield == 0
     assert pybasic_config.estimation_mode == 'l0'
     assert pybasic_config.max_iterations == 500
     assert pybasic_config.optimization_tolerance == 1e-6
@@ -29,12 +29,12 @@ def test_pybasic_config1(pybasic_config):
 
 def test_pybasic_config2(pybasic_config):
     _pybasic_config = pybasic_config
-    _pybasic_config.lambda_s = 1.5
+    _pybasic_config.lambda_flatfield = 1.5
     _pybasic_config.lambda_darkfield = 2.5
     _pybasic_config.varying_coeff = True
     _pybasic_config.reweight_tolerance = 1e-3 
     
-    assert _pybasic_config.lambda_s == 1.5
+    assert _pybasic_config.lambda_flatfield == 1.5
     assert _pybasic_config.lambda_darkfield == 2.5
     assert _pybasic_config.varying_coeff == True
     assert _pybasic_config.reweight_tolerance == 1e-3 
