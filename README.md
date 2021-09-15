@@ -146,6 +146,43 @@ Returns:
     A list of illumination corrected images with the same length of list of input images.
 
 ### Settings object:
-The settings object controls a few internal parameters that are set to optimal values by default. Thus we do not recommend you to change them.
+The settings object has a few attributes controlling internal parameters in the package. The parameters are set to optimal values by default thus they should not be reset by the user without expert knowledge.
 
+**settings.lambda_flatfield**: Flatfield regularization parameter (default = 0).
 
+If you set the flatfield regularization parameter to 0 or a negative value, 
+an internally estimated value is used. We recommend to use internally estimated 
+value. High values (eg. 9.5) increase the spatial regularization strength, 
+yielding a more smooth flat-field. A default value estimated from input images.
+
+**settings.lambda_darkfield**: Dark-field regularization parameter (default = 0).
+
+If you set the darkfield regularization parameter to 0 or a negative value, 
+an internally estimated value is used. We recommend to use internally estimated 
+value. High values (eg. 9.5) increase the spatial regularization strength, 
+yielding a more smooth dark-field. A default value estimated from input images.
+
+**settings.max_iterations**: Specifies the maximum number of iterations allowed in the optimization (default = 500).
+
+**settings.optimization_tolerance**: Tolerance of error in the optimization (default = 1e-6).
+
+**settings.working_size**: The input images are internally resized to working size during illumination and baseline drift calculation. (default = 128).
+
+**settings.max_reweight_iterations**: Maximum reweighting iterations (default = 10).
+
+**settings.eplson**: Reweighting parameter (default = 0.1).
+
+**settings.varying_coeff**: Varying coefficients (default = True).
+
+**settings.reweight_tolerance**: Reweighting tolerance (default = 1e-3).
+
+The value of the setting parameters can be retrieved or change like following:
+
+```console
+> from pybasic import settings
+> settings.working_size
+128
+> settings.working_size = 256
+> settings.working_size
+256
+```
