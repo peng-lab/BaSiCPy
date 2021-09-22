@@ -46,13 +46,26 @@ def load_data_old(dir, file_ext='.tif', working_size=(128,128), interpolation_me
 
 
 def load_data(dir, file_ext='.tif', verbosity = True):
-    '''
-    Load all image from given directory that have the same file extension
-    :param dir: Directory of images
-    :param file_ext: File extension
-    :return: a list of all images (a list of numpy arrays)
-    '''
+    """
+    Reads the input images and returns a list of numpy arrays. The `pybasic` 
+    assumes that all the input images have the same size.
 
+    Parameters:
+    ----------
+    dir : str
+        the path of folder containing the input images 
+        
+    file_ext : str
+        the suffix of the input files (default is '.tif' )
+        
+    verbosity : Boolean
+        if True the status of files reading is printed (default is True)
+
+    Returns:
+    --------
+        A list of numpy 2D arrays
+
+    """
     all_files = os.listdir(dir)
     image_files = []
     images = []

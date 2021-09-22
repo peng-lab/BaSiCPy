@@ -6,7 +6,6 @@ Created on Mon Aug 10 18:53:07 2020
 @author: mohammad.mirkazemi
 """
 from typing import List
-#from skimage.transform import resize as skresize
 import numpy as np
 from ._settings import settings
 from .tools._resize import _resize_images_list, _resize_image
@@ -20,11 +19,32 @@ def background_timelapse(
         verbosity = True,
         **kwargs
         ):
-    #TODO: Rename s.t. fluorescence is included? E.g. background_fluorescence?
 
     """
-    Estimation of background fluoresence signal for time-lapse movie. 
-    Used in conjunction with BaSiC.
+    Computes the baseline drift for the input images and returns a numpy 1D array
+
+    Parameters:
+    ----------
+    images_list : list
+        A list of 2D arrays as the list of input images. The list can be provided by 
+        using pybasic.load_data() function.
+        
+    flatfield : numpy 2D array
+        A flatfield image for input images with the same shape as them. The flatfield 
+        image may be calculated using pybasic.basic() function.
+        
+    darkfield : numpy 2D array, optional
+        A darkfield image for input images with the same shape as them. The darkfield 
+        image may be calculated using the `pybasic.basic()` function.
+        
+    verbosity : Boolean
+        If True the reweighting iteration number is printed (default is True).  
+
+    Returns:
+    --------
+        A 1d numpy array containing baseline drift for each input image. The length of 
+        the array equals the length of the list of input images. 
+            
     """
     
     for _key, _value in kwargs.items():
@@ -116,13 +136,31 @@ def background_timelapse(
 
 def basic(images_list: List, segmentation: List = None, verbosity = True, **kwargs):
     """
-    Estimation of flatfield for optical microscopy. Apply to a collection of monochromatic images. Multi-channel images
+    Computes the illumination background for a list of input images and returns flatfield 
+    and darkfield images. The input images should be monochromatic and multi-channel images 
     should be separated, and each channel corrected separately.
 
+    Parameters:
+    ----------
+    images_list : list
+        A list of 2D arrays as the list of input images. The list may be provided by u
+        sing the `pybasic.load_data()` function.
+        
+    darkfield : boolean
+        If True then darkfield is also computed (default is False).
+        
+    verbosity : Boolean
+        If True the reweighting iteration number is printed (default is True).  
 
-
-    #TODO: Explain possible inputs?
-    :param images: array with shape [N,M,L], with [N,M] image dimensions, and L number of images
+    Returns:
+    --------
+    flatfield : numpy 2D array
+        Flatfield image of the calculated illumination with the same size of input numpy arrays.
+        
+    darkfield : numpy 2D array
+        Darkfield image of the calculated illumination with the same size of input numpy array. 
+        If the darkfield argument of the function is set to False, then an array of zeros with 
+        the same shape of input arrays is returned.
     """
     for _key, _value in kwargs.items():
         setattr(settings, _key, _value)
@@ -133,18 +171,6 @@ def basic(images_list: List, segmentation: List = None, verbosity = True, **kwar
 
     D = np.dstack(_resize_images_list(images_list=images_list, side_size=_working_size))
 
-    '''
-    if images.shape[0] != nrows or images.shape[1] != ncols:
-        D = np.array([skresize(images[:,:,i],
-                               (nrows, ncols),
-                               order = _resize_order,
-                               mode = _resize_mode)
-                      for i in range(images.shape[2])])
-        D = np.transpose(D, (1, 2, 0))
-        print(D.shape)
-    else:
-        D = images.copy()
-    '''
     meanD = np.mean(D, axis=2)
     meanD = meanD / np.mean(meanD)
     W_meanD = dct2d(meanD.T)
@@ -229,7 +255,39 @@ def basic(images_list: List, segmentation: List = None, verbosity = True, **kwar
 
     return flatfield, darkfield
 
-def correct_illumination(images_list: List, flatfield: np.ndarray = None, darkfield: np.ndarray = None):
+def correct_illumination(
+    images_list: List, 
+    flatfield: np.ndarray = None, 
+    darkfield: np.ndarray = None,
+    background_timelapse: np.ndarray = None,
+):
+    """
+    Applies the illumination correction on a list of input images 
+    and returns a list of corrected images.
+
+    Parameters
+    ----------
+    images_list : list
+
+        A list of 2D arrays as the list of input images. The list can be provided by using pybasic.load_data() function.
+        
+    flatfield : numpy 2D array
+
+        A flatfield image for input images with the same shape as them. The flatfield image may be calculated using pybasic.basic() function.
+        
+    darkfield : numpy 2D array, optional
+
+        A darkfield image for input images with the same shape as them. The darkfield image may be calculated using the `pybasic.basic()` function.
+
+    background_timelapse : numpy 1D array or a list, optional
+        Timelapse background or baseline drift of the images in the same order as images in the input list. The lenght of background_timelapse should be as the same as the length of list of input images.
+
+
+    Returns:
+    --------
+        A list of illumination corrected images with the same length of list of input images.
+    """
+
     _saved_size = images_list[0].shape
     
     if not flatfield.shape == _saved_size:
@@ -240,7 +298,7 @@ def correct_illumination(images_list: List, flatfield: np.ndarray = None, darkfi
         )
     
     if darkfield is None:
-        return [_im / flatfield for _im in images_list]
+        corrected_images = [_im / flatfield for _im in images_list]
     else:
         if not darkfield.shape == _saved_size:
             darkfield = _resize_image(
@@ -248,4 +306,12 @@ def correct_illumination(images_list: List, flatfield: np.ndarray = None, darkfi
                 x_side_size = _saved_size[0], 
                 y_side_size = _saved_size[1]
             )
-        return [(_im  - darkfield)/ flatfield for _im in images_list]
+        corrected_images = [(_im  - darkfield)/ flatfield for _im in images_list]
+
+    if background_timelapse is not None:
+        if len(background_timelapse) != len(corrected_images):
+            print(f"Error: background_timelapse and input images should have the same lenght.")
+        for i, bg in enumerate(background_timelapse):
+            corrected_images[i] = corrected_images[i] - bg
+
+    return corrected_images

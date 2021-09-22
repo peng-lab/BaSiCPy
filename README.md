@@ -83,7 +83,8 @@ Returns:
 
 **pybasic.basic(images_list: List, darkfield = False, verbosity = True)**
 
-Computes the illumination background for a list of input images and returns flatfield and darkfield images
+Computes the illumination background for a list of input images and returns flatfield and darkfield images. The input images should be monochromatic and multi-channel images should be separated, and each channel corrected separately.
+
 
 Parameters:
 * `images_list`: list
@@ -149,6 +150,10 @@ Parameters:
 * `darkfield`: numpy 2D array, optional
 
     A darkfield image for input images with the same shape as them. The darkfield image may be calculated using the `pybasic.basic()` function.
+
+* `background_timelapse`: numpy 1D array or a list, optional
+    Timelapse background or baseline drift of the images in the same order as images in the input list. The lenght of background_timelapse should be as the same as the length of list of input images.
+
 
 Returns:
     A list of illumination corrected images with the same length of list of input images.
