@@ -134,7 +134,7 @@ Returns:
         
  
     
-**pybasic.correct_illumination(images_list: List, flatfield: np.ndarray, darkfield: np.ndarray = None)**
+**pybasic.correct_illumination(images_list: List, flatfield: np.ndarray, darkfield: np.ndarray = None, background_timelapse: np.ndarray = None)**
 
 Applies the illumination correction on a list of input images and returns a list of corrected images.
 
