@@ -30,17 +30,15 @@ def inexact_alm_rspca_l1(images, weight=None, **kwargs):
 
     # if 
     # Initialization and given default variables
-    p = images.shape[0]
-    q = images.shape[1]
+    p, q, n = images.shape
     m = p*q
-    n = images.shape[2]
     images = np.reshape(images, (m, n), order='F')
 
     if weight is not None:
         weight = np.reshape(weight, (m, n), order='F')
     else:
         weight = np.ones_like(images)
-    _, svd, _ = np.linalg.svd(images, full_matrices=False) #TODO: Is there a more efficient implementation of SVD?
+    svd = np.linalg.svd(images, False, False) #TODO: Is there a more efficient implementation of SVD?
     norm_two = svd[0]
     Y1 = 0
     #Y2 = 0
