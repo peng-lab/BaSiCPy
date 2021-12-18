@@ -47,8 +47,7 @@ def load_data_old(dir, file_ext='.tif', working_size=(128,128), interpolation_me
 
 def load_data(dir, file_ext='.tif', verbosity = True):
     """
-    Reads the input images and returns a list of numpy arrays. The `pybasic` 
-    assumes that all the input images have the same size.
+    Reads the input images and returns a list of numpy arrays, pybasic assumes that all the input images have the same size.
 
     Parameters:
     ----------
