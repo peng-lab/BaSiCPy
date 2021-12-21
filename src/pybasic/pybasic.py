@@ -1,11 +1,28 @@
 """Contains the PyBaSiC class."""
 
-import numpy as np
 from dataclasses import dataclass
+
+import numpy as np
 
 
 @dataclass
-class Settings:  # NOTE or class name Config
+class Settings:
+    """A class to hold BaSiC settings.
+
+    Attributes:
+        lambda_flatfield (float)
+        estimation_mode (str)
+        max_iterations (int): Maximum number of iterations allowed in the optimization.
+        optimization_tolerance (float): Tolerance of error in the optimization.
+        darkfield (bool): Whether to estimate a darkfield correction.
+        lambda_darkfield (float)
+        working_size (int)
+        max_reweight_iterations (int)
+        eplson (float)
+        varying_coeff (bool)
+        reweight_tolerance (float)
+    """
+
     lambda_flatfield: float = 0
     estimation_mode: str = "l0"
     max_iterations: int = 500
@@ -19,10 +36,16 @@ class Settings:  # NOTE or class name Config
     reweight_tolerance: float = 1e-3
 
 
+# NOTE how should multiple channels be handled?
+# NOTE if settings need to be updated, should user reinitialize class?
 class BaSiC:
+    """A class for fitting and applying BaSiC correction models."""
+
     _use_gpu: bool
 
-    def __init__(self):
+    def __init__(self, settings: Settings) -> None:
+        """Inits the BaSiC class with the provided settings."""
+        self._settings = settings
         ...
 
     def fit(self):
@@ -58,8 +81,8 @@ class BaSiC:
         ...
 
     def __repr__(self):
-        # print out current settings and model if available
-        ...
+        """Return details of the BaSiC object."""
+        return self._settings.__repr__()
 
     def __enter__(self):
         # for context management
