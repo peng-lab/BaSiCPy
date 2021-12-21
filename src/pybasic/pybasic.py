@@ -1,9 +1,12 @@
 """Contains the PyBaSiC class."""
 
+import os
 from dataclasses import dataclass
+from typing import Union
 
 import numpy as np
 
+PathLike = Union[str, bytes, os.PathLike]
 ESTIMATION_MODES = ["l0"]  # NOTE convert to enum?
 
 
@@ -41,7 +44,8 @@ class Settings:
     def __post_init__(self) -> None:
         if self.estimation_mode not in ESTIMATION_MODES:
             raise ValueError(
-                f"Estimation mode '{self.estimation_mode}' not in {ESTIMATION_MODES}."
+                f"Estimation mode '{self.estimation_mode}' is not valid. "
+                f"Please select mode from {ESTIMATION_MODES}."
             )
 
 
@@ -50,19 +54,20 @@ class Settings:
 class BaSiC:
     """A class for fitting and applying BaSiC correction models."""
 
-    _use_gpu: bool
-
-    def __init__(self, settings: Settings) -> None:
+    def __init__(self, settings: Settings, use_gpu: bool = False) -> None:
         """Inits the BaSiC class with the provided settings."""
         self._settings = settings
         ...
 
-    def fit(self):
+    def fit(self, images: np.ndarray):  # iterable to reduce memory?
         """Generate profiles."""
         ...
 
-    def predict(self, image: np.ndarray):
+    def predict(self, images: np.ndarray):
         """Apply model."""
+        ...
+
+    def _inexact_alm_rspca_l1(self):
         ...
 
     def _dct(self):
@@ -104,7 +109,11 @@ class BaSiC:
 
 class Model:
     # include input image, channel/scene, training date/time, training duration
-    ...
+    image: np.ndarray
+
+    def save(self, fname: PathLike, format: str) -> None:
+        """Output formats include tiff, png, npy."""
+        ...
 
 
 class FlatField(Model):
