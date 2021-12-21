@@ -4,6 +4,8 @@ from dataclasses import dataclass
 
 import numpy as np
 
+ESTIMATION_MODES = ["l0"]  # NOTE convert to enum?
+
 
 @dataclass
 class Settings:
@@ -12,7 +14,8 @@ class Settings:
     Attributes:
         lambda_flatfield (float)
         estimation_mode (str)
-        max_iterations (int): Maximum number of iterations allowed in the optimization.
+        max_iterations (int): Maximum number of iterations allowed in the
+            optimization.
         optimization_tolerance (float): Tolerance of error in the optimization.
         darkfield (bool): Whether to estimate a darkfield correction.
         lambda_darkfield (float)
@@ -34,6 +37,12 @@ class Settings:
     eplson: float = 0.1  # NOTE rename to epslon?
     varying_coeff: bool = True
     reweight_tolerance: float = 1e-3
+
+    def __post_init__(self) -> None:
+        if self.estimation_mode not in ESTIMATION_MODES:
+            raise ValueError(
+                f"Estimation mode '{self.estimation_mode}' not in {ESTIMATION_MODES}."
+            )
 
 
 # NOTE how should multiple channels be handled?
