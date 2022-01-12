@@ -1,5 +1,0 @@
-name: pybasic-dev-310
-channels:
-  - default
-dependencies:
-  - python=3.10
