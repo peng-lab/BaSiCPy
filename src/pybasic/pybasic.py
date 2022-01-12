@@ -7,7 +7,8 @@ from typing import Iterable, List, Union
 import jax.numpy as jnp
 import numpy as np
 
-from pybasic import Profile, Settings
+from .profile import Profile
+from .settings import Settings
 
 # from pybasic.tools.dct2d_tools import dct2d, idct2d
 # from pybasic.tools.inexact_alm import inexact_alm_rspca_l1
