@@ -1,8 +1,9 @@
 """Contains the PyBaSiC class."""
 
+import functools
 import os
 from dataclasses import dataclass
-from typing import Union
+from typing import Callable, List, Union
 
 import numpy as np
 
@@ -14,19 +15,21 @@ ESTIMATION_MODES = ["l0"]  # NOTE convert to enum?
 class Settings:
     """A class to hold BaSiC settings.
 
-    Attributes:
-        lambda_flatfield (float)
-        estimation_mode (str)
-        max_iterations (int): Maximum number of iterations allowed in the
-            optimization.
-        optimization_tolerance (float): Tolerance of error in the optimization.
-        darkfield (bool): Whether to estimate a darkfield correction.
-        lambda_darkfield (float)
-        working_size (int)
-        max_reweight_iterations (int)
-        eplson (float)
-        varying_coeff (bool)
-        reweight_tolerance (float)
+    Args:
+        lambda_flatfield
+        estimation_mode
+        max_iterations: maximum number of iterations allowed in the optimization
+        darkfield: whether to estimate a darkfield correction
+        optimization_tolerance: error tolerance in the optimization
+        lambda_darkfield
+        working_size
+        max_reweight_iterations
+        eplson
+        varying_coeff
+        reweight_tolerance
+
+    Todo:
+        * Fill in parameters descriptions
     """
 
     lambda_flatfield: float = 0
@@ -49,47 +52,126 @@ class Settings:
             )
 
 
+class Model:
+    """A class to hold illumination profiles."""
+
+    def __init__(
+        self, profile: np.ndarray, type_: str = "flatfield", op: Callable = None
+    ):
+        """Init the Model class.
+
+        Args:
+            profile: illumination correction profile
+            type_: profile type (options are flatfield, darkfield)
+            op: operation to apply profile to input image
+
+        Raises:
+            ValueError: profile type cannot be identified
+        """
+        self.profile = profile
+        self.type_ = type_
+
+        if op is None:
+            if self.type_ == "flatfield":
+                self.op = functools.partial(np.multiply, self.profile)
+            elif self.type_ == "darkfield":
+                self.op = functools.partial(np.add, -self.profile)
+            else:
+                raise ValueError(
+                    "Unidentified profile type. Cannot determine application operation."
+                )
+        else:
+            self.op = op
+
+    def apply(self, input: np.ndarray) -> np.ndarray:
+        """Apply illumination profile to input image.
+
+        Args:
+            input: input image
+
+        Returns:
+            illumination corrected image
+        """
+        return self.op(input)
+
+
 # NOTE how should multiple channels be handled?
 # NOTE if settings need to be updated, should user reinitialize class?
 class BaSiC:
     """A class for fitting and applying BaSiC correction models."""
 
-    def __init__(self, settings: Settings, use_gpu: bool = False) -> None:
-        """Inits the BaSiC class with the provided settings."""
+    def __init__(
+        self, settings: Settings, use_gpu: bool = False, use_tpu: bool = False
+    ) -> None:
+        """Inits the BaSiC class with the provided settings.
+
+        Args:
+            settings: :meth:`pybasic.Settings` object
+            use_gpu: wheter to use gpu device
+            use_tpu: wheter to use tpu device
+        """
         self._settings = settings
         ...
 
-    def fit(self, images: np.ndarray):  # iterable to reduce memory?
-        """Generate profiles."""
-        ...
+    def fit(self, images: np.ndarray) -> List[Model]:
+        """Generate illumination correction profiles.
 
-    def predict(self, images: np.ndarray):
-        """Apply model."""
-        ...
+        Args:
+            images: input images to predict illumination model
 
+        Returns:
+            correction profile model :meth:`pybasic.Model` objects
+
+        Todo:
+            * encourage use of generator to provide images to reduce memory usage
+        """
+        ...
+        return
+
+    def predict(self, images: np.ndarray, models: List[np.ndarray]) -> np.ndarray:
+        """Apply model.
+
+        Args:
+            images: input images to correct
+            models: illumination correction profiles
+
+        Returns:
+            ndarray same size as input with illumination correction applied
+        """
+        ...
+        return
+
+    # NOTE: move to function outside of class for easier testing?
     def _inexact_alm_rspca_l1(self):
         ...
 
+    # NOTE: move to function outside of class for easier testing?
     def _dct(self):
         if self._use_gpu:
             return self._dct_gpu()
         else:
             return self._dct_cpu()
 
+    # NOTE: move to function outside of class for easier testing?
     def _idct(self):
         if self._use_gpu:
             return self._idct_gpu()
         else:
             return self._idct_cpu()
 
+    # NOTE: move to function outside of class for easier testing?
     def _dct_gpu(self):
         ...
 
+    # NOTE: move to function outside of class for easier testing?
     def _dct_cpu(self):
         ...
 
+    # NOTE: move to function outside of class for easier testing?
     def _idct_gpu(self):
         ...
+
+    # NOTE: move to function outside of class for easier testing?
 
     def _idct_cpu(self):
         ...
@@ -105,24 +187,3 @@ class BaSiC:
     def __exit__(self):
         # for context management
         ...
-
-
-class Model:
-    # include input image, channel/scene, training date/time, training duration
-    image: np.ndarray
-
-    def save(self, fname: PathLike, format: str) -> None:
-        """Output formats include tiff, png, npy."""
-        ...
-
-
-class FlatField(Model):
-    ...
-
-
-class DarkField(Model):
-    ...
-
-
-class TimeLapse(Model):
-    ...

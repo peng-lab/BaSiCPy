@@ -1,13 +1,11 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Thu Dec  5 17:32:25 2019
+"""Compute an illumination correction model for mosaic microscope images."""
 
-@author: Mohammad Mirkazemi
-"""
+from pybasic.pybasic import BaSiC, Model, Settings
 
-from . import tools
-from ._background import background_timelapse, basic, correct_illumination
-from ._settings import PyBasicConfig
-settings = PyBasicConfig()
+# from . import tools
+# from ._background import background_timelapse, basic, correct_illumination
+# from ._settings import PyBasicConfig
 
+# settings = PyBasicConfig()
+
+__all__ = ["BaSiC", "Model", "Settings"]
