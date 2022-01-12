@@ -54,8 +54,8 @@ class BaSiC:
             >>> basic = BaSiC(settings)
             >>> profiles = basic.fit(images)
 
-        Todo:
-            * Encourage use of generator to provide images, reducing memory usage
+        Tip:
+            * Use a generator to provide images, reducing memory usage
         """
         settings = self._initialize_settings(images)
         return self._run(images, settings)

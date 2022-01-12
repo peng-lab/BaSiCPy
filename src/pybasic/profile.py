@@ -11,7 +11,7 @@ class Profile:
 
     Attributes:
         profile: illumination correction profile
-        type: profile type (e.g., `"flatfield"`, `"darkfield"`)
+        type_: profile type (e.g., `"flatfield"`, `"darkfield"`)
         operation: operation for applying profile to input image
 
     Notes:
@@ -22,14 +22,21 @@ class Profile:
         .. code-block:: python
 
             ...
-            if self.type == "flatfield":
+            if self.type_ == "flatfield":
                 self.operation = functools.partial(np.multiply, self.profile)
             ...
 
     """
 
+    profile: np.ndarray
+    type_: str
+    operation: Callable[[np.ndarray, np.ndarray], np.ndarray]
+
     def __init__(
-        self, profile: np.ndarray, type_: str = "flatfield", operation: Callable = None
+        self,
+        profile: np.ndarray,
+        type_: str = "flatfield",
+        operation: Callable[[np.ndarray, np.ndarray], np.ndarray] = None,
     ):
         """Init the Model class.
 
@@ -42,12 +49,12 @@ class Profile:
             ValueError: profile type cannot be identified
         """
         self.profile = profile
-        self.type = type_
+        self.type_ = type_
 
         if operation is None:
-            if self.type == "flatfield":
+            if self.type_ == "flatfield":
                 self.operation = functools.partial(np.multiply, self.profile)
-            elif self.type == "darkfield":
+            elif self.type_ == "darkfield":
                 self.operation = functools.partial(np.add, -self.profile)
             else:
                 raise ValueError(
