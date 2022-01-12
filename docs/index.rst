@@ -11,18 +11,56 @@ PyBaSiC
    :caption: Contents:
 
 
+Installation
+------------
+
+Install from PyPI
+
+.. code-block:: bash
+
+   pip install [PACKAGENAME]
+
+Or get the latest development version
+
+.. code-block:: bash
+
+   pip install git+https://github.com/peng-lab/[PACKAGENAME].git
+
+
+Usage
+-----
+
+.. code-block:: bash
+
+    basic images/*.tif flatfield.tif
+
+.. argparse::
+   :ref: pybasic.__main__.get_parser
+   :prog: basic
+
+
+API Reference
+-------------
+
+BaSiC
+^^^^^
+
 .. autoclass:: pybasic.BaSiC
    :members:
    :special-members: __init__
 
-
 .. autoclass:: pybasic.Settings
    :members:
 
-
-.. autoclass:: pybasic.Model
+.. autoclass:: pybasic.Profile
    :members:
    :special-members: __init__
+
+Tools
+^^^^^
+
+.. automodule:: pybasic.tools
+   :members:
 
 
 Indices and tables

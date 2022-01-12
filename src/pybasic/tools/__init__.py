@@ -1,10 +1,6 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Dec  3 12:57:32 2019
+"""Utilities to support BaSiC."""
 
-@author: Mohammad Mirkazemi
-"""
+from .dct2d_tools import dct2d, idct2d
+from .image_tools import load_image, load_images, resize
 
-from ._dct2d_tools import dct2d, idct2d
-from ._load_data import load_data
+__all__ = ["dct2d", "idct2d", "load_image", "load_images", "resize"]

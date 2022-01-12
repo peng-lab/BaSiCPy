@@ -21,6 +21,7 @@ def docs(session: Session) -> None:
     """Build and serve the documentation with live reloading on file changes."""
     args = session.posargs or [
         "-a",
+        "-E",
         "--open-browser",
         "docs",
         "docs/_build",
