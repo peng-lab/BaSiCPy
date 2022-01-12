@@ -3,13 +3,14 @@
 import os
 from typing import Iterable, List, Union
 
+# import jax
 import jax.numpy as jnp
 import numpy as np
 
-from .profile import Profile
-from .settings import Settings
-from .tools.dct2d_tools import dct2d, idct2d
-from .tools.inexact_alm import inexact_alm_rspca_l1
+from pybasic import Profile, Settings
+
+# from pybasic.tools.dct2d_tools import dct2d, idct2d
+# from pybasic.tools.inexact_alm import inexact_alm_rspca_l1
 
 PathLike = Union[str, bytes, os.PathLike]
 
@@ -20,7 +21,7 @@ mm = jnp.matmul
 # NOTE how should multiple channels be handled?
 # NOTE if settings need to be updated, should user reinitialize class?
 class BaSiC:
-    """A class for fitting and applying BaSiC correction models."""
+    """A class for fitting and applying BaSiC illumination correction profiles."""
 
     def __init__(
         self,
