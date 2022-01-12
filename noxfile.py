@@ -28,7 +28,7 @@ def docs(session: Session) -> None:
         "--watch",
         "src",
     ]
-    session.install(".")
+    session.install("-e", ".")
     session.install("-r", "docs/requirements.txt")
     session.install("sphinx", "sphinx-autobuild")
 

@@ -7,7 +7,26 @@ import numpy as np
 
 
 class Profile:
-    """A class to hold illumination profiles."""
+    """A class to hold illumination profiles.
+
+    Attributes:
+        profile: illumination correction profile
+        type: profile type (e.g., `"flatfield"`, `"darkfield"`)
+        operation: operation for applying profile to input image
+
+    Notes:
+        ``Profile.operation`` is initialized with ``functools.partial``, having
+        `self.profile` as the first argument to the callable. For example, the
+        default `operation` for the `"flatfield"`-type profile is initialized as
+
+        .. code-block:: python
+
+            ...
+            if self.type == "flatfield":
+                self.operation = functools.partial(np.multiply, self.profile)
+            ...
+
+    """
 
     def __init__(
         self, profile: np.ndarray, type_: str = "flatfield", operation: Callable = None
@@ -16,26 +35,26 @@ class Profile:
 
         Args:
             profile: illumination correction profile
-            type_: profile type (options are `"flatfield"`, `"darkfield"`)
-            operation: operation to apply profile to input image
+            type_: profile type (e.g., `"flatfield"`, `"darkfield"`)
+            operation: operation for applying profile to input image
 
         Raises:
             ValueError: profile type cannot be identified
         """
         self.profile = profile
-        self.type_ = type_
+        self.type = type_
 
         if operation is None:
-            if self.type_ == "flatfield":
+            if self.type == "flatfield":
                 self.operation = functools.partial(np.multiply, self.profile)
-            elif self.type_ == "darkfield":
+            elif self.type == "darkfield":
                 self.operation = functools.partial(np.add, -self.profile)
             else:
                 raise ValueError(
-                    "Unidentified profile type. Cannot determine application operation."
+                    "Unrecognized profile type and no `operation` provided."
                 )
         else:
-            self.operation = operation
+            self.operation = functools.partial(operation, self.profile)
 
     def apply(self, image: np.ndarray) -> np.ndarray:
         """Apply illumination profile to input image.
