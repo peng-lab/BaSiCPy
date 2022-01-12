@@ -2,13 +2,12 @@ name: Tests
 on: push
 jobs:
   test:
-    name: Test ${{ matrix.platform }} py${{ matrix.python-version }}
-    runs-on: ${{ matrix.platform }}
+    name: Test py${{ matrix.python-version }}
+    runs-on: ubuntu-latest
     strategy:
-      matrix:
-        platform: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: ["3.7", "3.8", "3.9", "3.10"]
       fail-fast: false
+      matrix:
+        python-version: ["3.7", "3.8", "3.9", "3.10"]
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python ${{ matrix.python-version }}

@@ -3,21 +3,21 @@
 
 from typing import Iterable, List, Tuple
 
+import jax
 import numpy as np
 
 
-def resize(image: np.ndarray, size: Tuple[int, int]) -> np.ndarray:
+def resize(image: np.ndarray, shape: Tuple[int, int]) -> np.ndarray:
     """Resize an image.
 
     Args:
         image: input image
-        size: desired image output size
+        shape: desired image output size
 
     Returns:
         resized image
     """
-    ...
-    return
+    return jax.image.resize(image, shape)
 
 
 def load_image(fname: str) -> np.ndarray:
