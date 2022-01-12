@@ -57,8 +57,7 @@ class Profile:
         """Save the profile to a file.
 
         Args:
-            fname: path to file, supported extensions are `".tif"`, `".png"`,
-                `".npy"`, `".mat"`
+            fname: path to file, supported extensions are `".tif"`, `".npy"`, `".mat"`
 
         Returns:
             saved filename
