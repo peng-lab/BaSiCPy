@@ -1,0 +1,5 @@
+[flake8]
+docstring-convention=google
+max-line-length=88
+exclude=noxfile.py,docs/*,tests/*,scripts/*
+ignore=D105
