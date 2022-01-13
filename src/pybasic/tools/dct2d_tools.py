@@ -1,9 +1,11 @@
 """2D discrete consine transform tools."""
 
-import numpy as np
+import jax.numpy as jnp
+
+from ..types import ArrayLike
 
 
-def dct2d(im_stack: np.ndarray) -> np.ndarray:
+def dct2d(im_stack: ArrayLike) -> jnp.ndarray:
     """Calculates 2D discrete cosine transform.
 
     Args:
@@ -16,7 +18,7 @@ def dct2d(im_stack: np.ndarray) -> np.ndarray:
     return
 
 
-def idct2d(im_stack: np.ndarray) -> np.ndarray:
+def idct2d(im_stack: ArrayLike) -> jnp.ndarray:
     """Calculates 2D inverse discrete cosine transform.
 
     Args:

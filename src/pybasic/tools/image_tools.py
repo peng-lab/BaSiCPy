@@ -1,13 +1,14 @@
 """Image manipulation tools."""
 
-
 from typing import Iterable, List, Tuple
 
 import jax
-import numpy as np
+import jax.numpy as jnp
+
+from ..types import ArrayLike, PathLike
 
 
-def resize(image: np.ndarray, shape: Tuple[int, int]) -> np.ndarray:
+def resize(image: ArrayLike, shape: Tuple[int, int]) -> jnp.ndarray:
     """Resize an image.
 
     Args:
@@ -20,7 +21,7 @@ def resize(image: np.ndarray, shape: Tuple[int, int]) -> np.ndarray:
     return jax.image.resize(image, shape)
 
 
-def load_image(fname: str) -> np.ndarray:
+def load_image(fname: PathLike) -> jnp.ndarray:  # NOTE return type is a filler
     """Loads an image.
 
     Args:
@@ -33,7 +34,9 @@ def load_image(fname: str) -> np.ndarray:
     return
 
 
-def load_images(fnames: List[str], lazy: bool = False) -> Iterable[np.ndarray]:
+def load_images(
+    fnames: List[PathLike], lazy: bool = False
+) -> Iterable[jnp.ndarray]:  # NOTE return type is a filler
     """Load images from files.
 
     Args:
