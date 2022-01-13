@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 
-# NOTE convert to enum?
+# NOTE convert to enum
 ESTIMATION_MODES = ["l0"]
 
 
@@ -20,6 +20,7 @@ class Settings:
         max_reweight_iterations
         optimization_tol: error tolerance in the optimization
         reweighting_tol
+        timelapse: whether to estimate photobleaching effect
         varying_coeff
         working_size
 
@@ -36,6 +37,7 @@ class Settings:
     max_reweight_iterations: int = 10
     optimization_tol: float = 1e-6
     reweighting_tol: float = 1e-3
+    timelapse: bool = False
     varying_coeff: bool = True
     working_size: int = 128
 
