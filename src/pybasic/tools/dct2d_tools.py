@@ -8,6 +8,8 @@ from ..types import ArrayLike
 def dct2d(im_stack: ArrayLike) -> jnp.ndarray:
     """Calculates 2D discrete cosine transform.
 
+    Type -- DCT-II
+
     Args:
         im_stack: input image stack
 
@@ -20,6 +22,8 @@ def dct2d(im_stack: ArrayLike) -> jnp.ndarray:
 
 def idct2d(im_stack: ArrayLike) -> jnp.ndarray:
     """Calculates 2D inverse discrete cosine transform.
+
+    Type -- DCT-III
 
     Args:
         im_stack: input image stack
