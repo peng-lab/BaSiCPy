@@ -4,7 +4,8 @@ Todo:
     Keep examples up to date with changing API.
 """
 from __future__ import annotations
-from typing import Iterable, List, Tuple
+
+from typing import Iterable, List, NamedTuple, Optional, Union
 
 # import jax
 import jax.numpy as jnp
@@ -86,18 +87,20 @@ class BaSiC:
             working_size=working_size,
         )
 
-        # TODO run a check on device
-        self._device = device
+        self.params = None
+
+        self.device = device
+        self._check_device()
+
+    def _check_device(self):
+        """Check that device is accessible."""
         ...
 
-    def fit(self, images: Iterable[np.ndarray]) -> List[Profile]:
+    def fit(self, images: Iterable[ArrayLike]):
         """Generate illumination correction profiles.
 
         Args:
             images: input images to predict illumination model
-
-        Returns:
-            self after optimization
 
         Example:
             >>> from pybasic import BaSiC
@@ -110,10 +113,20 @@ class BaSiC:
             * Use a generator to provide images, reducing memory usage
         """
         # initial parameters from settings
-        init_params = self._initialize_params(images)
-        return self._run(images, init_params)
+        if self.params is None:
+            self.params = self._initialize_params(images)
 
-    def predict(self, images: Iterable[np.ndarray]) -> np.ndarray:
+        ...  # do stuff
+
+    def _initialize_params(self, im_stack: np.ndarray):
+        """Compute initial model parameters.
+
+        Args:
+            im_stack: input images as a stack
+        """
+        ...  # do stuff and set `self.params`
+
+    def predict(self, images: Iterable[np.ndarray]) -> List[np.ndarray]:
         """Apply profile to images.
 
         Args:
@@ -123,14 +136,10 @@ class BaSiC:
             generator to apply illumination correction
 
         Example:
-
-            .. code-block:: python
-
-                ...
-                >>> basic.fit(images)
-                >>> corrected = basic.predict(images)
-                >>> for i, im in enumerate(corrected):
-                ...     imsave(f"image_{i}.tif")
+            >>> basic.fit(images)
+            >>> corrected = basic.predict(images)
+            >>> for i, im in enumerate(corrected):
+            ...     imsave(f"image_{i}.tif")
         """
         if self.settings.timelapse:
             # calculate timelapse from input series
@@ -140,13 +149,12 @@ class BaSiC:
             for prof in self.profiles:
                 im = prof.apply(im)
 
-        return (apply_profiles(im) for im in images)
+        # NOTE also consider making this a generator
+        return [apply_profiles(im) for im in images]
 
     # REFACTOR large datasets will probably prefer saving corrected images to
     # files directly, a generator may be handy
-    def fit_predict(
-        self, images: Iterable[ArrayLike]
-    ) -> Tuple[List[np.ndarray], List[np.ndarray]]:
+    def fit_predict(self, images: Iterable[ArrayLike]) -> List[np.ndarray]:
         """Fit and predict on data.
 
         Args:
@@ -160,55 +168,74 @@ class BaSiC:
         """
         self.fit(images)
         corrected = self.predict(images)
-        profiles = self.profiles
-        # NOTE or only return corrected images and user can get profiles separately
-        return (profiles, corrected)
+        return corrected
+
+    def score(self, *args, **kwargs):
+        """Return a score for the current model.
+
+        Args:
+            args: arguments
+            kwargs: keyword arguments
+        """
+        ...
+
+    @property
+    def device(self) -> str:
+        """Current device.
+
+        Returns:
+            current device
+        """
+        return self._device
+
+    @device.setter
+    def device(self, value: str):
+        self._device = value
+
+    @property
+    def params(self) -> Union[NamedTuple, None]:
+        """Current parameters.
+
+        Returns:
+            current parameters
+        """
+        return self._params
+
+    @params.setter
+    def params(self, value: Optional[NamedTuple]):
+        self._params = value
 
     @property
     def profiles(self) -> List[Profile]:
-        """Estimated illumination correction profiles."""
-        return self._profiles
+        """Illumination correction profiles.
 
-    @profiles.setter
-    def profiles(self, profiles: List[Profile]):
-        """Alias for `load`."""
-        self._profiles = profiles
-
-    def load(self, profiles: List[Profile]):
-        """Load `profiles`.
-
-        Args:
-            profiles: list of precalculated illumination correction profiles
+        Returns:
+            profiles
 
         Example:
             >>> flatfield_prof = Profile(np.load("flatfield.npy"), type="flatfield")
             >>> darkfield_prof = Profile(np.load("darkfield.npy"), type="darkfield")
             >>> basic = BaSiC()
-            >>> basic.load([flatfield_prof, darfield_prof])
+            >>> basic.profiles = [flatfield_prof, darfield_prof]
         """
+        return self._profiles
+
+    @profiles.setter
+    def profiles(self, profiles: List[Profile]):
         self._profiles = profiles
 
-    def _run(self, images, settings):
-        """Run BaSiC.
+    @property
+    def settings(self) -> Settings:
+        """Current settings.
 
         Returns:
-            self after optimization
+            current settings
         """
-        ...
-        return self  # return like sklearn, but state still held in object
+        return self._settings
 
-    # NOTE not sure yet about return type and state change
-    def _initialize_params(self, im_stack: np.ndarray):
-        """Get initial model parameters.
-
-        Args:
-            im_stack: input images as a stack
-
-        Returns:
-            initial parameters
-        """
-        ...
-        return
+    @settings.setter
+    def settings(self, value: Settings):
+        self._settings = value
 
     def __repr__(self):
         return self._settings.__repr__()
