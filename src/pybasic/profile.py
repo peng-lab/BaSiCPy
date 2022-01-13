@@ -1,9 +1,11 @@
-"""The model to hold illumination correction profiles."""
+"""A class to hold illumination correction profiles."""
 
 import functools
 from typing import Callable
 
 import numpy as np
+
+from .types import ArrayLike, PathLike
 
 
 class Profile:
@@ -34,11 +36,11 @@ class Profile:
 
     def __init__(
         self,
-        profile: np.ndarray,
+        array: np.ndarray,
         type_: str = "flatfield",
         operation: Callable[[np.ndarray, np.ndarray], np.ndarray] = None,
     ):
-        """Init the Model class.
+        """Initialize the class.
 
         Args:
             profile: illumination correction profile
@@ -48,23 +50,23 @@ class Profile:
         Raises:
             ValueError: profile type cannot be identified
         """
-        self.profile = profile
+        self.array = array
         self.type_ = type_
 
         if operation is None:
             if self.type_ == "flatfield":
-                self.operation = functools.partial(np.multiply, self.profile)
+                self.operation = functools.partial(np.multiply, self.profile)  # type: ignore # noqa: E501
             elif self.type_ == "darkfield":
-                self.operation = functools.partial(np.add, -self.profile)
+                self.operation = functools.partial(np.add, -self.profile)  # type: ignore # noqa: E501
             else:
                 raise ValueError(
                     "Unrecognized profile type and no `operation` provided."
                 )
         else:
-            self.operation = functools.partial(operation, self.profile)
+            self.operation = functools.partial(operation, self.profile)  # type: ignore # noqa: E501
 
-    def apply(self, image: np.ndarray) -> np.ndarray:
-        """Apply illumination profile to input image.
+    def apply(self, image: ArrayLike) -> np.ndarray:
+        """Apply the profile to an input image.
 
         Args:
             image: input image
@@ -79,7 +81,7 @@ class Profile:
         """
         return self.operation(image)
 
-    def save(self, fname) -> str:
+    def save(self, fname: PathLike):
         """Save the profile to a file.
 
         Args:
