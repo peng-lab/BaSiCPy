@@ -1,35 +1,73 @@
-"""2D discrete consine transform tools."""
+"""2D discrete cosine transform tools."""
 
-import jax.numpy as jnp
+import os
+from abc import ABC, abstractmethod, abstractproperty
 
-from ..types import ArrayLike
+import cv2
+import numpy as np
 
+__all__ = ["DCT_BACKENDS", "dct2d", "idct2d"]
 
-def dct2d(im_stack: ArrayLike) -> jnp.ndarray:
-    """Calculates 2D discrete cosine transform.
-
-    Type -- DCT-II
-
-    Args:
-        im_stack: input image stack
-
-    Returns:
-        transformed image stack
-    """
-    ...
-    return
+DEFAULT_BACKEND = "SCIPY"
 
 
-def idct2d(im_stack: ArrayLike) -> jnp.ndarray:
-    """Calculates 2D inverse discrete cosine transform.
+class DCT(ABC):
+    @abstractproperty
+    @abstractmethod
+    def _backend(self) -> str:
+        ...
 
-    Type -- DCT-III
+    @staticmethod
+    @abstractmethod
+    def dct2d(arr: np.ndarray) -> np.ndarray:
+        return np.ndarray
 
-    Args:
-        im_stack: input image stack
+    @staticmethod
+    @abstractmethod
+    def idct2d(arr: np.ndarray) -> np.ndarray:
+        ...
 
-    Returns:
-        transformed image stack
-    """
-    ...
-    return
+
+class JaxDCT(DCT):
+    _backend = "JAX"
+
+    @staticmethod
+    def dct2d(arr: np.ndarray) -> np.ndarray:
+        ...
+
+    @staticmethod
+    def idct2d(arr: np.ndarray) -> np.ndarray:
+        ...
+
+
+class OpenCVDCT(DCT):
+    _backend = "OPENCV"
+
+    @staticmethod
+    def dct2d(arr: np.ndarray) -> np.ndarray:
+        return cv2.dct(arr).astype(np.float64)
+
+    @staticmethod
+    def idct2d(arr: np.ndarray) -> np.ndarray:
+        return cv2.dct(arr, flags=cv2.DCT_INVERSE).astype(np.float64)
+
+
+class SciPyDCT(DCT):
+    _backend = "SCIPY"
+
+    @staticmethod
+    def dct2d(arr: np.ndarray) -> np.ndarray:
+        ...
+
+    @staticmethod
+    def idct2d(arr: np.ndarray) -> np.ndarray:
+        ...
+
+
+DCT_BACKENDS = {"JAX": JaxDCT, "OPENCV": OpenCVDCT, "SCIPY": SciPyDCT}
+
+
+dct = DCT_BACKENDS[os.environ["DCT_BACKEND"] or DEFAULT_BACKEND]
+
+dct2d = dct.dct2d
+idct2d = dct.idct2d
