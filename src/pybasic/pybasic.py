@@ -4,7 +4,7 @@ Todo:
     Keep examples up to date with changing API.
 """
 from __future__ import annotations
-from typing import List, Tuple, Union
+from typing import List, Tuple, Union, NamedTuple, Dict, Optional
 from enum import Enum
 
 # import jax
@@ -128,9 +128,6 @@ class BaSiC(BaseModel):
         Args:
             images: input images to predict illumination model
 
-        Returns:
-            self after optimization
-
         Example:
             >>> from pybasic import BaSiC
             >>> from pybasic.tools import load_images
@@ -142,8 +139,10 @@ class BaSiC(BaseModel):
             * Use a generator to provide images, reducing memory usage
         """
         # initial parameters from settings
-        init_params = self._initialize_params(images)
-        return self._run(images, init_params)
+        if self.params is None:
+            self.params = self._initialize_params(images)
+
+        ...  # do stuff
 
     def predict(
         self, images: np.ndarray, timelapse: bool = False
@@ -158,20 +157,16 @@ class BaSiC(BaseModel):
             generator to apply illumination correction
 
         Example:
-
-            .. code-block:: python
-
-                ...
-                >>> basic.fit(images)
-                >>> corrected = basic.predict(images)
-                >>> for i, im in enumerate(corrected):
-                ...     imsave(f"image_{i}.tif")
+            >>> basic.fit(images)
+            >>> corrected = basic.predict(images)
+            >>> for i, im in enumerate(corrected):
+            ...     imsave(f"image_{i}.tif")
         """
 
         # Initialize the output
         output = np.zeros(images.shape, dtype=images.dtype)
 
-        if self.settings.timelapse:
+        if timelapse:
             # calculate timelapse from input series
             ...
 
@@ -216,47 +211,42 @@ class BaSiC(BaseModel):
         return self._reweight_score
 
     @property
+    def params(self) -> Union[NamedTuple, None]:
+        """Current parameters.
+
+        Returns:
+            current parameters
+        """
+        return self._params
+
+    @params.setter
+    def params(self, value: Optional[NamedTuple]):
+        self._params = value
+
+    @property
     def profiles(self) -> List[Profile]:
-        """Estimated illumination correction profiles."""
-        return self._profiles
+        """Illumination correction profiles.
 
-    @profiles.setter
-    def profiles(self, profiles: List[Profile]):
-        """Alias for `load`."""
-        self._profiles = profiles
-
-    def load(self, profiles: List[Profile]):
-        """Load `profiles`.
-
-        Args:
-            profiles: list of precalculated illumination correction profiles
+        Returns:
+            profiles
 
         Example:
             >>> flatfield_prof = Profile(np.load("flatfield.npy"), type="flatfield")
             >>> darkfield_prof = Profile(np.load("darkfield.npy"), type="darkfield")
             >>> basic = BaSiC()
-            >>> basic.load([flatfield_prof, darfield_prof])
+            >>> basic.profiles = [flatfield_prof, darfield_prof]
         """
+        return self._profiles
+
+    @profiles.setter
+    def profiles(self, profiles: List[Profile]):
         self._profiles = profiles
 
-    def _run(self, images, settings):
-        """Run BaSiC.
+    @property
+    def settings(self) -> Dict:
+        """Current settings.
 
         Returns:
-            self after optimization
+            current settings
         """
-        ...
-        return self  # return like sklearn, but state still held in object
-
-    # NOTE not sure yet about return type and state change
-    def _initialize_params(self, im_stack: np.ndarray):
-        """Get initial model parameters.
-
-        Args:
-            im_stack: input images as a stack
-
-        Returns:
-            initial parameters
-        """
-        ...
-        return
+        return self.dict()
