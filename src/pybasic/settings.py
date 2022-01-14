@@ -16,8 +16,8 @@ class Settings:
         estimation_mode
         lambda_darkfield
         lambda_flatfield
-        max_iterations: maximum number of iterations allowed in the optimization
-        max_reweight_iterations
+        max_iter: maximum number of iterations allowed in the optimization
+        max_reweight_iter:
         optimization_tol: error tolerance in the optimization
         reweighting_tol
         timelapse: whether to estimate photobleaching effect
