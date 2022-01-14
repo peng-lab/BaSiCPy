@@ -3,7 +3,7 @@
     // you know what you are doing.
     "version": 1,
     // The name of the project being benchmarked
-    "project": "BaSiCpy",
+    "project": "BaSiCPy",
     // The project's homepage
     "project_url": "https://github.com/peng-lab/BaSiCPy",
     // The URL or local path of the source code repository for the
