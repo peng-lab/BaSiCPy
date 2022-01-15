@@ -64,7 +64,7 @@ class BaSiC(BaseModel):
         description="Holds the flatfield component for the shading model.",
         exclude=True,  # Don't dump to output json/yaml
     )
-    get_dark: bool = Field(
+    get_darkfield: bool = Field(
         False,
         description="When True, will estimate the darkfield shading component.",
     )
