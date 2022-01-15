@@ -73,6 +73,7 @@ if __name__ == "__main__":
         "--inpDir",
         dest="input_dir",
         help="Path to input images.",
+        metavar="FOLDER",
         type=Path,
         required=True,
     )
@@ -80,12 +81,14 @@ if __name__ == "__main__":
         "--outDir",
         dest="output_dir",
         help="Path to output images.",
+        metavar="FOLDER",
         type=Path,
         required=True,
     )
     parser.add_argument(
         "--pattern",
         help="A regular expression pattern for selected images in inpDir.",
+        metavar="REGEX",
         type=Path,
         required=False,
     )
@@ -99,12 +102,14 @@ if __name__ == "__main__":
             dest=k,
             type=type(v),
             help=description,
+            metavar=type(v).__name__,
             default=v,
             required=False,
         )
     parser.add_argument(
         "--device",
         help="Device to run on. Must be one of [cpu,gpu,tpu].",
+        metavar="DEVICE",
         type=Device,
         default=Device.cpu,
         required=False,
