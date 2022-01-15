@@ -4,8 +4,8 @@ Todo:
     Keep examples up to date with changing API.
 """
 from __future__ import annotations
-
-from typing import Iterable, List, NamedTuple, Optional, Union
+from typing import List, Tuple, Union, NamedTuple, Dict, Optional
+from enum import Enum
 
 # import jax
 import jax.numpy as jnp
@@ -13,8 +13,9 @@ import numpy as np
 
 # REFACTOR relative imports or package level?
 from .profile import Profile
-from .settings import Settings
 from .types import ArrayLike
+
+from pydantic import Field, BaseModel, PrivateAttr
 
 # from pybasic.tools.dct2d_tools import dct2d, idct2d
 # from pybasic.tools.inexact_alm import inexact_alm_rspca_l1
@@ -24,79 +25,104 @@ from .types import ArrayLike
 mm = jnp.matmul
 
 
+class EstimationMode(Enum):
+
+    l0: str = "l0"
+
+
+class Device(Enum):
+
+    cpu: str = "cpu"
+    gpu: str = "gpu"
+    tpu: str = "tpu"
+
+
 # multiple channels should be handled by creating a `basic` object for each chan
-class BaSiC:
+class BaSiC(BaseModel):
     """A class for fitting and applying BaSiC illumination correction profiles."""
 
-    # NOTE Docs could be consolidated. may be better design to pass *args, **kwargs
-    # to Settings, but this alone will not copy function signature which is nice to
-    # have for building documentation and for working in IDE
-    def __init__(
-        self,
-        # REFACTOR defaults are defined here and settings class... will there ever be
-        # a case where `basic` settings will be updated by the user?
-        darkfield: bool = False,  # alphabetized
-        epsilon: float = 0.1,
-        estimation_mode: str = "l0",
-        lambda_darkfield: float = 0,
-        lambda_flatfield: float = 0,
-        max_iterations: int = 500,
-        max_reweight_iterations: int = 10,
-        optimization_tol: float = 1e-6,
-        reweighting_tol: float = 1e-3,
-        timelapse: bool = False,
-        varying_coeff: bool = True,
-        working_size: int = 128,
-        device: str = "cpu",  # device last
-    ) -> None:
-        """Initialize BaSiC with the provided settings.
+    darkfield: np.ndarray = Field(
+        default_factory=lambda: np.zeros((128, 128), dtype=np.float64),
+        description="Holds the darkfield component for the shading model.",
+        exclude=True,  # Don't dump to output json/yaml
+    )
+    device: np.ndarray = Field(
+        Device.cpu,
+        description="Must be one of ['cpu','gpu','tpu'].",
+        exclude=True,  # Don't dump to output json/yaml
+    )
+    epsilon: float = Field(
+        0.1,
+        description="Weight regularization term.",
+    )
+    estimation_mode: EstimationMode = Field(
+        "l0",
+        description="Flatfield offset for weight updates.",
+    )
+    flatfield: np.ndarray = Field(
+        default_factory=lambda: np.zeros((128, 128), dtype=np.float64),
+        description="Holds the flatfield component for the shading model.",
+        exclude=True,  # Don't dump to output json/yaml
+    )
+    get_darkfield: bool = Field(
+        False,
+        description="When True, will estimate the darkfield shading component.",
+    )
+    lambda_darkfield: float = Field(
+        0.0,
+        description="Darkfield offset for weight updates.",
+    )
+    lambda_flatfield: float = Field(
+        0.0,
+        description="Flatfield offset for weight updates.",
+    )
+    max_iterations: int = Field(
+        500,
+        description="Maximum number of iterations.",
+    )
+    max_reweight_iterations: int = Field(
+        10,
+        description="Maximum number of reweighting iterations.",
+    )
+    optimization_tol: float = Field(
+        1e-6,
+        description="Optimization tolerance.",
+    )
+    reweighting_tol: float = Field(
+        1e-3,
+        description="Reweighting tolerance.",
+    )
+    varying_coeff: bool = Field(
+        True,
+        description="This description will need to be filled in.",
+    )
+    working_size: int = Field(
+        128,
+        description="Size for running computations. Should be a power of 2 (2^n).",
+    )
 
-        Args:
-            darkfield: whether to estimate a darkfield correction
-            epsilon:
-            estimation_mode:
-            lambda_darkfield:
-            lambda_flatfield:
-            max_iterations: maximum number of iterations allowed in the optimization
-            max_reweight_iterations:
-            optimization_tol: error tolerance in the optimization
-            reweighting_tol:
-            timelapse: whether to estimate photobleaching effect
-            varying_coeff:
-            working_size:
-            device: device to use, options are `"cpu"`, `"gpu"`, `"tpu"`
+    # Private attributes for internal processing
+    _score: float = PrivateAttr(None)
+    _reweight_score: float = PrivateAttr(None)
 
-        See Also:
-            :meth:`pybasic.Settings`
+    class Config:
 
-        Todo:
-            * Fill in parameter descriptions
-        """
-        self.settings = Settings(
-            darkfield=darkfield,
-            epsilon=epsilon,
-            estimation_mode=estimation_mode,
-            lambda_darkfield=lambda_darkfield,
-            lambda_flatfield=lambda_flatfield,
-            max_iterations=max_iterations,
-            max_reweight_iterations=max_reweight_iterations,
-            optimization_tol=optimization_tol,
-            reweighting_tol=reweighting_tol,
-            timelapse=timelapse,
-            varying_coeff=varying_coeff,
-            working_size=working_size,
-        )
+        arbitrary_types_allowed = True
 
-        self.params = None
+    def __init__(self, **kwargs) -> None:
+        """Initialize BaSiC with the provided settings."""
 
-        self.device = device
-        self._check_device()
+        super().__init__(**kwargs)
 
-    def _check_device(self):
-        """Check that device is accessible."""
-        ...
+        if self.working_size != 128:
+            self.darkfield = np.zeros((self.working_size,) * 2, dtype=np.float64)
+            self.flatfield = np.zeros((self.working_size,) * 2, dtype=np.float64)
 
-    def fit(self, images: Iterable[ArrayLike]):
+        if self.device is not Device.cpu:
+            # TODO: sanity checks on device selection
+            pass
+
+    def fit(self, images: np.ndarray) -> None:
         """Generate illumination correction profiles.
 
         Args:
@@ -118,19 +144,14 @@ class BaSiC:
 
         ...  # do stuff
 
-    def _initialize_params(self, im_stack: np.ndarray):
-        """Compute initial model parameters.
-
-        Args:
-            im_stack: input images as a stack
-        """
-        ...  # do stuff and set `self.params`
-
-    def predict(self, images: Iterable[np.ndarray]) -> List[np.ndarray]:
+    def predict(
+        self, images: np.ndarray, timelapse: bool = False
+    ) -> Union[Tuple[np.ndarray, np.ndarray], np.ndarray]:
         """Apply profile to images.
 
         Args:
             images: input images to correct
+            timelapse: calculate timelapse/photobleaching offsets
 
         Returns:
             generator to apply illumination correction
@@ -141,7 +162,11 @@ class BaSiC:
             >>> for i, im in enumerate(corrected):
             ...     imsave(f"image_{i}.tif")
         """
-        if self.settings.timelapse:
+
+        # Initialize the output
+        output = np.zeros(images.shape, dtype=images.dtype)
+
+        if timelapse:
             # calculate timelapse from input series
             ...
 
@@ -149,12 +174,15 @@ class BaSiC:
             for prof in self.profiles:
                 im = prof.apply(im)
 
-        # NOTE also consider making this a generator
-        return [apply_profiles(im) for im in images]
+        output = apply_profiles(images)
+
+        return output
 
     # REFACTOR large datasets will probably prefer saving corrected images to
     # files directly, a generator may be handy
-    def fit_predict(self, images: Iterable[ArrayLike]) -> List[np.ndarray]:
+    def fit_predict(
+        self, images: ArrayLike, timelapse: bool = True
+    ) -> Union[Tuple[np.ndarray, np.ndarray], np.ndarray]:
         """Fit and predict on data.
 
         Args:
@@ -167,30 +195,20 @@ class BaSiC:
             >>> profiles, corrected = basic.fit_predict(images)
         """
         self.fit(images)
-        corrected = self.predict(images)
+        corrected = self.predict(images, timelapse)
+
+        # NOTE or only return corrected images and user can get profiles separately
         return corrected
 
-    def score(self, *args, **kwargs):
-        """Return a score for the current model.
-
-        Args:
-            args: arguments
-            kwargs: keyword arguments
-        """
-        ...
+    @property
+    def score(self):
+        """The BaSiC fit final score"""
+        return self._score
 
     @property
-    def device(self) -> str:
-        """Current device.
-
-        Returns:
-            current device
-        """
-        return self._device
-
-    @device.setter
-    def device(self, value: str):
-        self._device = value
+    def reweight_score(self):
+        """The BaSiC fit final reweighting score"""
+        return self._reweight_score
 
     @property
     def params(self) -> Union[NamedTuple, None]:
@@ -225,17 +243,10 @@ class BaSiC:
         self._profiles = profiles
 
     @property
-    def settings(self) -> Settings:
+    def settings(self) -> Dict:
         """Current settings.
 
         Returns:
             current settings
         """
-        return self._settings
-
-    @settings.setter
-    def settings(self, value: Settings):
-        self._settings = value
-
-    def __repr__(self):
-        return self._settings.__repr__()
+        return self.dict()

@@ -3,3 +3,4 @@ docstring-convention=google
 max-line-length=88
 exclude=noxfile.py,docs/*,tests/*,scripts/*
 ignore=D105
+extend-ignore = E203
