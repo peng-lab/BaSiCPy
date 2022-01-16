@@ -57,14 +57,16 @@ def test_unrecognized_backend(monkeypatch):
 
     monkeypatch.setenv("BASIC_DCT_BACKEND", "FAKE_BACKEND")
 
-    with pytest.raises(KeyError):
-        importlib.reload(pybasic.tools.dct2d_tools)
+    # with pytest.raises(KeyError):
+    #     importlib.reload(pybasic.tools.dct2d_tools)
 
-    # assert (
-    #     pybasic.tools.dct2d_tools.dct._backend
-    #     == pybasic.tools.dct2d_tools.DEFAULT_BACKEND
-    # )
+    assert (
+        pybasic.tools.dct2d_tools.dct._backend
+        == pybasic.tools.dct2d_tools.DEFAULT_BACKEND
+    )
 
 
-def test_backend_not_installed():
+@pytest.mark.parametrize("backend", backends)
+def test_backend_not_installed(monkeypatch, backend):
+    # TODO mimic package not installed by removing from path?
     ...

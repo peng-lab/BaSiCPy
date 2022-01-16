@@ -1,23 +1,24 @@
 """2D discrete cosine transform tools."""
 
+import importlib.util
 import os
 from abc import ABC, abstractmethod, abstractproperty
 
-# TODO remove below after benchmarking or change to logging
-try:
-    import cv2
-except ImportError:
-    print("unable to import cv2")
-try:
-    import scipy.fft
-except ImportError:
-    print("unable to import scipy")
-
-import jax
 import numpy as np
+import scipy.fft
 
 __all__ = ["dct2d", "idct2d"]
+# default backend must be installed
 DEFAULT_BACKEND = "SCIPY"
+
+
+def is_installed(pkg: str):
+    return bool(importlib.util.find_spec(pkg))
+
+
+has_cv2 = is_installed("cv2")
+# has_scipy = is_installed("scipy")
+has_jax = all(is_installed(pkg) for pkg in ["jax", "jaxlib"])
 
 
 class DCT(ABC):
@@ -37,37 +38,47 @@ class DCT(ABC):
         ...
 
 
-class JaxDCT(DCT):
-    _backend = "JAX"
+if has_jax:
 
-    @staticmethod
-    def dct2d(arr: np.ndarray) -> np.ndarray:
-        return jax.scipy.fft.dct(jax.scipy.fft.dct(arr, norm="ortho"), norm="ortho")
+    import jax
 
-    @staticmethod
-    def idct2d(arr: np.ndarray) -> np.ndarray:
-        return jax.scipy.fft.idct(
-            jax.scipy.fft.idct(arr, norm="ortho"), norm="ortho"
-        )  # FIXME only dct type 2 is implemented in JAX...
+    class JaxDCT(DCT):
+        _backend = "JAX"
+
+        @staticmethod
+        def dct2d(arr: np.ndarray) -> np.ndarray:
+            return jax.scipy.fft.dct(
+                jax.scipy.fft.dct(arr.T, norm="ortho").T, norm="ortho"
+            )
+
+        # FIXME only dct type 2 is implemented in JAX...
+        @staticmethod
+        def idct2d(arr: np.ndarray) -> np.ndarray:
+            return jax.scipy.fft.idct(
+                jax.scipy.fft.idct(arr.T, norm="ortho").T, norm="ortho"
+            )
 
 
-class OpenCVDCT(DCT):
-    _backend = "OPENCV"
+if has_cv2:
 
-    @staticmethod
-    def dct2d(arr: np.ndarray) -> np.ndarray:
-        return cv2.dct(arr)
+    import cv2
 
-    @staticmethod
-    def idct2d(arr: np.ndarray) -> np.ndarray:
-        return cv2.dct(arr, flags=cv2.DCT_INVERSE)
+    class OpenCVDCT(DCT):
+        _backend = "OPENCV"
+
+        @staticmethod
+        def dct2d(arr: np.ndarray) -> np.ndarray:
+            return cv2.dct(arr)
+
+        @staticmethod
+        def idct2d(arr: np.ndarray) -> np.ndarray:
+            return cv2.dct(arr, flags=cv2.DCT_INVERSE)
 
 
 class SciPyDCT(DCT):
     _backend = "SCIPY"
 
     # NOTE can we use scipy.fftpack.dctn to replace the nested function below?
-
     @staticmethod
     def dct2d(arr: np.ndarray) -> np.ndarray:
         return scipy.fft.dct(scipy.fft.dct(arr.T, norm="ortho").T, norm="ortho")
@@ -77,23 +88,14 @@ class SciPyDCT(DCT):
         return scipy.fft.idct(scipy.fft.idct(arr.T, norm="ortho").T, norm="ortho")
 
 
-DCT_BACKENDS = {"JAX": JaxDCT(), "OPENCV": OpenCVDCT(), "SCIPY": SciPyDCT()}
+# collect all subclasses into a dictionary
+DCT_BACKENDS = {sc()._backend: sc() for sc in DCT.__subclasses__()}  # type: ignore
 
 
-if os.environ.get("BASIC_DCT_BACKEND"):
-    try:
-        dct = DCT_BACKENDS[os.environ["BASIC_DCT_BACKEND"]]
-    except KeyError as e:
-        # TODO change to logging or warning
-        raise e
-        # # OR when this fails, revert to default
-        # print(
-        #     f"unrecognized dct backend {os.environ['BASIC_DCT_BACKEND']}, "
-        #     f"defaulting to {DEFAULT_BACKEND}"
-        # )
-        # dct = DCT_BACKENDS[DEFAULT_BACKEND]
-else:
-    dct = DCT_BACKENDS[DEFAULT_BACKEND]
+# TODO use logger, warn if backend does not exist
+dct = DCT_BACKENDS.get(
+    os.environ.get("BASIC_DCT_BACKEND"), DCT_BACKENDS[DEFAULT_BACKEND]  # type: ignore
+)
 
 dct2d = dct.dct2d
 idct2d = dct.idct2d
