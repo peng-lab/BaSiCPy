@@ -6,7 +6,6 @@ from pybasic.tools.dct2d_tools import DCT_BACKENDS
 import pytest
 import scipy.fft
 import numpy as np
-import sys
 import importlib
 
 np.random.seed(1234)
