@@ -46,7 +46,7 @@ class BaSiC(BaseModel):
         description="Holds the darkfield component for the shading model.",
         exclude=True,  # Don't dump to output json/yaml
     )
-    device: np.ndarray = Field(
+    device: Device = Field(
         Device.cpu,
         description="Must be one of ['cpu','gpu','tpu'].",
         exclude=True,  # Don't dump to output json/yaml
