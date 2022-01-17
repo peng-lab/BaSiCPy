@@ -8,6 +8,9 @@ Todo:
 from __future__ import annotations
 from typing import List, Tuple, Union, NamedTuple, Dict, Optional
 from enum import Enum
+import os
+from concurrent.futures import ThreadPoolExecutor
+from multiprocessing import cpu_count
 
 # 3rd party modules
 # import jax.numpy as jnp
@@ -24,6 +27,18 @@ from .types import ArrayLike
 
 # from pybasic.tools.dct2d_tools import dct2d, idct2d
 # from pybasic.tools.inexact_alm import inexact_alm_rspca_l1
+
+# Get number of available threads to limit CPU thrashing
+# From preadator: https://pypi.org/project/preadator/
+if hasattr(os, "sched_getaffinity"):
+    # On Linux, we can detect how many cores are assigned to this process.
+    # This is especially useful when running in a Docker container, when the
+    # number of cores is intentionally limited.
+    NUM_THREADS = len(os.sched_getaffinity(0))
+else:
+    # Default back to multiprocessing cpu_count, which is always going to count
+    # the total number of cpus
+    NUM_THREADS = cpu_count()
 
 
 class EstimationMode(Enum):
@@ -85,6 +100,11 @@ class BaSiC(BaseModel):
         10,
         description="Maximum number of reweighting iterations.",
     )
+    max_workers: int = Field(
+        NUM_THREADS,
+        description="Maximum number of threads used for processing.",
+        exclude=True,  # Don't dump to output json/yaml
+    )
     optimization_tol: float = Field(
         1e-6,
         description="Optimization tolerance.",
@@ -129,6 +149,13 @@ class BaSiC(BaseModel):
         if self.device is not Device.cpu:
             # TODO: sanity checks on device selection
             pass
+
+    def __call__(
+        self, images: np.ndarray, timelapse: bool = False
+    ) -> Union[Tuple[np.ndarray, np.ndarray], np.ndarray]:
+        """Shortcut for BaSiC.predict"""
+
+        return self.predict(images, timelapse)
 
     def fit(self, images: np.ndarray) -> None:
         """Generate illumination correction profiles.
@@ -241,12 +268,17 @@ class BaSiC(BaseModel):
     ) -> Union[Tuple[np.ndarray, np.ndarray], np.ndarray]:
         """Apply profile to images.
 
+        Todo:
+            Add in baseline/timelapse correction.
+
         Args:
             images: input images to correct
-            timelapse: calculate timelapse/photobleaching offsets
+            timelapse: calculate timelapse/photobleaching offsets. Currently
+                does nothing.
 
         Returns:
-            generator to apply illumination correction
+            An array of the same size as images. If timelapse is True, returns
+                a flat array of baseline corrections used in the calculations.
 
         Example:
             >>> basic.fit(images)
@@ -255,6 +287,8 @@ class BaSiC(BaseModel):
             ...     imsave(f"image_{i}.tif")
         """
 
+        im_float = images.astype(np.float64)
+
         # Initialize the output
         output = np.zeros(images.shape, dtype=images.dtype)
 
@@ -262,13 +296,28 @@ class BaSiC(BaseModel):
             # calculate timelapse from input series
             ...
 
-        def apply_profiles(im):
-            for prof in self.profiles:
-                im = prof.apply(im)
+        def unshade(ins, outs, i, dark, flat):
+            outs[..., i] = (ins[..., i] - dark) / flat
 
-        output = apply_profiles(images)
+        # If one or fewer workers, don't user ThreadPool. Useful for debugging.
+        if self.max_workers <= 1:
+            for i in range(images.shape[-1]):
+                unshade(im_float, output, i, self.darkfield, self.flatfield)
 
-        return output
+        else:
+            with ThreadPoolExecutor(self.max_workers) as executor:
+                threads = executor.map(
+                    lambda x: unshade(
+                        im_float, output, x, self.darkfield, self.flatfield
+                    ),
+                    range(images.shape[-1]),
+                )
+
+                # Get the result of each thread, this should catch thread errors
+                for thread in threads:
+                    assert thread is None
+
+        return output.astype(images.dtype)
 
     # REFACTOR large datasets will probably prefer saving corrected images to
     # files directly, a generator may be handy
