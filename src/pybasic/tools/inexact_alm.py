@@ -21,7 +21,7 @@ def dct2d(x: np.ndarray) -> np.ndarray:
 
 
 def idct2d(x: np.ndarray) -> np.ndarray:
-    idct(idct(x, norm="ortho").T, norm="ortho")
+    return idct(idct(x, norm="ortho").T, norm="ortho")
 
 
 def _shrinkageOperator(matrix: np.ndarray, epsilon):
