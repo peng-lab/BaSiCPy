@@ -3,26 +3,27 @@
 Todo:
     Keep examples up to date with changing API.
 """
+
+# Core modules
 from __future__ import annotations
 from typing import List, Tuple, Union, NamedTuple, Dict, Optional
 from enum import Enum
 
-# import jax
-import jax.numpy as jnp
+# 3rd party modules
+# import jax.numpy as jnp
+# mm = jnp.matmul
+from pydantic import Field, BaseModel, PrivateAttr
 import numpy as np
+from skimage.transform import resize
+from scipy.fftpack import dct
+from pybasic.tools import inexact_alm_rspca_l1
 
-# REFACTOR relative imports or package level?
+# Package modules
 from .profile import Profile
 from .types import ArrayLike
 
-from pydantic import Field, BaseModel, PrivateAttr
-
 # from pybasic.tools.dct2d_tools import dct2d, idct2d
 # from pybasic.tools.inexact_alm import inexact_alm_rspca_l1
-
-
-# Shorthand for common operations
-mm = jnp.matmul
 
 
 class EstimationMode(Enum):
@@ -104,6 +105,13 @@ class BaSiC(BaseModel):
     # Private attributes for internal processing
     _score: float = PrivateAttr(None)
     _reweight_score: float = PrivateAttr(None)
+    _alm_settings = {
+        "lambda_darkfield",
+        "lambda_flatfield",
+        "get_darkfield",
+        "optimization_tol",
+        "max_iterations",
+    }
 
     class Config:
 
@@ -126,7 +134,8 @@ class BaSiC(BaseModel):
         """Generate illumination correction profiles.
 
         Args:
-            images: input images to predict illumination model
+            images: Input images to fit shading model. Images should be stacked
+                along the z-dimension.
 
         Example:
             >>> from pybasic import BaSiC
@@ -135,14 +144,97 @@ class BaSiC(BaseModel):
             >>> basic = BaSiC()  # use default settings
             >>> basic.fit(images)
 
-        Tip:
-            * Use a generator to provide images, reducing memory usage
         """
-        # initial parameters from settings
-        if self.params is None:
-            self.params = self._initialize_params(images)
+        assert images.ndim == 3
 
-        ...  # do stuff
+        # Resize the images
+        images = images.astype(np.float64)
+        working_shape = (self.working_size, self.working_size, images.shape[2])
+        D = resize(
+            images, (working_shape), order=1, mode="symmetric", preserve_range=True
+        )
+
+        # Get initial frequencies
+        D_mean = D.mean(axis=2)
+        D_mean /= D_mean.mean()
+        W_D_mean = dct(dct(D_mean, norm="ortho").T, norm="ortho")
+
+        # Set lambdas if null
+        if self.lambda_flatfield == 0:
+            self.lambda_flatfield = np.sum(np.abs(W_D_mean)) / 400 * 0.5
+        if self.lambda_darkfield == 0:
+            self.lambda_darkfield = self.lambda_flatfield * 0.2
+
+        D = np.sort(D, axis=2)
+
+        X_A_offset = np.zeros(D.shape[:2])
+        weight = np.ones(D.shape)
+
+        # TODO: The original implementation includes a segmentation argument.
+        # if segmentation is not None:
+        #     segmentation = np.array(segmentation)
+        #     segmentation = np.transpose(segmentation, (1, 2, 0))
+        #     for i in range(weight.shape[2]):
+        #         weight[segmentation] = 1e-6
+        #     # weight[options.segmentation] = 1e-6
+
+        reweighting_iter = 0
+        flag_reweighting = True
+        flatfield_last = np.ones(D.shape[:2])
+        darkfield_last = np.random.randn(*D.shape[:2])
+
+        while flag_reweighting and reweighting_iter < self.max_reweight_iterations:
+            reweighting_iter += 1
+
+            # TODO: Included in the original code
+            # if initial_flatfield:
+            #     # TODO: implement inexact_alm_rspca_l1_intflat?
+            #     raise IOError("Initial flatfield option not implemented yet!")
+            # else:
+            X_k_A, X_k_E, X_k_A_offset = inexact_alm_rspca_l1(
+                D, weight=weight, **self.dict(include=self._alm_settings)
+            )
+
+            X_A = np.reshape(X_k_A, D.shape[:2] + (-1,), order="F")
+            X_E = np.reshape(X_k_E, D.shape[:2] + (-1,), order="F")
+            X_A_offset = np.reshape(X_k_A_offset, D.shape[:2], order="F")
+            X_E_norm = X_E / np.mean(X_A, axis=(0, 1))
+
+            # Update the weights:
+            weight = np.ones_like(X_E_norm) / (np.abs(X_E_norm) + self.epsilon)
+
+            # TODO: Included in the original code
+            # if segmentation is not None:
+            #     weight[segmentation] = 0
+
+            weight = weight * weight.size / np.sum(weight)
+
+            temp = np.mean(X_A, axis=2) - X_A_offset
+            flatfield_current = temp / np.mean(temp)
+            darkfield_current = X_A_offset
+            mad_flatfield = np.sum(np.abs(flatfield_current - flatfield_last)) / np.sum(
+                np.abs(flatfield_last)
+            )
+            temp_diff = np.sum(np.abs(darkfield_current - darkfield_last))
+            if temp_diff < 1e-7:
+                mad_darkfield = 0
+            else:
+                mad_darkfield = temp_diff / np.maximum(
+                    np.sum(np.abs(darkfield_last)), 1e-6
+                )
+            flatfield_last = flatfield_current
+            darkfield_last = darkfield_current
+            if (
+                np.maximum(mad_flatfield, mad_darkfield) <= self.reweighting_tol
+                or reweighting_iter >= self.max_reweight_iterations
+            ):
+                flag_reweighting = False
+
+        shading = np.mean(X_A, 2) - X_A_offset
+        self.flatfield = shading / shading.mean()
+
+        if self.get_darkfield:
+            self.darkfield = X_A_offset
 
     def predict(
         self, images: np.ndarray, timelapse: bool = False
