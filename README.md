@@ -1,6 +1,6 @@
-# PyBaSiC
+# BaSiCPy
 
-PyBasic is a python package for background and shading correction of optical microscopy images. It is developed based on the Matlab version of [BaSiC](https://github.com/marrlab/BaSiC) tool.
+BasicPy is a python package for background and shading correction of optical microscopy images. It is developed based on the Matlab version of [BaSiC](https://github.com/marrlab/BaSiC) tool.
 
 Reference: A BaSiC Tool for Background and Shading Correction of Optical Microscopy Images
 
