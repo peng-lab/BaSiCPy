@@ -218,7 +218,7 @@ class BaSiC(BaseModel):
             #     # TODO: implement inexact_alm_rspca_l1_intflat?
             #     raise IOError("Initial flatfield option not implemented yet!")
             # else:
-            X_k_A, X_k_E, X_k_A_offset = inexact_alm_rspca_l1(
+            X_k_A, X_k_E, X_k_A_offset, self._score = inexact_alm_rspca_l1(
                 D, weight=weight, **self.dict(include=self._alm_settings)
             )
 
@@ -251,6 +251,7 @@ class BaSiC(BaseModel):
                 )
             flatfield_last = flatfield_current
             darkfield_last = darkfield_current
+            self._reweight_score = np.maximum(mad_flatfield, mad_darkfield)
             if (
                 np.maximum(mad_flatfield, mad_darkfield) <= self.reweighting_tol
                 or reweighting_iter >= self.max_reweight_iterations

@@ -189,4 +189,4 @@ def inexact_alm_rspca_l1(
     A_offset = np.squeeze(A_offset)
     A_offset = A_offset + B1_offset * np.reshape(W_idct_hat, -1, order="F")
 
-    return A1_hat, E1_hat, A_offset
+    return A1_hat, E1_hat, A_offset, stopCriterion
