@@ -3,4 +3,4 @@
 from pybasic.profile import Profile
 from pybasic.pybasic import BaSiC
 
-__all__ = ["BaSiC", "Profile", "Settings"]
+__all__ = ["BaSiC", "Profile"]
