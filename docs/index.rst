@@ -45,14 +45,7 @@ API Reference
 BaSiC
 ^^^^^
 
-.. autoclass:: pybasic.BaSiC
-   :members:
-   :special-members: __init__
-
-.. autoclass:: pybasic.Settings
-   :members:
-
-.. autoclass:: pybasic.Profile
+.. automodule:: pybasic
    :members:
    :special-members: __init__
 
