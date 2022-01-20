@@ -37,11 +37,14 @@ extensions = [
     "sphinx_autodoc_typehints",
     "sphinx.ext.todo",
     "sphinxarg.ext",
+    "sphinxcontrib.autodoc_pydantic",
 ]
 
 autodoc_member_order = "bysource"
 todo_include_todos = True
 typehints_defaults = "comma"
+autodoc_pydantic_model_show_json = True
+autodoc_pydantic_settings_show_json = True
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
