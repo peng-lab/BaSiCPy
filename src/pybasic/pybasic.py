@@ -6,23 +6,22 @@ Todo:
 
 # Core modules
 from __future__ import annotations
-from typing import List, Tuple, Union, NamedTuple, Dict, Optional
-from enum import Enum
+
 import os
 from concurrent.futures import ThreadPoolExecutor
+from enum import Enum
 from multiprocessing import cpu_count
+from typing import Dict, Tuple, Union
 
 # 3rd party modules
-# import jax.numpy as jnp
-# mm = jnp.matmul
-from pydantic import Field, BaseModel, PrivateAttr
 import numpy as np
-from skimage.transform import resize
+from pydantic import BaseModel, Field, PrivateAttr
 from scipy.fftpack import dct
+from skimage.transform import resize
+
 from pybasic.tools import inexact_alm_rspca_l1
 
 # Package modules
-from .profile import Profile
 from .types import ArrayLike
 
 # from pybasic.tools.dct2d_tools import dct2d, idct2d
@@ -34,7 +33,7 @@ if hasattr(os, "sched_getaffinity"):
     # On Linux, we can detect how many cores are assigned to this process.
     # This is especially useful when running in a Docker container, when the
     # number of cores is intentionally limited.
-    NUM_THREADS = len(os.sched_getaffinity(0))
+    NUM_THREADS = len(os.sched_getaffinity(0))  # type: ignore
 else:
     # Default back to multiprocessing cpu_count, which is always going to count
     # the total number of cpus
@@ -366,38 +365,6 @@ class BaSiC(BaseModel):
     def reweight_score(self):
         """The BaSiC fit final reweighting score"""
         return self._reweight_score
-
-    @property
-    def params(self) -> Union[NamedTuple, None]:
-        """Current parameters.
-
-        Returns:
-            current parameters
-        """
-        return self._params
-
-    @params.setter
-    def params(self, value: Optional[NamedTuple]):
-        self._params = value
-
-    @property
-    def profiles(self) -> List[Profile]:
-        """Illumination correction profiles.
-
-        Returns:
-            profiles
-
-        Example:
-            >>> flatfield_prof = Profile(np.load("flatfield.npy"), type="flatfield")
-            >>> darkfield_prof = Profile(np.load("darkfield.npy"), type="darkfield")
-            >>> basic = BaSiC()
-            >>> basic.profiles = [flatfield_prof, darfield_prof]
-        """
-        return self._profiles
-
-    @profiles.setter
-    def profiles(self, profiles: List[Profile]):
-        self._profiles = profiles
 
     @property
     def settings(self) -> Dict:
