@@ -1,6 +1,7 @@
 from pybasic import BaSiC
 import numpy as np
 import pytest
+from skimage.transform import resize
 
 
 @pytest.fixture
@@ -69,6 +70,33 @@ def test_basic_predict(capsys, test_data):
     """Apply the shading model to the images"""
     # flatfield only
     basic.flatfield = gradient
+    basic._flatfield = gradient
+    corrected = basic.predict(images)
+    corrected_error = corrected.mean()
+    assert corrected_error < 0.5
+
+    # with darkfield correction
+    basic.darkfield = np.full(basic.flatfield.shape, 8)
+    basic._darkfield = np.full(basic.flatfield.shape, 8)
+    corrected = basic.predict(images)
+    assert corrected.mean() < corrected_error
+
+    """Test shortcut"""
+    corrected = basic(images)
+    assert corrected.mean() < corrected_error
+
+
+def test_basic_predict_resize(capsys, test_data):
+
+    basic = BaSiC(get_darkfield=False)
+    gradient, images, truth = test_data
+
+    images = resize(images, tuple(d * 2 for d in images.shape[:2]))
+    truth = resize(truth, tuple(d * 2 for d in truth.shape[:2]))
+
+    """Apply the shading model to the images"""
+    # flatfield only
+    basic.flatfield = gradient
     corrected = basic.predict(images)
     corrected_error = corrected.mean()
     assert corrected_error < 0.5
@@ -76,8 +104,4 @@ def test_basic_predict(capsys, test_data):
     # with darkfield correction
     basic.darkfield = np.full(basic.flatfield.shape, 8)
     corrected = basic.predict(images)
-    assert corrected.mean() < corrected_error
-
-    """Test shortcut"""
-    corrected = basic(images)
-    assert corrected.mean() < corrected_error
+    assert corrected.mean() == corrected_error
