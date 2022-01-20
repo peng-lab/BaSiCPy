@@ -125,6 +125,8 @@ class BaSiC(BaseModel):
     # Private attributes for internal processing
     _score: float = PrivateAttr(None)
     _reweight_score: float = PrivateAttr(None)
+    _flatfield: np.ndarray = PrivateAttr(None)
+    _darkfield: np.ndarray = PrivateAttr(None)
     _alm_settings = {
         "lambda_darkfield",
         "lambda_flatfield",
@@ -145,6 +147,10 @@ class BaSiC(BaseModel):
         if self.working_size != 128:
             self.darkfield = np.zeros((self.working_size,) * 2, dtype=np.float64)
             self.flatfield = np.zeros((self.working_size,) * 2, dtype=np.float64)
+
+        # Initialize the internal cache
+        self._darkfield = np.zeros((self.working_size,) * 2, dtype=np.float64)
+        self._flatfield = np.zeros((self.working_size,) * 2, dtype=np.float64)
 
         if self.device is not Device.cpu:
             # TODO: sanity checks on device selection
@@ -264,6 +270,9 @@ class BaSiC(BaseModel):
         if self.get_darkfield:
             self.darkfield = X_A_offset
 
+        self._darkfield = self.darkfield
+        self._flatfield = self.flatfield
+
     def predict(
         self, images: np.ndarray, timelapse: bool = False
     ) -> Union[Tuple[np.ndarray, np.ndarray], np.ndarray]:
@@ -288,7 +297,13 @@ class BaSiC(BaseModel):
             ...     imsave(f"image_{i}.tif")
         """
 
+        # Convert to the correct format
         im_float = images.astype(np.float64)
+
+        # Check the image size
+        if not all(i == d for i, d in zip(self._flatfield.shape, images.shape)):
+            self._flatfield = resize(self.flatfield, images.shape[:2])
+            self._darkfield = resize(self.darkfield, images.shape[:2])
 
         # Initialize the output
         output = np.zeros(images.shape, dtype=images.dtype)
@@ -303,13 +318,13 @@ class BaSiC(BaseModel):
         # If one or fewer workers, don't user ThreadPool. Useful for debugging.
         if self.max_workers <= 1:
             for i in range(images.shape[-1]):
-                unshade(im_float, output, i, self.darkfield, self.flatfield)
+                unshade(im_float, output, i, self._darkfield, self._flatfield)
 
         else:
             with ThreadPoolExecutor(self.max_workers) as executor:
                 threads = executor.map(
                     lambda x: unshade(
-                        im_float, output, x, self.darkfield, self.flatfield
+                        im_float, output, x, self._darkfield, self._flatfield
                     ),
                     range(images.shape[-1]),
                 )
