@@ -2,6 +2,7 @@ from pybasic import BaSiC
 import numpy as np
 import pytest
 from skimage.transform import resize
+from pathlib import Path
 
 
 @pytest.fixture
@@ -105,3 +106,70 @@ def test_basic_predict_resize(capsys, test_data):
     basic.darkfield = np.full(basic.flatfield.shape, 8)
     corrected = basic.predict(images)
     assert corrected.mean() == corrected_error
+
+
+def test_basic_save_model(tmp_path: Path):
+    model_dir = tmp_path / "test_model"
+
+    basic = BaSiC()
+
+    # set profiles
+    basic.flatfield = np.full((128, 128), 1, dtype=np.float64)
+    basic.darkfield = np.full((128, 128), 2, dtype=np.float64)
+
+    # save the model
+    basic.save_model(model_dir)
+
+    # check that the files exists
+    assert (model_dir / "settings.json").exists()
+    assert (model_dir / "profiles.npy").exists()
+
+    # load files and check for expected content
+    saved_profiles = np.load(model_dir / "profiles.npy")
+    profiles = np.dstack((basic.flatfield, basic.darkfield))
+    assert np.array_equal(saved_profiles, profiles)
+
+    # TODO check settings contents
+
+    # an error raises when the model folder exists
+    with pytest.raises(FileExistsError):
+        basic.save_model(model_dir)
+
+
+def test_basic_load_model(tmp_path: Path):
+
+    model_dir = tmp_path / "test_model"
+
+    # raises error when folder not found
+    with pytest.raises(FileNotFoundError):
+        basic = BaSiC.load_model(tmp_path)
+
+    # create and write mock settings to file
+    json_raw = """\
+{"epsilon": 0.2, "estimation_mode": "l0", "get_darkfield": false,
+"lambda_darkfield": 0.0, "lambda_flatfield": 0.0, "max_iterations": 500,
+"max_reweight_iterations": 10, "optimization_tol": 1e-06, "reweighting_tol": 0.001,
+"varying_coeff": true, "working_size": 128}
+"""
+    with open(tmp_path / "settings.json", "w") as fp:
+        fp.write(json_raw)
+
+    # create and write mock profiles to file
+    profiles = np.zeros((128, 128, 2), dtype=np.float64)
+    # a way to ensure profiles end up in expected places
+    profiles[..., 0] = 1
+    profiles[..., 1] = 2
+    np.save(tmp_path / "profiles.npy", profiles)
+
+    # generate an instance from the serialized model
+    basic = BaSiC.load_model(tmp_path)
+
+    # check that the object was created
+    assert isinstance(basic, BaSiC)
+
+    # check that the profiles are in the right places
+    assert np.array_equal(basic.flatfield, profiles[..., 0])
+    assert np.array_equal(basic.darkfield, profiles[..., 1])
+
+    # check that settings are not default
+    assert basic.epsilon != BaSiC.__fields__["epsilon"].default
