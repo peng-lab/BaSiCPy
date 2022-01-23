@@ -12,6 +12,7 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     datefmt="%d-%b-%y %H:%M:%S",
 )
+# FIXME check common practice
 logger = logging.getLogger(__name__)
 
 
