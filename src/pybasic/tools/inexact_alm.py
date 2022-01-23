@@ -10,9 +10,13 @@ Modified on Sun Jan 16, 2021
 @email nick.schaub@nih.gov
 """
 
+import logging
 
 import numpy as np
 from scipy.fftpack import dct, idct
+
+# initialize logger with the package name
+logger = logging.getLogger(__name__)
 
 
 def dct2d(x: np.ndarray) -> np.ndarray:
@@ -183,7 +187,7 @@ def inexact_alm_rspca_l1(
             converged = True
 
         if not converged and iter >= max_iterations:
-            print("Maximum iterations reached")
+            logger.warning("Maximum iterations reached without conversion.")
             converged = True
 
     A_offset = np.squeeze(A_offset)

@@ -1,5 +1,6 @@
 """Image manipulation tools."""
 
+import logging
 from typing import Iterable, List, Tuple
 
 import jax
@@ -7,6 +8,8 @@ import jax.numpy as jnp
 
 from ..types import ArrayLike, PathLike
 
+# initialize logger with the package name
+logger = logging.getLogger(__name__)
 
 def resize(image: ArrayLike, shape: Tuple[int, int]) -> jnp.ndarray:
     """Resize an image.

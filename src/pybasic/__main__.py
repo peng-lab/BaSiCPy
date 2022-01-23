@@ -12,7 +12,7 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     datefmt="%d-%b-%y %H:%M:%S",
 )
-logger = logging.getLogger("basicpy.main")
+logger = logging.getLogger(__name__)
 
 
 def main(
@@ -122,6 +122,7 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
+    # FIXME rewrite for parent logger
     if args.verbose:
         logging.getLogger("basicpy").setLevel(logging.DEBUG)
     else:
