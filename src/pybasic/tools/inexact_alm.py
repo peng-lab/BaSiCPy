@@ -187,7 +187,7 @@ def inexact_alm_rspca_l1(
             converged = True
 
         if not converged and iter >= max_iterations:
-            logger.warning("Maximum iterations reached without conversion.")
+            logger.warning("Maximum iterations reached without convergence.")
             converged = True
 
     A_offset = np.squeeze(A_offset)
