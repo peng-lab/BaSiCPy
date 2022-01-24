@@ -12,7 +12,7 @@ from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
 from multiprocessing import cpu_count
 from typing import Dict, Tuple, Union
-import logging
+from logging import getLogger
 
 # 3rd party modules
 import numpy as np
@@ -41,7 +41,8 @@ else:
     NUM_THREADS = cpu_count()
 
 # initialize logger with the package name
-logger = logging.getLogger(__name__)
+logger = getLogger(__name__)
+
 
 class EstimationMode(Enum):
 

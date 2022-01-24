@@ -2,7 +2,7 @@
 
 import importlib.util
 import os
-import logging 
+from logging import getLogger
 from abc import ABC, abstractmethod, abstractproperty
 
 import numpy as np
@@ -13,7 +13,8 @@ __all__ = ["dct2d", "idct2d"]
 DEFAULT_BACKEND = "SCIPY"
 
 # initialize logger with the package name
-logger = logging.getLogger(__name__)
+logger = getLogger(__name__)
+
 
 def is_installed(pkg: str):
     return bool(importlib.util.find_spec(pkg))
