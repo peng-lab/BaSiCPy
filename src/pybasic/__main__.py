@@ -8,9 +8,6 @@ from pybasic import BaSiC
 from pybasic.pybasic import Device
 
 # Initialize the logger
-# FIXME check common practice
-logger = getLogger(__name__)
-
 basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     datefmt="%d-%b-%y %H:%M:%S",
@@ -125,8 +122,9 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     # FIXME fix name after deciding on package directory name
+    logger = getLogger("pybasic")
     if args.verbose:
-        getLogger("pybasic").setLevel(DEBUG)
+        logger.setLevel(DEBUG)
     else:
         logger.setLevel(INFO)
 
