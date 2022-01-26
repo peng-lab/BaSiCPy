@@ -6,23 +6,22 @@ Todo:
 
 # Core modules
 from __future__ import annotations
-from typing import List, Tuple, Union, NamedTuple, Dict, Optional
-from enum import Enum
+
 import os
 from concurrent.futures import ThreadPoolExecutor
+from enum import Enum
 from multiprocessing import cpu_count
+from typing import Dict, Tuple, Union
 
 # 3rd party modules
-# import jax.numpy as jnp
-# mm = jnp.matmul
-from pydantic import Field, BaseModel, PrivateAttr
 import numpy as np
-from skimage.transform import resize
+from pydantic import BaseModel, Field, PrivateAttr
 from scipy.fftpack import dct
+from skimage.transform import resize
+
 from pybasic.tools import inexact_alm_rspca_l1
 
 # Package modules
-from .profile import Profile
 from .types import ArrayLike
 
 # from pybasic.tools.dct2d_tools import dct2d, idct2d
@@ -34,7 +33,7 @@ if hasattr(os, "sched_getaffinity"):
     # On Linux, we can detect how many cores are assigned to this process.
     # This is especially useful when running in a Docker container, when the
     # number of cores is intentionally limited.
-    NUM_THREADS = len(os.sched_getaffinity(0))
+    NUM_THREADS = len(os.sched_getaffinity(0))  # type: ignore
 else:
     # Default back to multiprocessing cpu_count, which is always going to count
     # the total number of cpus
@@ -125,6 +124,8 @@ class BaSiC(BaseModel):
     # Private attributes for internal processing
     _score: float = PrivateAttr(None)
     _reweight_score: float = PrivateAttr(None)
+    _flatfield: np.ndarray = PrivateAttr(None)
+    _darkfield: np.ndarray = PrivateAttr(None)
     _alm_settings = {
         "lambda_darkfield",
         "lambda_flatfield",
@@ -145,6 +146,10 @@ class BaSiC(BaseModel):
         if self.working_size != 128:
             self.darkfield = np.zeros((self.working_size,) * 2, dtype=np.float64)
             self.flatfield = np.zeros((self.working_size,) * 2, dtype=np.float64)
+
+        # Initialize the internal cache
+        self._darkfield = np.zeros((self.working_size,) * 2, dtype=np.float64)
+        self._flatfield = np.zeros((self.working_size,) * 2, dtype=np.float64)
 
         if self.device is not Device.cpu:
             # TODO: sanity checks on device selection
@@ -264,6 +269,9 @@ class BaSiC(BaseModel):
         if self.get_darkfield:
             self.darkfield = X_A_offset
 
+        self._darkfield = self.darkfield
+        self._flatfield = self.flatfield
+
     def predict(
         self, images: np.ndarray, timelapse: bool = False
     ) -> Union[Tuple[np.ndarray, np.ndarray], np.ndarray]:
@@ -288,7 +296,13 @@ class BaSiC(BaseModel):
             ...     imsave(f"image_{i}.tif")
         """
 
+        # Convert to the correct format
         im_float = images.astype(np.float64)
+
+        # Check the image size
+        if not all(i == d for i, d in zip(self._flatfield.shape, images.shape)):
+            self._flatfield = resize(self.flatfield, images.shape[:2])
+            self._darkfield = resize(self.darkfield, images.shape[:2])
 
         # Initialize the output
         output = np.zeros(images.shape, dtype=images.dtype)
@@ -303,13 +317,13 @@ class BaSiC(BaseModel):
         # If one or fewer workers, don't user ThreadPool. Useful for debugging.
         if self.max_workers <= 1:
             for i in range(images.shape[-1]):
-                unshade(im_float, output, i, self.darkfield, self.flatfield)
+                unshade(im_float, output, i, self._darkfield, self._flatfield)
 
         else:
             with ThreadPoolExecutor(self.max_workers) as executor:
                 threads = executor.map(
                     lambda x: unshade(
-                        im_float, output, x, self.darkfield, self.flatfield
+                        im_float, output, x, self._darkfield, self._flatfield
                     ),
                     range(images.shape[-1]),
                 )
@@ -351,38 +365,6 @@ class BaSiC(BaseModel):
     def reweight_score(self):
         """The BaSiC fit final reweighting score"""
         return self._reweight_score
-
-    @property
-    def params(self) -> Union[NamedTuple, None]:
-        """Current parameters.
-
-        Returns:
-            current parameters
-        """
-        return self._params
-
-    @params.setter
-    def params(self, value: Optional[NamedTuple]):
-        self._params = value
-
-    @property
-    def profiles(self) -> List[Profile]:
-        """Illumination correction profiles.
-
-        Returns:
-            profiles
-
-        Example:
-            >>> flatfield_prof = Profile(np.load("flatfield.npy"), type="flatfield")
-            >>> darkfield_prof = Profile(np.load("darkfield.npy"), type="darkfield")
-            >>> basic = BaSiC()
-            >>> basic.profiles = [flatfield_prof, darfield_prof]
-        """
-        return self._profiles
-
-    @profiles.setter
-    def profiles(self, profiles: List[Profile]):
-        self._profiles = profiles
 
     @property
     def settings(self) -> Dict:
