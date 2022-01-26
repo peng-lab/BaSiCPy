@@ -17,7 +17,7 @@ def is_installed(pkg: str):
 
 
 has_cv2 = is_installed("cv2")
-# has_scipy = is_installed("scipy")
+# has_scipy = is_installed("scipy")  # SCIPY is default and must be importable
 has_jax = all(is_installed(pkg) for pkg in ["jax", "jaxlib"])
 
 
@@ -42,6 +42,8 @@ if has_jax:
 
     import jax
 
+    import pybasic.tools._jax_idct
+
     class JaxDCT(DCT):
         _backend = "JAX"
 
@@ -51,11 +53,11 @@ if has_jax:
                 jax.scipy.fft.dct(arr.T, norm="ortho").T, norm="ortho"
             )
 
-        # FIXME only dct type 2 is implemented in JAX...
+        # custom idct since JAX only implements dct type 2 (not idct, dct type 3)
         @staticmethod
         def idct2d(arr: np.ndarray) -> np.ndarray:
-            return jax.scipy.fft.idct(
-                jax.scipy.fft.idct(arr.T, norm="ortho").T, norm="ortho"
+            return pybasic.tools._jax_idct.idct(
+                pybasic.tools._jax_idct.idct(arr.T, norm="ortho").T, norm="ortho"
             )
 
 

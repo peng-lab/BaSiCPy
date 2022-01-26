@@ -22,9 +22,6 @@ backends = ["JAX", "OPENCV", "SCIPY"]
 
 @pytest.mark.parametrize("backend", backends)
 def test_dct_backends(backend):
-    if backend == "JAX":
-        return
-
     dct2d = DCT_BACKENDS[backend].dct2d
     idct2d = DCT_BACKENDS[backend].idct2d
 
