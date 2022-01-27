@@ -47,8 +47,8 @@ def idct(x, norm=None, axis=-1):
     if norm == "ortho":
         factor = lax.concatenate(
             [
-                lax.full((1,), 2 * N / jnp.sqrt(N), V.dtype),
-                lax.full((N - 1,), 2 * N / jnp.sqrt(2 * N), V.dtype),
+                lax.full((1,), 2 * jnp.sqrt(N), V.dtype),
+                lax.full((N - 1,), jnp.sqrt(2 * N), V.dtype),
             ],
             0,
         )
