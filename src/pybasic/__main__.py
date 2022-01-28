@@ -1,14 +1,14 @@
 """CLI entry point for PyBaSiC."""
 from pathlib import Path
 import argparse
-from logging import basicConfig, getLogger, DEBUG, INFO
+import logging
 from typing import Optional
 
 from pybasic import BaSiC
 from pybasic.pybasic import Device
 
 # Initialize the logger
-basicConfig(
+logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     datefmt="%d-%b-%y %H:%M:%S",
 )
@@ -122,11 +122,11 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     # FIXME fix name after deciding on package directory name
-    logger = getLogger("pybasic")
+    logger = logging.getLogger("pybasic")
     if args.verbose:
-        logger.setLevel(DEBUG)
+        logger.setLevel(logging.DEBUG)
     else:
-        logger.setLevel(INFO)
+        logger.setLevel(logging.INFO)
 
     logger.info("BaSiCPy Input Arguments")
     logger.info("-----------------------")

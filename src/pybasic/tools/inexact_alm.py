@@ -10,13 +10,13 @@ Modified on Sun Jan 16, 2021
 @email nick.schaub@nih.gov
 """
 
-from logging import getLogger
+import logging
 
 import numpy as np
 from scipy.fftpack import dct, idct
 
 # initialize logger with the package name
-logger = getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 def dct2d(x: np.ndarray) -> np.ndarray:
