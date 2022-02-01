@@ -130,6 +130,7 @@ class BaSiC(BaseModel):
     _reweight_score: float = PrivateAttr(None)
     _flatfield: np.ndarray = PrivateAttr(None)
     _darkfield: np.ndarray = PrivateAttr(None)
+    _logger: logging.Logger = PrivateAttr(None)
     _alm_settings = {
         "lambda_darkfield",
         "lambda_flatfield",
@@ -145,10 +146,10 @@ class BaSiC(BaseModel):
     def __init__(self, **kwargs) -> None:
         """Initialize BaSiC with the provided settings."""
 
-        logger.info("Initializing BaSiC with parameters: ")
+        log_str = f"Initializing BaSiC {id(self)} with parameters: \n"
         for k, v in kwargs.items():
-            logger.info(f"{k}: {v}")
-        logger.info("")
+            log_str += f"{k}: {v}\n"
+        logger.info(log_str)
 
         super().__init__(**kwargs)
 
@@ -163,6 +164,9 @@ class BaSiC(BaseModel):
         if self.device is not Device.cpu:
             # TODO: sanity checks on device selection
             pass
+
+        # Initialize logger
+        self._logger = logging.getLogger(__name__ + f".BaSiC.{id(self)}")
 
     def __call__(
         self, images: np.ndarray, timelapse: bool = False
@@ -188,7 +192,7 @@ class BaSiC(BaseModel):
         """
         assert images.ndim == 3
 
-        logger.info("=== BaSiC fit started ===")
+        self._logger.info("=== BaSiC fit started ===")
         start_time = time.monotonic()
         # Resize the images
         images = images.astype(np.float64)
@@ -227,8 +231,8 @@ class BaSiC(BaseModel):
         darkfield_last = np.random.randn(*D.shape[:2])
 
         while flag_reweighting and reweighting_iter < self.max_reweight_iterations:
-            logger.info(f"reweighting iteration {reweighting_iter}")
-            logger.info(f"elapsed time: {time.monotonic() - start_time} seconds")
+            self._logger.info(f"reweighting iteration {reweighting_iter}")
+            self._logger.info(f"elapsed time: {time.monotonic() - start_time} seconds")
             reweighting_iter += 1
 
             # TODO: Included in the original code
@@ -270,7 +274,7 @@ class BaSiC(BaseModel):
             flatfield_last = flatfield_current
             darkfield_last = darkfield_current
             self._reweight_score = np.maximum(mad_flatfield, mad_darkfield)
-            logger.info(f"reweighting score: {self._reweight_score}")
+            self._logger.info(f"reweighting score: {self._reweight_score}")
             if (
                 self._reweight_score <= self.reweighting_tol
                 or reweighting_iter >= self.max_reweight_iterations
@@ -285,7 +289,7 @@ class BaSiC(BaseModel):
 
         self._darkfield = self.darkfield
         self._flatfield = self.flatfield
-        logger.info(
+        self._logger.info(
             f"=== BaSiC fit finished in {time.monotonic()-start_time} seconds ==="
         )
 
@@ -313,7 +317,7 @@ class BaSiC(BaseModel):
             ...     imsave(f"image_{i}.tif")
         """
 
-        logger.info("=== BaSiC transform started ===")
+        self._logger.info("=== BaSiC transform started ===")
         start_time = time.monotonic()
 
         # Convert to the correct format
@@ -334,7 +338,7 @@ class BaSiC(BaseModel):
         def unshade(ins, outs, i, dark, flat):
             outs[..., i] = (ins[..., i] - dark) / flat
 
-        logger.info(f"unshading in {self.max_workers} threads")
+        self._logger.info(f"unshading in {self.max_workers} threads")
         # If one or fewer workers, don't user ThreadPool. Useful for debugging.
         if self.max_workers <= 1:
             for i in range(images.shape[-1]):
@@ -353,7 +357,7 @@ class BaSiC(BaseModel):
                 for thread in threads:
                     assert thread is None
 
-        logger.info(
+        self._logger.info(
             f"=== BaSiC transform finished in {time.monotonic()-start_time} seconds ==="
         )
         return output.astype(images.dtype)
