@@ -12,6 +12,7 @@ from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
 from multiprocessing import cpu_count
 from typing import Dict, Tuple, Union
+import time
 import logging
 
 # 3rd party modules
@@ -144,6 +145,11 @@ class BaSiC(BaseModel):
     def __init__(self, **kwargs) -> None:
         """Initialize BaSiC with the provided settings."""
 
+        logger.info("Initializing BaSiC with parameters: ")
+        for k, v in kwargs.items():
+            logger.info(f"{k}: {v}")
+        logger.info("")
+
         super().__init__(**kwargs)
 
         if self.working_size != 128:
@@ -182,6 +188,8 @@ class BaSiC(BaseModel):
         """
         assert images.ndim == 3
 
+        logger.info("=== BaSiC fit started ===")
+        start_time = time.monotonic()
         # Resize the images
         images = images.astype(np.float64)
         working_shape = (self.working_size, self.working_size, images.shape[2])
@@ -219,6 +227,8 @@ class BaSiC(BaseModel):
         darkfield_last = np.random.randn(*D.shape[:2])
 
         while flag_reweighting and reweighting_iter < self.max_reweight_iterations:
+            logger.info(f"reweighting iteration {reweighting_iter}")
+            logger.info(f"elapsed time: {time.monotonic() - start_time} seconds")
             reweighting_iter += 1
 
             # TODO: Included in the original code
@@ -260,8 +270,9 @@ class BaSiC(BaseModel):
             flatfield_last = flatfield_current
             darkfield_last = darkfield_current
             self._reweight_score = np.maximum(mad_flatfield, mad_darkfield)
+            logger.info(f"reweighting score: {self._reweight_score}")
             if (
-                np.maximum(mad_flatfield, mad_darkfield) <= self.reweighting_tol
+                self._reweight_score <= self.reweighting_tol
                 or reweighting_iter >= self.max_reweight_iterations
             ):
                 flag_reweighting = False
@@ -274,6 +285,9 @@ class BaSiC(BaseModel):
 
         self._darkfield = self.darkfield
         self._flatfield = self.flatfield
+        logger.info(
+            f"=== BaSiC fit finished in {time.monotonic()-start_time} seconds ==="
+        )
 
     def predict(
         self, images: np.ndarray, timelapse: bool = False
@@ -299,6 +313,9 @@ class BaSiC(BaseModel):
             ...     imsave(f"image_{i}.tif")
         """
 
+        logger.info("=== BaSiC transform started ===")
+        start_time = time.monotonic()
+
         # Convert to the correct format
         im_float = images.astype(np.float64)
 
@@ -317,6 +334,7 @@ class BaSiC(BaseModel):
         def unshade(ins, outs, i, dark, flat):
             outs[..., i] = (ins[..., i] - dark) / flat
 
+        logger.info(f"unshading in {self.max_workers} threads")
         # If one or fewer workers, don't user ThreadPool. Useful for debugging.
         if self.max_workers <= 1:
             for i in range(images.shape[-1]):
@@ -335,6 +353,9 @@ class BaSiC(BaseModel):
                 for thread in threads:
                     assert thread is None
 
+        logger.info(
+            f"=== BaSiC transform finished in {time.monotonic()-start_time} seconds ==="
+        )
         return output.astype(images.dtype)
 
     # REFACTOR large datasets will probably prefer saving corrected images to
