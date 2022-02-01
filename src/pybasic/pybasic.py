@@ -225,14 +225,11 @@ class BaSiC(BaseModel):
         #         weight[segmentation] = 1e-6
         #     # weight[options.segmentation] = 1e-6
 
-        reweighting_iter = 0
-        flag_reweighting = True
         flatfield_last = np.ones(D.shape[:2])
         darkfield_last = np.random.randn(*D.shape[:2])
 
-        while flag_reweighting and reweighting_iter < self.max_reweight_iterations:
+        for reweighting_iter in range(self.max_reweight_iterations):
             self._logger.info(f"reweighting iteration {reweighting_iter}")
-            self._logger.info(f"elapsed time: {time.monotonic() - start_time} seconds")
             reweighting_iter += 1
 
             # TODO: Included in the original code
@@ -274,12 +271,14 @@ class BaSiC(BaseModel):
             flatfield_last = flatfield_current
             darkfield_last = darkfield_current
             self._reweight_score = np.maximum(mad_flatfield, mad_darkfield)
+            self._logger.info(f"Iteration {reweighting_iter} finished.")
             self._logger.info(f"reweighting score: {self._reweight_score}")
-            if (
-                self._reweight_score <= self.reweighting_tol
-                or reweighting_iter >= self.max_reweight_iterations
-            ):
-                flag_reweighting = False
+            self._logger.info(f"elapsed time: {time.monotonic() - start_time} seconds")
+            if self._reweight_score <= self.reweighting_tol:
+                self._logger.info("Reweighting converged.")
+                break
+            if reweighting_iter == self.max_reweight_iterations - 1:
+                self._logger.warning("Reweighting did not converge.")
 
         shading = np.mean(X_A, 2) - X_A_offset
         self.flatfield = shading / shading.mean()

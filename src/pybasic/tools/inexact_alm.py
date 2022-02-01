@@ -10,6 +10,7 @@ Modified on Sun Jan 16, 2021
 @email nick.schaub@nih.gov
 """
 
+import time
 import logging
 
 import numpy as np
@@ -86,12 +87,9 @@ def inexact_alm_rspca_l1(
     ] = 1
 
     # main iteration loop starts
-    iter = 0
-    converged = False
-
-    while not converged:
-        iter += 1
-
+    start_time = time.monotonic()
+    for iter in range(max_iterations):
+        logger.info(f"Iteration {iter} started.")
         if len(A1_coeff.shape) == 1:
             A1_coeff = np.expand_dims(A1_coeff, 0)
         if len(A_offset.shape) == 1:
@@ -183,12 +181,15 @@ def inexact_alm_rspca_l1(
 
         # Stop Criterion
         stopCriterion = np.linalg.norm(Z1, ord="fro") / d_norm
+        logger.info(f"Iteration {iter} finished.")
+        logger.info(f"reweighting score: {stopCriterion}")
+        logger.info(f"elapsed time: {time.monotonic() - start_time} seconds")
         if stopCriterion < optimization_tol:
-            converged = True
+            logger.info("optimization converged.")
+            break
 
-        if not converged and iter >= max_iterations:
+        if iter == max_iterations - 1:
             logger.warning("Maximum iterations reached without convergence.")
-            converged = True
 
     A_offset = np.squeeze(A_offset)
     A_offset = A_offset + B1_offset * np.reshape(W_idct_hat, -1, order="F")
