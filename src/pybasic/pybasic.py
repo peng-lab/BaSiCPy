@@ -21,10 +21,10 @@ from pydantic import BaseModel, Field, PrivateAttr
 from scipy.fftpack import dct
 from skimage.transform import resize
 
-from pybasic.tools import inexact_alm_rspca_l1
-
 # Package modules
-from .types import ArrayLike, PathLike
+
+from pybasic.tools import inexact_alm_rspca_l1
+from pybasic.types import ArrayLike
 
 # from pybasic.tools.dct2d_tools import dct2d, idct2d
 # from pybasic.tools.inexact_alm import inexact_alm_rspca_l1

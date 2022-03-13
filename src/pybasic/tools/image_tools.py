@@ -5,7 +5,7 @@ from typing import Iterable, List, Tuple
 import jax
 import jax.numpy as jnp
 
-from ..types import ArrayLike, PathLike
+from pybasic.types import ArrayLike, PathLike
 
 
 def resize(image: ArrayLike, shape: Tuple[int, int]) -> jnp.ndarray:
