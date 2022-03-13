@@ -20,11 +20,11 @@ from scipy.fftpack import dct
 from skimage.transform import resize
 
 # Package modules
-from pybasic.tools import inexact_alm_rspca_l1
-from pybasic.types import ArrayLike
+from basicpy.tools import inexact_alm_rspca_l1
+from basicpy.types import ArrayLike
 
-# from pybasic.tools.dct2d_tools import dct2d, idct2d
-# from pybasic.tools.inexact_alm import inexact_alm_rspca_l1
+# from basicpy.tools.dct2d_tools import dct2d, idct2d
+# from basicpy.tools.inexact_alm import inexact_alm_rspca_l1
 
 # Get number of available threads to limit CPU thrashing
 # From preadator: https://pypi.org/project/preadator/
@@ -169,8 +169,8 @@ class BaSiC(BaseModel):
                 along the z-dimension.
 
         Example:
-            >>> from pybasic import BaSiC
-            >>> from pybasic.tools import load_images
+            >>> from basicpy import BaSiC
+            >>> from basicpy.tools import load_images
             >>> images = load_images('./images')
             >>> basic = BaSiC()  # use default settings
             >>> basic.fit(images)

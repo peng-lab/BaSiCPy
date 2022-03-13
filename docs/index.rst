@@ -35,7 +35,7 @@ Usage
     basic images/*.tif flatfield.tif
 
 .. argparse::
-   :ref: pybasic.__main__.get_parser
+   :ref: basicpy.__main__.get_parser
    :prog: basic
 
 
@@ -45,14 +45,14 @@ API Reference
 BaSiC
 ^^^^^
 
-.. automodule:: pybasic
+.. automodule:: basicpy
    :members:
    :special-members: __init__
 
 Tools
 ^^^^^
 
-.. automodule:: pybasic.tools
+.. automodule:: basicpy.tools
    :members:
 
 

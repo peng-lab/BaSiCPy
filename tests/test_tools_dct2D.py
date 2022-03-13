@@ -1,7 +1,7 @@
 """Tests the 2D dct tools."""
 
-# from pybasic.tools import dct2d_tools
-from pybasic.tools.dct2d_tools import DCT_BACKENDS
+# from basicpy.tools import dct2d_tools
+from basicpy.tools.dct2d_tools import DCT_BACKENDS
 
 import pytest
 import scipy.fft
@@ -41,27 +41,27 @@ def test_dct_backends(backend):
 
 @pytest.mark.parametrize("backend", backends)
 def test_dct_backend_import(monkeypatch, backend):
-    import pybasic.tools.dct2d_tools
+    import basicpy.tools.dct2d_tools
 
     monkeypatch.setenv("BASIC_DCT_BACKEND", backend)
-    importlib.reload(pybasic.tools.dct2d_tools)
+    importlib.reload(basicpy.tools.dct2d_tools)
 
-    assert pybasic.tools.dct2d_tools.dct._backend == backend
+    assert basicpy.tools.dct2d_tools.dct._backend == backend
 
 
 def test_unrecognized_backend(monkeypatch):
-    import pybasic.tools.dct2d_tools
+    import basicpy.tools.dct2d_tools
 
     backend = "FAKE_BACKEND"
 
     monkeypatch.setenv("BASIC_DCT_BACKEND", "FAKE_BACKEND")
 
     # with pytest.raises(KeyError):
-    #     importlib.reload(pybasic.tools.dct2d_tools)
+    #     importlib.reload(basicpy.tools.dct2d_tools)
 
     assert (
-        pybasic.tools.dct2d_tools.dct._backend
-        == pybasic.tools.dct2d_tools.DEFAULT_BACKEND
+        basicpy.tools.dct2d_tools.dct._backend
+        == basicpy.tools.dct2d_tools.DEFAULT_BACKEND
     )
 
 

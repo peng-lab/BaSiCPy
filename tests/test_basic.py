@@ -1,4 +1,4 @@
-from pybasic import BaSiC
+from basicpy import BaSiC
 import numpy as np
 import pytest
 from skimage.transform import resize

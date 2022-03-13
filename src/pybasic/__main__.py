@@ -4,8 +4,8 @@ import argparse
 import logging
 from typing import Optional
 
-from pybasic import BaSiC
-from pybasic.pybasic import Device
+from basicpy import BaSiC
+from basicpy.basicpy import Device
 
 # Initialize the logger
 logging.basicConfig(
