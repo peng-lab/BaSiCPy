@@ -12,7 +12,6 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     datefmt="%d-%b-%y %H:%M:%S",
 )
-logger = logging.getLogger("basicpy.main")
 
 
 def main(
@@ -122,8 +121,10 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
+    # FIXME fix name after deciding on package directory name
+    logger = logging.getLogger("pybasic")
     if args.verbose:
-        logging.getLogger("basicpy").setLevel(logging.DEBUG)
+        logger.setLevel(logging.DEBUG)
     else:
         logger.setLevel(logging.INFO)
 
