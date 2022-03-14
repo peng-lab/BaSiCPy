@@ -34,7 +34,7 @@ def main(
     # TODO: Handle file loading better, use pattern
     # images = image_tools.load_images(input_dir.iterdir())
 
-    # corrected = basic.fit_predict(images, timelapse=settings["timelapse"])
+    # corrected = basic.fit_transform(images, timelapse=settings["timelapse"])
 
     # TODO: Save the files
     # for i in range(corrected.shape[-1]):

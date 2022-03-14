@@ -61,8 +61,8 @@ def test_basic_fit(capsys, test_data):
     #     print(basic.flatfield[60:70, 60:70])
 
 
-# Test BaSiC predict function
-def test_basic_predict(capsys, test_data):
+# Test BaSiC transform function
+def test_basic_transform(capsys, test_data):
 
     basic = BaSiC(get_darkfield=False)
     gradient, images, truth = test_data
@@ -71,14 +71,14 @@ def test_basic_predict(capsys, test_data):
     # flatfield only
     basic.flatfield = gradient
     basic._flatfield = gradient
-    corrected = basic.predict(images)
+    corrected = basic.transform(images)
     corrected_error = corrected.mean()
     assert corrected_error < 0.5
 
     # with darkfield correction
     basic.darkfield = np.full(basic.flatfield.shape, 8)
     basic._darkfield = np.full(basic.flatfield.shape, 8)
-    corrected = basic.predict(images)
+    corrected = basic.transform(images)
     assert corrected.mean() < corrected_error
 
     """Test shortcut"""
@@ -86,7 +86,7 @@ def test_basic_predict(capsys, test_data):
     assert corrected.mean() < corrected_error
 
 
-def test_basic_predict_resize(capsys, test_data):
+def test_basic_transform_resize(capsys, test_data):
 
     basic = BaSiC(get_darkfield=False)
     gradient, images, truth = test_data
@@ -97,11 +97,11 @@ def test_basic_predict_resize(capsys, test_data):
     """Apply the shading model to the images"""
     # flatfield only
     basic.flatfield = gradient
-    corrected = basic.predict(images)
+    corrected = basic.transform(images)
     corrected_error = corrected.mean()
     assert corrected_error < 0.5
 
     # with darkfield correction
     basic.darkfield = np.full(basic.flatfield.shape, 8)
-    corrected = basic.predict(images)
+    corrected = basic.transform(images)
     assert corrected.mean() == corrected_error
