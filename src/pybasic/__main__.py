@@ -1,4 +1,4 @@
-"""CLI entry point for PyBaSiC."""
+"""CLI entry point for BaSiCPy."""
 from pathlib import Path
 import argparse
 import logging

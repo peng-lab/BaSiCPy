@@ -1,4 +1,4 @@
-# PyBaSiC
+# BaSiCPy
 
 A python package for background and shading correction of optical microscopy images
 
@@ -16,11 +16,11 @@ by Tingying Peng, Kurt Thorn, Timm Schroeder, Lichao Wang, Fabian J Theis, Carst
 
 |                                                    Notebook                                                     |                                                                                                                                                                                                                                 Description                                                                                                                                                                                                                                  |                                                                             Colab Link                                                                              |
 | :-------------------------------------------------------------------------------------------------------------: | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: | :-----------------------------------------------------------------------------------------------------------------------------------------------------------------: |
-|       [example_brain_WSI](https://github.com/peng-lab/PyBaSiC-examples/blob/main/example_brain_WSI.ipynb)       |                                                                                                                                                                                                 you can stitch image tiles together to view the effect of shading correction                                                                                                                                                                                                 | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1rll_UBc82RT8orIFDBvt3BVdcjUszY-B?usp=sharing) |
-|     [example_brightfield](https://github.com/peng-lab/PyBaSiC-examples/blob/main/example_brightfield.ipynb)     |                                                                                                                                                                                  100 continuous brightfield frames of a time-lapse movie of differentiating mouse hematopoietic stem cells.                                                                                                                                                                                  | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1PPiuT--gamaQBpuUdYMAmtwe5b5-eLJ5?usp=sharing) |
-| [example_timelapse_nanog](https://github.com/peng-lab/PyBaSiC-examples/blob/main/example_timelapse_nanog.ipynb) | 189 continuous fluorescence frames of a time-lapse movie of differentiating mouse embryonic stem cells, which move much more slower compared to the fast moving hematopoietic stem cells, resulting in a much larger correlation between frames. Note that in this challenging case, the automatic parameters are no longer optimal, so we use the manual parameter setting (larger smooth regularization on both flat-field and dark-field) to improve BaSiC’s performance. | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1rLmkGH5Zb_kWgUZVksgt-XR3jhlWMWei?usp=sharing) |
+|       [example_brain_WSI](https://github.com/peng-lab/BaSiCPy-examples/blob/main/example_brain_WSI.ipynb)       |                                                                                                                                                                                                 you can stitch image tiles together to view the effect of shading correction                                                                                                                                                                                                 | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1rll_UBc82RT8orIFDBvt3BVdcjUszY-B?usp=sharing) |
+|     [example_brightfield](https://github.com/peng-lab/BaSiCPy-examples/blob/main/example_brightfield.ipynb)     |                                                                                                                                                                                  100 continuous brightfield frames of a time-lapse movie of differentiating mouse hematopoietic stem cells.                                                                                                                                                                                  | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1PPiuT--gamaQBpuUdYMAmtwe5b5-eLJ5?usp=sharing) |
+| [example_timelapse_nanog](https://github.com/peng-lab/BaSiCPy-examples/blob/main/example_timelapse_nanog.ipynb) | 189 continuous fluorescence frames of a time-lapse movie of differentiating mouse embryonic stem cells, which move much more slower compared to the fast moving hematopoietic stem cells, resulting in a much larger correlation between frames. Note that in this challenging case, the automatic parameters are no longer optimal, so we use the manual parameter setting (larger smooth regularization on both flat-field and dark-field) to improve BaSiC’s performance. | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1rLmkGH5Zb_kWgUZVksgt-XR3jhlWMWei?usp=sharing) |
 
-You can also find examples of running the package at [folder Notebooks](https://github.com/peng-lab/PyBaSiC/tree/main/Notebooks).
+You can also find examples of running the package at [folder Notebooks](https://github.com/peng-lab/BaSiCPy/tree/main/Notebooks).
 
 ---
 
@@ -35,15 +35,15 @@ pip install 'PACKAGE-NAME'
 or install latest development version
 
 ```console
-git clone https://github.com/peng-lab/PyBaSiC.git
-cd PyBaSiC
+git clone https://github.com/peng-lab/BaSiCPy.git
+cd BaSiCPy
 pip install .
 ```
 
 ### Recommended: use virtual environment
 
 ```console
-$ cd PyBaSiC
+$ cd BaSiCPy
 $ python -m venv venv
 $ source venv/bin/activate
 (venv) $ pip install -e .
@@ -52,8 +52,8 @@ $ source venv/bin/activate
 ### Install with dev dependencies
 
 ```console
-git clone https://github.com/peng-lab/PyBaSiC.git
-cd PyBaSiC
+git clone https://github.com/peng-lab/BaSiCPy.git
+cd BaSiCPy
 python -m venv venv
 source venv/bin/activate
 pip install -e '.[dev]'

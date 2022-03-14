@@ -1,9 +1,9 @@
-.. PyBaSiC documentation master file, created by
+.. BaSiCPy documentation master file, created by
    sphinx-quickstart on Wed Jan 12 11:41:50 2022.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-PyBaSiC
+BaSiCPy
 =======
 
 .. toctree::
