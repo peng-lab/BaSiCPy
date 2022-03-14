@@ -4,7 +4,7 @@ import pytest
 from skimage.transform import resize
 
 # allowed max error for the synthetic test data prediction
-SYNTHESIZED_TEST_DATA_MAX_ERROR = 0.05
+SYNTHESIZED_TEST_DATA_MAX_ERROR = 0.2
 
 
 @pytest.fixture
