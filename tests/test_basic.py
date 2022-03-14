@@ -56,7 +56,7 @@ def test_basic_fit(capsys, synthesized_test_data):
     basic.fit(images)
 
     assert np.max(basic.flatfield / truth) < 1 + SYNTHESIZED_TEST_DATA_MAX_ERROR
-    assert np.min(basic.flatfield / truth) > 1 + SYNTHESIZED_TEST_DATA_MAX_ERROR
+    assert np.min(basic.flatfield / truth) > 1 - SYNTHESIZED_TEST_DATA_MAX_ERROR
 
 
 # Test BaSiC transform function
