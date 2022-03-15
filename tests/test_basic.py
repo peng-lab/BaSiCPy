@@ -7,17 +7,19 @@ import pooch
 # allowed max error for the synthetic test data prediction
 SYNTHETIC_TEST_DATA_MAX_ERROR = 0.2
 
+EXPERIMENTAL_TEST_DATA_NAMES = {
+    "Cell_culture.zip": "md5:797bbc4c891e5fe59f4200e771b55c3a",
+    "Timelapse_brightfield.zip": "md5:460e5f78ac69856705704fedad9f9e59",
+    "Timelapse_nanog.zip.zip": "md5:815d53cac35b671269b17bd627d7baa7",
+    "Timelapse_Pu1.zip.zip": "md5:bee97561e87c51e90b46da9b439e8b7b",
+    "WSI_Brain.zip": "md5:6e163786ddec2a690aa4bb47a64bcded",
+}
+
 POOCH = pooch.create(
     path=pooch.os_cache("testdata"),
     # Use the Zenodo DOI
     base_url="doi:10.5281/zenodo.6334810",
-    registry={
-        "Cell_culture.zip": "md5:797bbc4c891e5fe59f4200e771b55c3a",
-        "Timelapse_brightfield.zip": "md5:460e5f78ac69856705704fedad9f9e59",
-        "Timelapse_nanog.zip.zip": "md5:815d53cac35b671269b17bd627d7baa7",
-        "Timelapse_Pu1.zip.zip": "md5:bee97561e87c51e90b46da9b439e8b7b",
-        "WSI_Brain.zip": "md5:6e163786ddec2a690aa4bb47a64bcded",
-    },
+    registry=EXPERIMENTAL_TEST_DATA_NAMES,
 )
 
 
