@@ -1,4 +1,5 @@
 from basicpy import BaSiC
+from os import path
 import numpy as np
 import pytest
 from skimage.transform import resize
@@ -18,7 +19,7 @@ EXPERIMENTAL_TEST_DATA_NAMES = {
 POOCH = pooch.create(
     path=pooch.os_cache("testdata"),
     # Use the Zenodo DOI
-    base_url="doi:10.5281/zenodo.6334810",
+    base_url="doi:10.5281/zenodo.6334810/",
     registry=EXPERIMENTAL_TEST_DATA_NAMES,
 )
 
@@ -51,9 +52,10 @@ def synthetic_test_data():
     return gradient, images, truth
 
 
-@pytest.fixture
-def experimental_test_data():
-    ...
+@pytest.fixture(params=EXPERIMENTAL_TEST_DATA_NAMES.keys())
+def experimental_test_data(request):
+    test_file_path = POOCH.fetch(request.param)
+    assert path.exists(test_file_path)
 
 
 # Ensure BaSiC initialization passes pydantic type checking
