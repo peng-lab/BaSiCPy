@@ -1,31 +1,14 @@
 from basicpy import BaSiC
-from os import path
 import numpy as np
 import pytest
 from skimage.transform import resize
-import pooch
 
 # allowed max error for the synthetic test data prediction
-SYNTHETIC_TEST_DATA_MAX_ERROR = 0.2
-
-EXPERIMENTAL_TEST_DATA_NAMES = {
-    "Cell_culture.zip": "md5:797bbc4c891e5fe59f4200e771b55c3a",
-    "Timelapse_brightfield.zip": "md5:460e5f78ac69856705704fedad9f9e59",
-    "Timelapse_nanog.zip.zip": "md5:815d53cac35b671269b17bd627d7baa7",
-    "Timelapse_Pu1.zip.zip": "md5:bee97561e87c51e90b46da9b439e8b7b",
-    "WSI_Brain.zip": "md5:6e163786ddec2a690aa4bb47a64bcded",
-}
-
-POOCH = pooch.create(
-    path=pooch.os_cache("testdata"),
-    # Use the Zenodo DOI
-    base_url="doi:10.5281/zenodo.6334810/",
-    registry=EXPERIMENTAL_TEST_DATA_NAMES,
-)
+SYNTHESIZED_TEST_DATA_MAX_ERROR = 0.2
 
 
 @pytest.fixture
-def synthetic_test_data():
+def synthesized_test_data():
 
     np.random.seed(42)  # answer to the meaning of life, should work here too
 
@@ -52,12 +35,6 @@ def synthetic_test_data():
     return gradient, images, truth
 
 
-@pytest.fixture(params=EXPERIMENTAL_TEST_DATA_NAMES.keys())
-def experimental_test_data(request):
-    test_file_path = POOCH.fetch(request.param)
-    assert path.exists(test_file_path)
-
-
 # Ensure BaSiC initialization passes pydantic type checking
 def test_basic_verify_init():
 
@@ -69,28 +46,24 @@ def test_basic_verify_init():
     return
 
 
-# Test BaSiC fitting function (with synthetic data)
-def test_basic_fit_synthetic(capsys, synthetic_test_data):
+# Test BaSiC fitting function
+def test_basic_fit(capsys, synthesized_test_data):
 
     basic = BaSiC(get_darkfield=False)
-    gradient, images, truth = synthetic_test_data
+    gradient, images, truth = synthesized_test_data
 
     """Fit with BaSiC"""
     basic.fit(images)
 
-    assert np.max(basic.flatfield / truth) < 1 + SYNTHETIC_TEST_DATA_MAX_ERROR
-    assert np.min(basic.flatfield / truth) > 1 - SYNTHETIC_TEST_DATA_MAX_ERROR
-
-
-def test_basic_fit_experimental(capsys, experimental_test_data):
-    ...
+    assert np.max(basic.flatfield / truth) < 1 + SYNTHESIZED_TEST_DATA_MAX_ERROR
+    assert np.min(basic.flatfield / truth) > 1 - SYNTHESIZED_TEST_DATA_MAX_ERROR
 
 
 # Test BaSiC transform function
-def test_basic_transform(capsys, synthetic_test_data):
+def test_basic_transform(capsys, synthesized_test_data):
 
     basic = BaSiC(get_darkfield=False)
-    gradient, images, truth = synthetic_test_data
+    gradient, images, truth = synthesized_test_data
 
     """Apply the shading model to the images"""
     # flatfield only
@@ -111,10 +84,10 @@ def test_basic_transform(capsys, synthetic_test_data):
     assert corrected.mean() < corrected_error
 
 
-def test_basic_transform_resize(capsys, synthetic_test_data):
+def test_basic_transform_resize(capsys, synthesized_test_data):
 
     basic = BaSiC(get_darkfield=False)
-    gradient, images, truth = synthetic_test_data
+    gradient, images, truth = synthesized_test_data
 
     images = resize(images, tuple(d * 2 for d in images.shape[:2]))
     truth = resize(truth, tuple(d * 2 for d in truth.shape[:2]))
