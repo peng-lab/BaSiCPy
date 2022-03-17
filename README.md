@@ -5,6 +5,7 @@ A python package for background and shading correction of optical microscopy ima
 [![License](https://img.shields.io/pypi/l/python-basic.svg)](https://github.com/napari/napari/raw/main/LICENSE)
 [![Python Version](https://img.shields.io/pypi/pyversions/python-basic.svg)](https://python.org)
 [![PyPI](https://img.shields.io/pypi/v/python-basic.svg)](https://pypi.org/project/python-basic)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.6334810.svg)](https://doi.org/10.5281/zenodo.6334810)
 
 PyBasic is a python package for background and shading correction of optical microscopy images. It is developed based on the Matlab version of [BaSiC](https://github.com/marrlab/BaSiC) tool.
 
