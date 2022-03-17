@@ -1,4 +1,4 @@
-# PyBaSiC
+# BaSiCPy
 
 A python package for background and shading correction of optical microscopy images
 
