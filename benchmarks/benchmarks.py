@@ -6,7 +6,7 @@ from pathlib import Path
 
 sys.path.append(str(Path(__file__).parent.parent.resolve().absolute()))
 print(sys.path)
-from pybasic.tools import dct2d, idct2d
+from basicpy.tools import dct2d, idct2d  # noqa
 
 REPLICATES = 1024
 
@@ -22,11 +22,11 @@ class TimeSuite:
 
     def time_dct2(self):
         for _ in range(REPLICATES):
-            null = dct2d(self.matrix)
+            _null = dct2d(self.matrix)  # noqa
 
     def time_idct2(self):
         for _ in range(REPLICATES):
-            null = idct2d(self.matrix)
+            _null = idct2d(self.matrix)  # noqa
 
 
 class PeakMemSuite:
@@ -37,4 +37,4 @@ class PeakMemSuite:
         return dct2d(self.matrix)
 
     def peakmem_idct2(self):
-        null = idct2d(self.matrix)
+        null = idct2d(self.matrix)  # noqa
