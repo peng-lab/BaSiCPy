@@ -1,7 +1,9 @@
 from basicpy import BaSiC
 from os import path
+import glob
 import numpy as np
 import pytest
+from skimage.io import imread
 from skimage.transform import resize
 import pooch
 
@@ -54,8 +56,31 @@ def synthetic_test_data():
 
 @pytest.fixture(params=EXPERIMENTAL_TEST_DATA_NAMES.keys())
 def experimental_test_data(request):
-    test_file_path = POOCH.fetch(request.param)
-    assert path.exists(test_file_path)
+    test_file_paths = POOCH.fetch(request.param, processor=pooch.Unzip())
+    assert all(path.exists(f) for f in test_file_paths)
+    basedir = path.commonpath(test_file_paths)
+    uncorrected_paths = sorted(
+        glob.glob(path.join(basedir, "Uncorrected*", "**", "*.tif"), recursive=True)
+    )
+    if len(uncorrected_paths) == 0:
+        uncorrected_paths = sorted(
+            glob.glob(path.join(basedir, "Uncorrected*", "**", "*.png"), recursive=True)
+        )
+    corrected_paths = sorted(
+        glob.glob(path.join(basedir, "Corrected*", "**", "*.tif"), recursive=True)
+    )
+    if "WSI_Brain" in request.param:
+        uncorrected_paths = list(
+            filter(lambda p: "BrainSection" in p, uncorrected_paths)
+        )
+        corrected_paths = list(filter(lambda p: "BrainSection" in p, corrected_paths))
+
+    assert len(uncorrected_paths) > 0
+    assert len(uncorrected_paths) == len(corrected_paths)
+    uncorrected = (imread(f) for f in uncorrected_paths)
+    corrected = (imread(f) for f in corrected_paths)
+
+    return uncorrected, corrected
 
 
 # Ensure BaSiC initialization passes pydantic type checking
@@ -82,8 +107,11 @@ def test_basic_fit_synthetic(capsys, synthetic_test_data):
     assert np.min(basic.flatfield / truth) > 1 - SYNTHETIC_TEST_DATA_MAX_ERROR
 
 
-def test_basic_fit_experimental(capsys, experimental_test_data):
-    ...
+def test_basic_fit_experimental(experimental_test_data):
+    np.random.seed(42)  # answer to the meaning of life, should work here too
+    basic = BaSiC(get_darkfield=False)
+    uncorrected, corrected = experimental_test_data
+    basic.fit(np.array(list(uncorrected)))
 
 
 # Test BaSiC transform function
