@@ -27,7 +27,7 @@ EXPERIMENTAL_TEST_DATA_PROPS = {
 }
 
 POOCH = pooch.create(
-    path=pooch.os_cache("testdata"),
+    path=pooch.os_cache("basicpy"),
     # Use the Zenodo DOI
     base_url="doi:10.5281/zenodo.6334810/",
     registry={v["filename"]: v["hash"] for v in EXPERIMENTAL_TEST_DATA_PROPS.values()},
@@ -35,7 +35,10 @@ POOCH = pooch.create(
 
 
 def fetch(data_name: str):
-    test_file_paths = POOCH.fetch(data_name, processor=pooch.Unzip())
+    if data_name not in EXPERIMENTAL_TEST_DATA_PROPS.keys():
+        raise ValueError(f"{data_name} is not a valid test data name")
+    file_name = EXPERIMENTAL_TEST_DATA_PROPS[data_name]["filename"]
+    test_file_paths = POOCH.fetch(file_name, processor=pooch.Unzip())
     assert all(path.exists(f) for f in test_file_paths)
     basedir = path.commonpath(test_file_paths)
     uncorrected_paths = sorted(
@@ -48,7 +51,7 @@ def fetch(data_name: str):
     corrected_paths = sorted(
         glob.glob(path.join(basedir, "Corrected*", "**", "*.tif"), recursive=True)
     )
-    if "WSI_Brain" in data_name:
+    if "WSI_Brain" in file_name:
         uncorrected_paths = list(
             filter(lambda p: "BrainSection" in p, uncorrected_paths)
         )
@@ -63,20 +66,20 @@ def fetch(data_name: str):
 
 
 def cell_culture():
-    return fetch("Cell_culture.zip")[0]
+    return fetch("cell_culture")[0]
 
 
 def timelapse_brightfield():
-    return fetch("Timelapse_brightfield.zip")[0]
+    return fetch("timelapse_brightfield")[0]
 
 
 def timelapse_nanog():
-    return fetch("Timelapse_nanog.zip.zip")[0]
+    return fetch("timelapse_nanog")[0]
 
 
 def timelapse_pu1():
-    return fetch("Timelapse_Pu1.zip.zip")[0]
+    return fetch("timelapse_pu1")[0]
 
 
 def wsi_brain():
-    return fetch("WSI_Brain.zip")[0]
+    return fetch("wsi_brain")[0]
