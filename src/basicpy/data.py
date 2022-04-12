@@ -3,19 +3,34 @@ from os import path
 import glob
 from skimage.io import imread
 
-EXPERIMENTAL_TEST_DATA_NAMES = {
-    "Cell_culture.zip": "md5:797bbc4c891e5fe59f4200e771b55c3a",
-    "Timelapse_brightfield.zip": "md5:460e5f78ac69856705704fedad9f9e59",
-    "Timelapse_nanog.zip.zip": "md5:815d53cac35b671269b17bd627d7baa7",
-    "Timelapse_Pu1.zip.zip": "md5:bee97561e87c51e90b46da9b439e8b7b",
-    "WSI_Brain.zip": "md5:6e163786ddec2a690aa4bb47a64bcded",
+EXPERIMENTAL_TEST_DATA_PROPS = {
+    "cell_culture": {
+        "filename": "Cell_culture.zip",
+        "hash": "md5:797bbc4c891e5fe59f4200e771b55c3a",
+    },
+    "timelapse_brightfield": {
+        "filename": "Timelapse_brightfield.zip",
+        "hash": "md5:460e5f78ac69856705704fedad9f9e59",
+    },
+    "timelapse_nanog": {
+        "filename": "Timelapse_nanog.zip.zip",
+        "hash": "md5:815d53cac35b671269b17bd627d7baa7",
+    },
+    "timelapse_pu1": {
+        "filename": "Timelapse_Pu1.zip.zip",
+        "hash": "md5:bee97561e87c51e90b46da9b439e8b7b",
+    },
+    "wsi_brain": {
+        "filename": "WSI_Brain.zip",
+        "hash": "md5:6e163786ddec2a690aa4bb47a64bcded",
+    },
 }
 
 POOCH = pooch.create(
     path=pooch.os_cache("testdata"),
     # Use the Zenodo DOI
     base_url="doi:10.5281/zenodo.6334810/",
-    registry=EXPERIMENTAL_TEST_DATA_NAMES,
+    registry={v["filename"]: v["hash"] for v in EXPERIMENTAL_TEST_DATA_PROPS.values()},
 )
 
 
