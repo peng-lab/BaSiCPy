@@ -1,0 +1,15 @@
+from re import I
+from basicpy import data
+import numpy as np
+
+
+def test_fetch():
+    """Test fetching the data for all datasets."""
+    for k in data.EXPERIMENTAL_TEST_DATA_PROPS.keys():
+        uncorrected, corrected = data.fetch(k)
+        uncorrected = np.array(uncorrected)
+        corrected = np.array(corrected)
+
+        assert uncorrected.dim == 3
+        assert corrected.dim == 3
+        assert np.array_equal(uncorrected.shape, corrected.shape)
