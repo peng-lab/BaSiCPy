@@ -43,7 +43,8 @@ def fetch(data_name: str):
 
     Returns:
         Iterable[ndarray]: An iterable of uncorrected images.
-        Iterable[ndarray]: An iterable of corrected images.
+        Iterable[ndarray]: An iterable of corrected images by the reference
+            implementation (Tingying Peng et al., (2017).)
 
     Raises:
         ValueError: If the dataset name is not one of the allowed values.
