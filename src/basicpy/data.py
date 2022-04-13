@@ -44,7 +44,7 @@ def fetch(data_name: str):
     Returns:
         Iterable[ndarray]: An iterable of uncorrected images.
         Iterable[ndarray]: An iterable of corrected images by the reference
-            implementation (Tingying Peng et al., (2017).)
+            implementation (Tingying Peng et al., Nature Communication 8:14836 (2017).)
 
     Raises:
         ValueError: If the dataset name is not one of the allowed values.
@@ -80,20 +80,57 @@ def fetch(data_name: str):
 
 
 def cell_culture():
+    """Returns the "Cell culture" dataset.
+
+    Returns:
+        Iterable[ndarray]: An iterable of uncorrected images.
+        Iterable[ndarray]: An iterable of corrected images by the reference
+            implementation (Tingying Peng et al., Nature Communication 8:14836 (2017).)
+    """
     return fetch("cell_culture")
 
 
 def timelapse_brightfield():
+    """Returns the "Timelapse Brightfield" dataset.
+
+    Returns:
+        Iterable[ndarray]: An iterable of uncorrected images.
+        Iterable[ndarray]: An iterable of corrected images by the reference
+            implementation (Tingying Peng et al., Nature Communication 8:14836 (2017).)
+    """
     return fetch("timelapse_brightfield")
 
 
 def timelapse_nanog():
+    """Returns the "Timelapse Nanog" dataset.
+
+    Returns:
+        Iterable[ndarray]: An iterable of uncorrected images.
+        Iterable[ndarray]: An iterable of corrected images by the reference
+            implementation (Tingying Peng et al., Nature Communication 8:14836 (2017).)
+    """
     return fetch("timelapse_nanog")
 
 
 def timelapse_pu1():
+    """Returns the "Timelapse Pu.1" dataset.
+
+    Returns:
+        Iterable[ndarray]: An iterable of uncorrected images.
+        Iterable[ndarray]: An iterable of corrected images by the reference
+            implementation (Tingying Peng et al., Nature Communication 8:14836 (2017).)
+    """
+
     return fetch("timelapse_pu1")
 
 
 def wsi_brain():
+    """Returns the "WSI Brain" dataset.
+
+    Returns:
+        Iterable[ndarray]: An iterable of uncorrected images.
+        Iterable[ndarray]: An iterable of corrected images by the reference
+            implementation (Tingying Peng et al., Nature Communication 8:14836 (2017).)
+    """
+
     return fetch("wsi_brain")[0]
