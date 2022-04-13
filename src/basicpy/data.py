@@ -35,6 +35,19 @@ POOCH = pooch.create(
 
 
 def fetch(data_name: str):
+    """Fetch a sample dataset from Zenodo.
+    Args:
+        data_name: The name of the dataset. Must be one of ["cell_culture",
+            "timelapse_brightfield", "timelapse_nanog", "timelapse_pu1",
+            "wsi_brain"].
+
+    Returns:
+        Iterable[ndarray]: An iterable of uncorrected images.
+        Iterable[ndarray]: An iterable of corrected images.
+
+    Raises:
+        ValueError: If the dataset name is not one of the allowed values.
+    """
     if data_name not in EXPERIMENTAL_TEST_DATA_PROPS.keys():
         raise ValueError(f"{data_name} is not a valid test data name")
     file_name = EXPERIMENTAL_TEST_DATA_PROPS[data_name]["filename"]
@@ -66,19 +79,19 @@ def fetch(data_name: str):
 
 
 def cell_culture():
-    return fetch("cell_culture")[0]
+    return fetch("cell_culture")
 
 
 def timelapse_brightfield():
-    return fetch("timelapse_brightfield")[0]
+    return fetch("timelapse_brightfield")
 
 
 def timelapse_nanog():
-    return fetch("timelapse_nanog")[0]
+    return fetch("timelapse_nanog")
 
 
 def timelapse_pu1():
-    return fetch("timelapse_pu1")[0]
+    return fetch("timelapse_pu1")
 
 
 def wsi_brain():
