@@ -10,6 +10,6 @@ def test_fetch():
         uncorrected = np.array(uncorrected)
         corrected = np.array(corrected)
 
-        assert uncorrected.dim == 3
-        assert corrected.dim == 3
+        assert uncorrected.ndim == 3
+        assert corrected.ndim == 3
         assert np.array_equal(uncorrected.shape, corrected.shape)
