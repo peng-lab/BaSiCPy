@@ -25,7 +25,7 @@ POOCH = pooch.create(
     path=pooch.os_cache("basicpy"),
     # Use the Zenodo DOI
     base_url="doi:10.5281/zenodo.6334810/",
-    registry={v["filename"]: v["hash"] for v in EXPERIMENTAL_TEST_DATA_PROPS.values()},
+    registry={v["filename"]: None for v in EXPERIMENTAL_TEST_DATA_PROPS.values()},
 )
 
 
