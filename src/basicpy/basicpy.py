@@ -383,8 +383,7 @@ class BaSiC(BaseModel):
         """Save current model to folder.
 
         Args:
-            model_dir: path to model directory. Folder should contain ``settings.json``
-                and ``profiles.npy``
+            model_dir: path to model directory
 
         Raises:
             FileExistsError: if model directory already exists"""
