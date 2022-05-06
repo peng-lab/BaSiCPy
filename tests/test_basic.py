@@ -136,7 +136,17 @@ def test_basic_save_model(tmp_path: Path):
         basic.save_model(model_dir)
 
 
-def test_basic_load_model(tmp_path: Path):
+@pytest.fixture
+def settings_json():
+    return """\
+{"epsilon": 0.2, "estimation_mode": "l0", "get_darkfield": false,
+"lambda_darkfield": 0.0, "lambda_flatfield": 0.0, "max_iterations": 500,
+"max_reweight_iterations": 10, "optimization_tol": 1e-06, "reweighting_tol": 0.001,
+"varying_coeff": true, "working_size": 128}
+"""
+
+
+def test_basic_load_model(tmp_path: Path, settings_json):
 
     model_dir = tmp_path / "test_model"
 
@@ -144,15 +154,8 @@ def test_basic_load_model(tmp_path: Path):
     with pytest.raises(FileNotFoundError):
         basic = BaSiC.load_model(tmp_path)
 
-    # create and write mock settings to file
-    json_raw = """\
-{"epsilon": 0.2, "estimation_mode": "l0", "get_darkfield": false,
-"lambda_darkfield": 0.0, "lambda_flatfield": 0.0, "max_iterations": 500,
-"max_reweight_iterations": 10, "optimization_tol": 1e-06, "reweighting_tol": 0.001,
-"varying_coeff": true, "working_size": 128}
-"""
     with open(tmp_path / "settings.json", "w") as fp:
-        fp.write(json_raw)
+        fp.write(settings_json)
 
     # create and write mock profiles to file
     profiles = np.zeros((128, 128, 2), dtype=np.float64)
