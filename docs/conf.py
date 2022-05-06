@@ -17,7 +17,7 @@
 
 # -- Project information -----------------------------------------------------
 
-project = "PyBaSiC"
+project = "BaSiCPy"
 copyright = "2022, -"
 author = "-"
 
