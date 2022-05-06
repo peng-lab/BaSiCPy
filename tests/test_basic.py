@@ -131,9 +131,20 @@ def test_basic_save_model(tmp_path: Path):
 
     # TODO check settings contents
 
+    # remove files but not the folder to check for overwriting
+    (model_dir / "settings.json").unlink()
+    (model_dir / "profiles.npy").unlink()
+    # assert not (model_dir / "settings.json").exists()
+    # assert not (model_dir / "profiles.npy").exists()
+
     # an error raises when the model folder exists
     with pytest.raises(FileExistsError):
         basic.save_model(model_dir)
+
+    # overwrites if specified
+    basic.save_model(model_dir, overwrite=True)
+    assert (model_dir / "settings.json").exists()
+    assert (model_dir / "profiles.npy").exists()
 
 
 @pytest.fixture

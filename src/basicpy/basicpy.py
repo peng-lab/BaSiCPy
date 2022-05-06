@@ -379,7 +379,7 @@ class BaSiC(BaseModel):
         """
         return self.dict()
 
-    def save_model(self, model_dir: PathLike) -> None:
+    def save_model(self, model_dir: PathLike, overwrite: bool = False) -> None:
         """Save current model to folder.
 
         Args:
@@ -389,11 +389,11 @@ class BaSiC(BaseModel):
             FileExistsError: if model directory already exists"""
         path = Path(model_dir)
 
-        # NOTE how do we want to handle folder already exists, replace or error?
         try:
             path.mkdir()
         except FileExistsError:
-            raise FileExistsError("Model folder already exists.")
+            if not overwrite:
+                raise FileExistsError("Model folder already exists.")
 
         # save settings
         with open(path / self._settings_fname, "w") as fp:
