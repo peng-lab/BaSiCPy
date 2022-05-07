@@ -3,7 +3,7 @@
 import os
 import logging
 
-from pybasic.pybasic import BaSiC
+from basicpy.basicpy import BaSiC
 
 # Set logger level from environment variable
 logging_level = os.getenv("BASIC_LOG_LEVEL", default="INFO").upper()
