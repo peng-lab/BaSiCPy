@@ -95,11 +95,15 @@ class SciPyDCT(DCT):
 # collect all subclasses into a dictionary
 DCT_BACKENDS = {sc()._backend: sc() for sc in DCT.__subclasses__()}  # type: ignore
 
-
-# TODO use logger, warn if backend does not exist
-dct = DCT_BACKENDS.get(
-    os.environ.get("BASIC_DCT_BACKEND"), DCT_BACKENDS[DEFAULT_BACKEND]  # type: ignore
-)
+ENV_DCT_BACKEND = str(os.environ.get("BASIC_DCT_BACKEND"))
+if ENV_DCT_BACKEND not in DCT_BACKENDS.keys():
+    logger.warning(
+        "the value of the environment variable BASIC_DCT_BACKEND is "
+        + 'not in ["JAX","OPENCV","SCIPY"]'
+    )
+    dct = DCT_BACKENDS[DEFAULT_BACKEND]
+else:
+    dct = DCT_BACKENDS[ENV_DCT_BACKEND]
 
 dct2d = dct.dct2d
 idct2d = dct.idct2d
