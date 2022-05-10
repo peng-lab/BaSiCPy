@@ -525,17 +525,18 @@ def basic_fit_ladmap(
 
         return (i+1,S,D_R,D_Z,I_R, B, Y, mu, fit_residual)
 
+    @jit
     def stopping_cond(vals):
         i,S,D_R,D_Z,I_R,B,Y,mu,fit_residual = vals
         norm_ratio = jnp.linalg.norm(fit_residual.flatten(), ord=2) \
                         / init_image_norm
-        print(i,norm_ratio,D_Z)
+#        print(i,norm_ratio,D_Z)
         return jnp.all(jnp.array([norm_ratio > optimization_tol, i < max_iterations]))
 
     vals=(0,S,D_R,D_Z,I_R,B,Y,mu,fit_residual)
-    while stopping_cond(vals):
-        vals = basic_step_ladmap(vals)
-#    vals = lax.while_loop(stopping_cond, basic_step_ladmap, vals)
+#    while stopping_cond(vals):
+#        vals = basic_step_ladmap(vals)
+    vals = lax.while_loop(stopping_cond, basic_step_ladmap, vals)
     i,S,D_R,D_Z,I_R,B,Y,mu,fit_residual = vals
 
     return S,D_R,D_Z,I_R, B, norm_ratio, i<max_iterations
