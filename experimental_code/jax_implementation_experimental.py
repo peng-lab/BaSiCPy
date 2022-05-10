@@ -174,7 +174,7 @@ idct2d, dct2d = SciPyDCT.idct2d, SciPyDCT.dct2d
 def shrinkage(x, thresh):
     return np.maximum(x-thresh,0) + np.minimum(x+thresh,0)
 
-def ladmap_step2(
+def basic_step_approximate(
         I,S,D_R,D_Z,I_R,B,Y,
         mu,weight,
         rho,ent1,ent2,max_mu,
@@ -235,7 +235,7 @@ def ladmap_step2(
 
     return S, D_R,D_Z, I_R, B, Y, mu, fit_residual
 
-def inexact_alm_jax2(images,
+def fit_basic_approximate(images,
                     weight,
                     lambda_darkfield,
                     lambda_flatfield,
@@ -270,7 +270,7 @@ def inexact_alm_jax2(images,
     Y=np.ones_like(I)
     converged=False
     for i in range(max_iterations):
-        S,D_R,D_Z,I_R,B,Y,mu,fit_residual = ladmap_step2(I,S,D_R,D_Z,I_R,B,Y,mu,weight,
+        S,D_R,D_Z,I_R,B,Y,mu,fit_residual = basic_step_approximate(I,S,D_R,D_Z,I_R,B,Y,mu,weight,
                                                 rho,ent1,ent2,max_mu,
                                                 max_D_Z,
                                                 lambda_flatfield,
@@ -284,14 +284,12 @@ def inexact_alm_jax2(images,
         if norm_ratio < optimization_tol:
             converged = True
             break
-#        if i==2:
-#          break
 
     return S, D_R,D_Z, I_R, B, norm_ratio, converged
 
 #%%
 %%time
-S,D_R,D_Z, I_R, B, norm_ratio, converged=inexact_alm_jax2(
+S,D_R,D_Z, I_R, B, norm_ratio, converged=fit_basic_approximate(
     images,
     weight=np.ones_like(images),
     lambda_darkfield=lambda_darkfield,
@@ -303,7 +301,7 @@ flatfield_flatonly_tingying=S
 
 #%%
 %%time
-S, D_R,D_Z, I_R, B, norm_ratio, converged=inexact_alm_jax2(
+S, D_R,D_Z, I_R, B, norm_ratio, converged=fit_basic_approximate(
     images,
     weight=np.ones_like(images),
     lambda_darkfield=lambda_darkfield,
@@ -333,110 +331,129 @@ plt.suptitle("Tingying implementation")
 """# test LADMAP implementation (in numpy)"""
 
 # Commented out IPython magic to ensure Python compatibility.
-# %%time
-#
-# def shrinkage(x, thresh):
-#     return np.sign(x)*np.maximum(np.abs(x)-thresh,0)
-#
-# def ladmap_step3(I,S,I_R,B,Y,mu,weight,
-#                     rho,ent1,ent2,max_mu,
-#                     lambda_flatfield,
-#                     lambda_darkfield):
-#     Z=np.zeros_like(S)
-#     I_B = S[np.newaxis,...]*B[:,np.newaxis,np.newaxis] + Z[np.newaxis,...]
-#     #S_prime=S+np.mean((I - I_B - I_R + Y/mu) / ent1, axis=0)
-#     eta_S=np.sum(B**2)
-#     S_prime = S+np.sum(B[:,np.newaxis,np.newaxis]*(I - I_B - I_R + Y/mu), axis=0)/eta_S
-# #    plt.imshow(S_prime)
-# #    plt.colorbar()
-# #    plt.show()
-#     print(np.min(B),np.max(B),np.min(S),np.max(S))
-#     S_hat = dct2d(S_prime/ent1)
-#     S = idct2d(shrinkage(S_hat, lambda_flatfield/(ent1*mu)))
-#
-#     I_B = S[np.newaxis,...]*B[:,np.newaxis,np.newaxis]+Z[np.newaxis,...]
-#     I_R = shrinkage((I - I_B + Y/mu) / ent1, weight / (ent1 * mu))
-#
-#     R = I - I_R
-#     #B = np.mean(R, axis =(1,2)) / np.mean(R)
-#     B = np.sum(S[np.newaxis,...]*(R+Y/mu), axis =(1,2))/np.sum(S**2)
-# #    print(R[0,0],B,Y)
-#     B = np.maximum(B, 0)
-#     print(np.min(B),np.max(B),np.min(S),np.max(S))
-#
-#     fit_residual = R - I_B
-#     Y = Y + mu * fit_residual
-#     mu = np.minimum(mu * rho, max_mu)
-#
-#     return S, I_R, B, Y, mu, fit_residual
-#
-# def inexact_alm_jax3(images,
-#                     weight,
-#                     lambda_darkfield,
-#                     lambda_flatfield,
-#                     get_darkfield,
-#                     optimization_tol,
-#                     max_iterations,
-#                     rho=1.5,
-#                     ent1 = 1,
-#                     ent2 = 10,
-#                     mu_coef = 12.5,
-#                     max_mu_coef = 1e7
-#                     ):
-#     ## image dimension ... (time, Z, Y, X)
-#     assert np.array_equal(images.shape,weight.shape)
-#
-#     # matrix 2-norm (largest sing. value)
-#     spectral_norm = np.linalg.norm(
-#         images.reshape((images.shape[0],-1)),ord=2)
-#     mu = mu_coef / spectral_norm
-#     max_mu = mu * max_mu_coef
-#
-#     init_image_norm = np.linalg.norm(images.flatten(), ord=2)
-#
-#     # initialize values
-#     S = np.zeros(images.shape[1:])
-#     B = np.ones(images.shape[0])
-#     I = images.copy()
-#     I_R = np.zeros(I.shape)
-#     Y=np.ones_like(I)
-#     converged=False
-#     for i in range(max_iterations):
-#         S,I_R,B,Y,mu,fit_residual = ladmap_step3(I,S,I_R,B,Y,mu,weight,
-#                                                 rho,ent1,ent2,max_mu,
-#                                                 lambda_flatfield,
-#                                                 lambda_darkfield)
-#         # Stop Criterion
-#         norm_ratio = np.linalg.norm(fit_residual.flatten(), ord=2) \
-#                         / init_image_norm
-#         print(i,norm_ratio)
-#         if norm_ratio < optimization_tol:
-#             converged = True
-#             break
-#
-#     return S, I_R, B, norm_ratio, converged
-#
-# S, I_R, B, norm_ratio, converged=inexact_alm_jax3(
-#     images,
-#     weight=np.ones_like(images),
-#     lambda_darkfield=lambda_darkfield,
-#     lambda_flatfield=lambda_flatfield/10,
-#     get_darkfield=False,
-#     optimization_tol=1e-4,
-#     max_iterations=500,)
+def shrinkage(x, thresh):
+    return np.sign(x)*np.maximum(np.abs(x)-thresh,0)
 
+def basic_step_approximate(
+        I,S,D_R,D_Z,I_R,B,Y,
+        mu,weight,
+        rho,ent1,ent2,max_mu,
+        max_D_Z,
+        lambda_flatfield,
+        lambda_darkfield,
+        get_darkfield):
 
+def ladmap_step3(I,S,I_R,B,Y,mu,weight,
+                    rho,max_mu,
+                    lambda_flatfield,
+                    lambda_darkfield):
+    Z=np.zeros_like(S)
+    I_B = S[np.newaxis,...]*B[:,np.newaxis,np.newaxis] + Z[np.newaxis,...]
+    eta_S=np.sum(B**2)
+    S_prime = S+np.sum(B[:,np.newaxis,np.newaxis]*(I - I_B - I_R + Y/mu), axis=0)/eta_S
+    print(np.min(B),np.max(B),np.min(S),np.max(S))
+    S_hat = dct2d(S_prime)
+    S = idct2d(shrinkage(S_hat, lambda_flatfield/(mu)))
 
-plt.plot(B)
-plt.show()
-plt.imshow(S)
+    I_B = S[np.newaxis,...]*B[:,np.newaxis,np.newaxis]+Z[np.newaxis,...]
+    I_R = shrinkage((I - I_B + Y/mu), weight / (mu))
+
+    R = I - I_R
+    B = np.sum(S[np.newaxis,...]*(R+Y/mu), axis =(1,2))/np.sum(S**2)
+    B = np.maximum(B, 0)
+
+    fit_residual = R - I_B
+    Y = Y + mu * fit_residual
+    mu = np.minimum(mu * rho, max_mu)
+
+    return S, I_R, B, Y, mu, fit_residual
+
+def inexact_alm_jax3(images,
+                    weight,
+                    lambda_darkfield,
+                    lambda_flatfield,
+                    get_darkfield,
+                    optimization_tol,
+                    max_iterations,
+                    rho=1.5,
+                    ent1 = 1,
+                    ent2 = 10,
+                    mu_coef = 12.5,
+                    max_mu_coef = 1e7
+                    ):
+    ## image dimension ... (time, Z, Y, X)
+    assert np.array_equal(images.shape,weight.shape)
+
+    # matrix 2-norm (largest sing. value)
+    spectral_norm = np.linalg.norm(
+        images.reshape((images.shape[0],-1)),ord=2)
+    mu = mu_coef / spectral_norm
+    max_mu = mu * max_mu_coef
+
+    init_image_norm = np.linalg.norm(images.flatten(), ord=2)
+
+    # initialize values
+    S = np.zeros(images.shape[1:])
+    B = np.ones(images.shape[0])
+    I = images.copy()
+    I_R = np.zeros(I.shape)
+    Y=np.ones_like(I)
+    converged=False
+    for i in range(max_iterations):
+        S,I_R,B,Y,mu,fit_residual = ladmap_step3(I,S,I_R,B,Y,mu,weight,
+                                                rho,ent1,ent2,max_mu,
+                                                lambda_flatfield,
+                                                lambda_darkfield)
+        # Stop Criterion
+        norm_ratio = np.linalg.norm(fit_residual.flatten(), ord=2) \
+                        / init_image_norm
+        print(i,norm_ratio)
+        if norm_ratio < optimization_tol:
+            converged = True
+            break
+
+    return S, I_R, B, norm_ratio, converged
+
+#%%
+%%time
+S,D_R,D_Z, I_R, B, norm_ratio, converged=fit_basic_approximate(
+    images,
+    weight=np.ones_like(images),
+    lambda_darkfield=lambda_darkfield,
+    lambda_flatfield=lambda_flatfield,
+    get_darkfield=False,
+    optimization_tol=1e-4,
+    max_iterations=500,)
+flatfield_flatonly_tingying=S
+
+#%%
+%%time
+S, D_R,D_Z, I_R, B, norm_ratio, converged=fit_basic_approximate(
+    images,
+    weight=np.ones_like(images),
+    lambda_darkfield=lambda_darkfield,
+    lambda_flatfield=lambda_flatfield,
+    get_darkfield=True,
+    optimization_tol=1e-4,
+    max_iterations=500,)
+flatfield_withdark_tingying=S
+darkfield_withdark_tingying=D_R+D_Z*S
+
+#%%
+plt.figure(figsize=(15,5))
+plt.subplot(131)
+plt.title("flat only flatfield")
+plt.imshow(flatfield_flatonly_tingying)
 plt.colorbar()
-plt.show()
-plt.imshow(I_R[0])
+plt.subplot(132)
+plt.title("with dark flatfield")
+plt.imshow(flatfield_withdark_tingying)
 plt.colorbar()
-plt.show()
-plt.imshow((images-S[np.newaxis]*B[:,np.newaxis,np.newaxis]-I_R)[0])
+plt.subplot(133)
+plt.title("with dark darkfield")
+plt.imshow(darkfield_withdark_tingying)
 plt.colorbar()
+plt.suptitle("Tingying implementation")
 
 """# LADMAP implementation (in JAX)
 
