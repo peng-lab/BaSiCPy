@@ -452,15 +452,13 @@ def idct2d(mtrx: np.array):
 """## shadow correction implementation"""
 """## loop jit"""
 #%%
-%%time
-
 from jax import numpy as jnp
 from jax import jit, lax, device_put
 
 def jshrinkage(x, thresh):
     return jnp.sign(x)*jnp.maximum(jnp.abs(x)-thresh,0)
 
-def inexact_alm_jax3(
+def basic_fit_ladmap(
                     images,
                     weight,
                     lambda_darkfield,
@@ -488,48 +486,50 @@ def inexact_alm_jax3(
 
     # initialize values
     S = jnp.zeros(images.shape[1:],dtype=jnp.float32)
+    D_R = jnp.zeros(images.shape[1:],dtype=jnp.float32)
+    D_Z = 0
     B = jnp.ones(images.shape[0],dtype=jnp.float32)
     I_R = jnp.zeros(I.shape,dtype=jnp.float32)
     Y=jnp.ones_like(I,dtype=jnp.float32)
     fit_residual = jnp.ones(I.shape,dtype=jnp.float32)*jnp.inf
 
     @jit
-    def ladmap_step3(vals):
-        i,S,I_R,B,Y,mu,fit_residual = vals
-        Z=jnp.zeros_like(S)
-        I_B = S[jnp.newaxis,...]*B[:,jnp.newaxis,jnp.newaxis] + Z[jnp.newaxis,...]
+    def basic_step_ladmap(vals):
+        i,S,D_R,D_Z,I_R,B,Y,mu,fit_residual = vals
+        I_B = S[jnp.newaxis,...]*B[:,jnp.newaxis,jnp.newaxis] + D_R[jnp.newaxis,...] + D_Z
         eta=jnp.sqrt(jnp.sum(B**2))*1.02
         S_prime = S+jnp.sum(B[:,jnp.newaxis,jnp.newaxis]*(I - I_B - I_R + Y/mu), axis=0)/eta
         S_hat = dct2d(S_prime)
         S = idct2d(jshrinkage(S_hat, lambda_flatfield/(mu)))
 
-        I_B = S[jnp.newaxis,...]*B[:,jnp.newaxis,jnp.newaxis]+Z[jnp.newaxis,...]
+        I_B = S[jnp.newaxis,...]*B[:,jnp.newaxis,jnp.newaxis] + D_R[jnp.newaxis,...] + D_Z
         I_R = jshrinkage(I - I_B + Y/mu, weight / mu)
 
         R = I - I_R
         B = jnp.sum(S[jnp.newaxis,...]*(R+Y/mu), axis =(1,2))/jnp.sum(S**2)
         B = jnp.maximum(B, 0)
 
+        I_B = S[jnp.newaxis,...]*B[:,jnp.newaxis,jnp.newaxis] + D_R[jnp.newaxis,...] + D_Z
         fit_residual = R - I_B
         Y = Y + mu * fit_residual
         mu = jnp.minimum(mu * rho, max_mu)
 
-        return (i+1,S, I_R, B, Y, mu, fit_residual)
+        return (i+1,S,D_R,D_Z,I_R, B, Y, mu, fit_residual)
 
     @jit
     def stopping_cond(vals):
-        i,S,I_R,B,Y,mu,fit_residual = vals
+        i,S,D_R,D_Z,I_R,B,Y,mu,fit_residual = vals
         norm_ratio = jnp.linalg.norm(fit_residual.flatten(), ord=2) \
                         / init_image_norm
         return jnp.all(jnp.array([norm_ratio > optimization_tol, i < max_iterations]))
 
-    vals=(0,S,I_R,B,Y,mu,fit_residual)
-    vals = lax.while_loop(stopping_cond, ladmap_step3, vals)
-    i, S, I_R, B, Y, mu, fit_residual=vals
+    vals=(0,S,D_R,D_Z,I_R,B,Y,mu,fit_residual)
+    vals = lax.while_loop(stopping_cond, basic_step_ladmap, vals)
+    i,S,D_R,D_Z,I_R,B,Y,mu,fit_residual = vals
 
-    return S, I_R, B, norm_ratio, i<max_iterations
+    return S,D_R,D_Z,I_R, B, norm_ratio, i<max_iterations
 
-S, I_R, B, norm_ratio, converged=inexact_alm_jax3(
+S, D_R,D_Z,I_R, B, norm_ratio, converged=basic_fit_ladmap(
     images,
     weight=np.ones_like(images),
     lambda_darkfield=lambda_darkfield,
