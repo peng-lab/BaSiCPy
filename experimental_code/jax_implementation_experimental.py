@@ -399,6 +399,7 @@ def basic_fit_ladmap(
             D_R = D_R+1./eta_D * jnp.sum(I-BS-D_R[jnp.newaxis,...]-D_Z-I_R+Y/mu, axis=0)
             D_R = idct2d(jshrinkage(dct2d(D_R), lambda_darkfield/eta_D/mu))
             D_R = jshrinkage(D_R, lambda_darkfield/eta_D/mu)
+#            D_R = jnp.clip(D_R,-D_Z,None)
 
         I_B = BS + D_R[jnp.newaxis,...] + D_Z
         fit_residual = R - I_B
