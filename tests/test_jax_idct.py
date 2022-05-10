@@ -2,7 +2,7 @@ import jax.numpy as jnp
 import scipy.fft
 import jax._src.scipy.fft
 
-from pybasic.tools import _jax_idct
+from basicpy.tools import _jax_idct
 
 
 def test_inverse_interleave():
