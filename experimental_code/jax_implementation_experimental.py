@@ -483,6 +483,7 @@ def basic_fit_ladmap(
 
     #FIXME fix I definition for jax
     I = device_put(images).astype(jnp.float32)
+    D_Z_max = jnp.min(I)
 
     # initialize values
     S = jnp.zeros(images.shape[1:],dtype=jnp.float32)
@@ -498,9 +499,8 @@ def basic_fit_ladmap(
         i,S,D_R,D_Z,I_R,B,Y,mu,fit_residual = vals
         I_B = S[jnp.newaxis,...]*B[:,jnp.newaxis,jnp.newaxis] + D_R[jnp.newaxis,...] + D_Z
         eta=jnp.sqrt(jnp.sum(B**2))*1.02
-        S_prime = S+jnp.sum(B[:,jnp.newaxis,jnp.newaxis]*(I - I_B - I_R + Y/mu), axis=0)/eta
-        S_hat = dct2d(S_prime)
-        S = idct2d(jshrinkage(S_hat, lambda_flatfield/(mu)))
+        S = S+jnp.sum(B[:,jnp.newaxis,jnp.newaxis]*(I - I_B - I_R + Y/mu), axis=0)/eta
+        S = idct2d(jshrinkage(dct2d(S), lambda_flatfield/(mu)))
 
         I_B = S[jnp.newaxis,...]*B[:,jnp.newaxis,jnp.newaxis] + D_R[jnp.newaxis,...] + D_Z
         I_R = jshrinkage(I - I_B + Y/mu, weight / mu)
@@ -509,7 +509,16 @@ def basic_fit_ladmap(
         B = jnp.sum(S[jnp.newaxis,...]*(R+Y/mu), axis =(1,2))/jnp.sum(S**2)
         B = jnp.maximum(B, 0)
 
-        I_B = S[jnp.newaxis,...]*B[:,jnp.newaxis,jnp.newaxis] + D_R[jnp.newaxis,...] + D_Z
+        BS=S[jnp.newaxis,...]*B[:,jnp.newaxis,jnp.newaxis]
+        if get_darkfield:
+            D_Z = jnp.mean(I-BS-D_R[jnp.newaxis,...]-I_R-Y/2./mu)
+            D_Z = jnp.clip(D_Z,0,D_Z_max)
+            eta_D = np.sqrt(I.shape[0])*1.02
+            D_R = D_R+1./eta_D * jnp.sum(I-BS-D_R[jnp.newaxis,...]-D_Z-I_R-Y/mu, axis=0)
+            D_R = idct2d(jshrinkage(dct2d(D_R), lambda_darkfield/eta_D/mu))
+            D_R = jshrinkage(D_R, lambda_darkfield/eta_D/mu)
+
+        I_B = BS + D_R[jnp.newaxis,...] + D_Z
         fit_residual = R - I_B
         Y = Y + mu * fit_residual
         mu = jnp.minimum(mu * rho, max_mu)
@@ -550,5 +559,27 @@ plt.imshow((images-S[np.newaxis]*B[:,np.newaxis,np.newaxis]-I_R)[0])
 plt.colorbar()
 
 """# Implementation with darkfield"""
+
+# %%
+S, D_R,D_Z,I_R, B, norm_ratio, converged=basic_fit_ladmap(
+    images,
+    weight=np.ones_like(images),
+    lambda_darkfield=lambda_darkfield,
+    lambda_flatfield=lambda_flatfield,
+    get_darkfield=True,
+    optimization_tol=1e-4,
+    max_iterations=500,)
+
+plt.plot(B)
+plt.show()
+plt.imshow(S)
+plt.colorbar()
+plt.show()
+plt.imshow(I_R[0])
+plt.colorbar()
+plt.show()
+plt.imshow((images-S[np.newaxis]*B[:,np.newaxis,np.newaxis]-I_R)[0])
+plt.colorbar()
+
 
 # %%
