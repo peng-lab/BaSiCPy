@@ -148,42 +148,44 @@ def test_basic_save_model(tmp_path: Path):
 
 
 @pytest.fixture
-def settings_json():
-    return """\
-{"epsilon": 0.2, "estimation_mode": "l0", "get_darkfield": false,
-"lambda_darkfield": 0.0, "lambda_flatfield": 0.0, "max_iterations": 500,
-"max_reweight_iterations": 10, "optimization_tol": 1e-06, "reweighting_tol": 0.001,
-"varying_coeff": true, "working_size": 128}
-"""
-
-
-def test_basic_load_model(tmp_path: Path, settings_json):
-
-    model_dir = tmp_path / "test_model"
-
-    # raises error when folder not found
-    with pytest.raises(FileNotFoundError):
-        basic = BaSiC.load_model(tmp_path)
-
-    with open(tmp_path / "settings.json", "w") as fp:
-        fp.write(settings_json)
-
+def profiles():
     # create and write mock profiles to file
     profiles = np.zeros((128, 128, 2), dtype=np.float64)
-    # a way to ensure profiles end up in expected places
+    # unique profiles to check that they are in proper place
     profiles[..., 0] = 1
     profiles[..., 1] = 2
+    return profiles
+
+
+@pytest.fixture
+def model_path(tmp_path, profiles):
+    settings_json = """\
+    {"epsilon": 0.2, "estimation_mode": "l0", "get_darkfield": false,
+    "lambda_darkfield": 0.0, "lambda_flatfield": 0.0, "max_iterations": 500,
+    "max_reweight_iterations": 10, "optimization_tol": 1e-06, "reweighting_tol": 0.001,
+    "varying_coeff": true, "working_size": 128}
+    """
+    with open(tmp_path / "settings.json", "w") as fp:
+        fp.write(settings_json)
     np.save(tmp_path / "profiles.npy", profiles)
+    return str(tmp_path)
 
-    # generate an instance from the serialized model
-    basic = BaSiC.load_model(tmp_path)
 
-    # check that the object was created
-    assert isinstance(basic, BaSiC)
+@pytest.mark.parametrize("raises_error", [(True), (False)], ids=["no_model", "model"])
+def test_basic_load_model(model_path: str, raises_error: bool, profiles: np.ndarray):
+    if raises_error:
+        with pytest.raises(FileNotFoundError):
+            basic = BaSiC.load_model("/not/a/real/path")
+    else:
+        # generate an instance from the serialized model
+        basic = BaSiC.load_model(model_path)
 
-    # check that the profiles are in the right places
-    assert np.array_equal(basic.flatfield, profiles[..., 0])
-    assert np.array_equal(basic.darkfield, profiles[..., 1])
+        # check that the object was created
+        assert isinstance(basic, BaSiC)
 
-    # check that settings are not default
-    assert basic.epsilon != BaSiC.__fields__["epsilon"].default
+        # check that the profiles are in the right places
+        assert np.array_equal(basic.flatfield, profiles[..., 0])
+        assert np.array_equal(basic.darkfield, profiles[..., 1])
+
+        # check that settings are not default
+        assert basic.epsilon != BaSiC.__fields__["epsilon"].default
