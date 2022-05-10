@@ -1,7 +1,7 @@
 """Test image tools."""
 
 import pytest
-from pybasic.tools import load_image, load_images, resize
+from basicpy.tools import load_image, load_images, resize
 
 
 def test_load_image():

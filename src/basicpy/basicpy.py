@@ -20,11 +20,11 @@ from scipy.fftpack import dct
 from skimage.transform import resize
 
 # Package modules
-from pybasic.tools import inexact_alm_rspca_l1
-from pybasic.types import ArrayLike
+from basicpy.tools import inexact_alm_rspca_l1
+from basicpy.types import ArrayLike
 
-# from pybasic.tools.dct2d_tools import dct2d, idct2d
-# from pybasic.tools.inexact_alm import inexact_alm_rspca_l1
+# from basicpy.tools.dct2d_tools import dct2d, idct2d
+# from basicpy.tools.inexact_alm import inexact_alm_rspca_l1
 
 # Get number of available threads to limit CPU thrashing
 # From preadator: https://pypi.org/project/preadator/
@@ -157,9 +157,9 @@ class BaSiC(BaseModel):
     def __call__(
         self, images: np.ndarray, timelapse: bool = False
     ) -> Union[Tuple[np.ndarray, np.ndarray], np.ndarray]:
-        """Shortcut for BaSiC.predict"""
+        """Shortcut for BaSiC.transform"""
 
-        return self.predict(images, timelapse)
+        return self.transform(images, timelapse)
 
     def fit(self, images: np.ndarray) -> None:
         """Generate illumination correction profiles.
@@ -169,8 +169,8 @@ class BaSiC(BaseModel):
                 along the z-dimension.
 
         Example:
-            >>> from pybasic import BaSiC
-            >>> from pybasic.tools import load_images
+            >>> from basicpy import BaSiC
+            >>> from basicpy.tools import load_images
             >>> images = load_images('./images')
             >>> basic = BaSiC()  # use default settings
             >>> basic.fit(images)
@@ -271,7 +271,7 @@ class BaSiC(BaseModel):
         self._darkfield = self.darkfield
         self._flatfield = self.flatfield
 
-    def predict(
+    def transform(
         self, images: np.ndarray, timelapse: bool = False
     ) -> Union[Tuple[np.ndarray, np.ndarray], np.ndarray]:
         """Apply profile to images.
@@ -290,7 +290,7 @@ class BaSiC(BaseModel):
 
         Example:
             >>> basic.fit(images)
-            >>> corrected = basic.predict(images)
+            >>> corrected = basic.transform(images)
             >>> for i, im in enumerate(corrected):
             ...     imsave(f"image_{i}.tif")
         """
@@ -335,10 +335,10 @@ class BaSiC(BaseModel):
 
     # REFACTOR large datasets will probably prefer saving corrected images to
     # files directly, a generator may be handy
-    def fit_predict(
+    def fit_transform(
         self, images: ArrayLike, timelapse: bool = True
     ) -> Union[Tuple[np.ndarray, np.ndarray], np.ndarray]:
-        """Fit and predict on data.
+        """Fit and transform on data.
 
         Args:
             images: input images to fit and correct
@@ -347,10 +347,10 @@ class BaSiC(BaseModel):
             profiles and corrected images
 
         Example:
-            >>> profiles, corrected = basic.fit_predict(images)
+            >>> profiles, corrected = basic.fit_transform(images)
         """
         self.fit(images)
-        corrected = self.predict(images, timelapse)
+        corrected = self.transform(images, timelapse)
 
         # NOTE or only return corrected images and user can get profiles separately
         return corrected

@@ -1,7 +1,7 @@
 """Tests the 2D dct tools."""
 
-# from pybasic.tools import dct2d_tools
-from pybasic.tools.dct2d_tools import DCT_BACKENDS
+# from basicpy.tools import dct2d_tools
+from basicpy.tools.dct2d_tools import DCT_BACKENDS
 
 import pytest
 import scipy.fft
@@ -17,7 +17,8 @@ arr_reverse_exp = scipy.fft.idct(
     scipy.fft.idct(arr_input.T, norm="ortho").T, norm="ortho"
 )
 
-backends = ["JAX", "OPENCV", "SCIPY"]
+# backends = ["JAX", "OPENCV", "SCIPY"]
+backends = ["OPENCV", "SCIPY"]
 
 
 @pytest.mark.parametrize("backend", backends)
@@ -38,27 +39,29 @@ def test_dct_backends(backend):
 
 @pytest.mark.parametrize("backend", backends)
 def test_dct_backend_import(monkeypatch, backend):
-    import pybasic.tools.dct2d_tools
+    import basicpy.tools.dct2d_tools
+
+    idct2d = DCT_BACKENDS[backend].idct2d
 
     monkeypatch.setenv("BASIC_DCT_BACKEND", backend)
-    importlib.reload(pybasic.tools.dct2d_tools)
+    importlib.reload(basicpy.tools.dct2d_tools)
 
-    assert pybasic.tools.dct2d_tools.dct._backend == backend
+    assert basicpy.tools.dct2d_tools.dct._backend == backend
 
 
 def test_unrecognized_backend(monkeypatch):
-    import pybasic.tools.dct2d_tools
+    import basicpy.tools.dct2d_tools
 
     backend = "FAKE_BACKEND"
 
     monkeypatch.setenv("BASIC_DCT_BACKEND", "FAKE_BACKEND")
 
     # with pytest.raises(KeyError):
-    #     importlib.reload(pybasic.tools.dct2d_tools)
+    #     importlib.reload(basicpy.tools.dct2d_tools)
 
     assert (
-        pybasic.tools.dct2d_tools.dct._backend
-        == pybasic.tools.dct2d_tools.DEFAULT_BACKEND
+        basicpy.tools.dct2d_tools.dct._backend
+        == basicpy.tools.dct2d_tools.DEFAULT_BACKEND
     )
 
 
@@ -66,3 +69,16 @@ def test_unrecognized_backend(monkeypatch):
 def test_backend_not_installed(monkeypatch, backend):
     # TODO mimic package not installed by removing from path?
     ...
+
+
+### BENCHMARKING ###
+@pytest.mark.parametrize("backend", backends)
+def test_dct_backends_benchmark_dct2d(backend, benchmark):
+    dct2d = DCT_BACKENDS[backend].dct2d
+    benchmark(dct2d, arr_input)
+
+
+@pytest.mark.parametrize("backend", backends)
+def test_dct_backends_benchmark_idct2d(backend, benchmark):
+    idct2d = DCT_BACKENDS[backend].idct2d
+    benchmark(idct2d, arr_input)
