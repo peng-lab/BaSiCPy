@@ -498,9 +498,9 @@ def basic_fit_ladmap(
     def basic_step_ladmap(vals):
         i,S,D_R,D_Z,I_R,B,Y,mu,fit_residual = vals
         I_B = S[jnp.newaxis,...]*B[:,jnp.newaxis,jnp.newaxis] + D_R[jnp.newaxis,...] + D_Z
-        eta=jnp.sqrt(jnp.sum(B**2))*1.02
+        eta=jnp.sum(B**2)*1.02
         S = S+jnp.sum(B[:,jnp.newaxis,jnp.newaxis]*(I - I_B - I_R + Y/mu), axis=0)/eta
-        S = idct2d(jshrinkage(dct2d(S), lambda_flatfield/(mu)))
+        S = idct2d(jshrinkage(dct2d(S), lambda_flatfield/(eta*mu)))
 
         I_B = S[jnp.newaxis,...]*B[:,jnp.newaxis,jnp.newaxis] + D_R[jnp.newaxis,...] + D_Z
         I_R = jshrinkage(I - I_B + Y/mu, weight / mu)
@@ -511,10 +511,10 @@ def basic_fit_ladmap(
 
         BS=S[jnp.newaxis,...]*B[:,jnp.newaxis,jnp.newaxis]
         if get_darkfield:
-            D_Z = jnp.mean(I-BS-D_R[jnp.newaxis,...]-I_R-Y/2./mu)
+            D_Z = jnp.mean(I-BS-D_R[jnp.newaxis,...]-I_R+Y/2./mu)
             D_Z = jnp.clip(D_Z,0,D_Z_max)
-            eta_D = np.sqrt(I.shape[0])*1.02
-            D_R = D_R+1./eta_D * jnp.sum(I-BS-D_R[jnp.newaxis,...]-D_Z-I_R-Y/mu, axis=0)
+            eta_D = I.shape[0]*1.02
+            D_R = D_R+1./eta_D * jnp.sum(I-BS-D_R[jnp.newaxis,...]-D_Z-I_R+Y/mu, axis=0)
             D_R = idct2d(jshrinkage(dct2d(D_R), lambda_darkfield/eta_D/mu))
             D_R = jshrinkage(D_R, lambda_darkfield/eta_D/mu)
 
@@ -525,15 +525,17 @@ def basic_fit_ladmap(
 
         return (i+1,S,D_R,D_Z,I_R, B, Y, mu, fit_residual)
 
-    @jit
     def stopping_cond(vals):
         i,S,D_R,D_Z,I_R,B,Y,mu,fit_residual = vals
         norm_ratio = jnp.linalg.norm(fit_residual.flatten(), ord=2) \
                         / init_image_norm
+        print(i,norm_ratio,D_Z)
         return jnp.all(jnp.array([norm_ratio > optimization_tol, i < max_iterations]))
 
     vals=(0,S,D_R,D_Z,I_R,B,Y,mu,fit_residual)
-    vals = lax.while_loop(stopping_cond, basic_step_ladmap, vals)
+    while stopping_cond(vals):
+        vals = basic_step_ladmap(vals)
+#    vals = lax.while_loop(stopping_cond, basic_step_ladmap, vals)
     i,S,D_R,D_Z,I_R,B,Y,mu,fit_residual = vals
 
     return S,D_R,D_Z,I_R, B, norm_ratio, i<max_iterations
