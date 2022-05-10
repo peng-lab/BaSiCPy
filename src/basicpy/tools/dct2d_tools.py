@@ -42,7 +42,7 @@ if has_jax:
 
     import jax
 
-    import pybasic.tools._jax_idct
+    import basicpy.tools._jax_idct
 
     class JaxDCT(DCT):
         _backend = "JAX"
@@ -56,8 +56,8 @@ if has_jax:
         # custom idct since JAX only implements dct type 2 (not idct, dct type 3)
         @staticmethod
         def idct2d(arr: np.ndarray) -> np.ndarray:
-            return pybasic.tools._jax_idct.idct(
-                pybasic.tools._jax_idct.idct(arr.T, norm="ortho").T, norm="ortho"
+            return basicpy.tools._jax_idct.idct(
+                basicpy.tools._jax_idct.idct(arr.T, norm="ortho").T, norm="ortho"
             )
 
 
