@@ -22,7 +22,6 @@ from skimage.transform import resize
 
 # Package modules
 from basicpy.types import ArrayLike
-from basicpy.tools import fit
 from basicpy.tools.dct2d_tools import SciPyDCT
 from jax import jit, lax, device_put
 from basicpy.tools.dct2d_tools import JaxDCT
@@ -274,17 +273,9 @@ class BaSiC(BaseModel):
         for i in range(self.max_reweight_iterations):
             # TODO: reuse the flatfield and darkfields?
             # TODO: loop jit?
-            S, D_R, D_Z, I_R, B, norm_ratio, converged = fit._fit_ladmap_single(
+            S, D_R, D_Z, I_R, B, norm_ratio, converged = self._fit_ladmap_single(
                 images,
                 weight,
-                self.lambda_darkfield,
-                self.lambda_flatfield,
-                self.get_darkfield,
-                self.optimization_tol,
-                self.max_iterations,
-                self.rho,
-                self.mu_coef,
-                self.max_mu_coef,
             )
             # TODO: warn if not converged
             mean_S = jnp.mean(S)
