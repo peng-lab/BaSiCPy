@@ -27,6 +27,7 @@ from jax import jit, lax, device_put
 from basicpy.tools.dct2d_tools import JaxDCT
 
 idct2d, dct2d = JaxDCT.idct2d, JaxDCT.dct2d
+newax = jnp.newaxis
 
 
 def _jshrinkage(x, thresh):
@@ -160,14 +161,16 @@ class BaSiC(BaseModel):
 
         return self.transform(images, timelapse)
 
-    def _fit_ladmap_single(
+    def fit_ladmap_single(
         self,
         images,
         weight,
+        S=None,
+        D_R=None,
+        D_Z=None,
+        B=None,
+        I_R=None,
     ):
-        # image dimension ... (time, Z, Y, X)
-        assert np.array_equal(images.shape, weight.shape)
-
         # matrix 2-norm (largest sing. value)
         spectral_norm = np.linalg.norm(images.reshape((images.shape[0], -1)), ord=2)
         mu = self.mu_coef / spectral_norm
@@ -179,59 +182,65 @@ class BaSiC(BaseModel):
         D_Z_max = jnp.min(Im)
 
         # initialize values
-        S = jnp.zeros(images.shape[1:], dtype=jnp.float32)
-        D_R = jnp.zeros(images.shape[1:], dtype=jnp.float32)
-        D_Z = 0
-        B = jnp.ones(images.shape[0], dtype=jnp.float32)
-        I_R = jnp.zeros(Im.shape, dtype=jnp.float32)
+        if S is None:
+            S = jnp.zeros(images.shape[1:], dtype=jnp.float32)
+        if D_R is None:
+            D_R = jnp.zeros(images.shape[1:], dtype=jnp.float32)
+        if D_Z is None:
+            D_Z = 0.0
+        if B is None:
+            B = jnp.ones(images.shape[0], dtype=jnp.float32)
+        if I_R is None:
+            I_R = jnp.zeros(Im.shape, dtype=jnp.float32)
+
+        if S.shape != Im.shape[1:]:
+            raise ValueError("S must have the same shape as images.shape[1:]")
+        if D_R.shape != Im.shape[1:]:
+            raise ValueError("D_R must have the same shape as images.shape[1:]")
+        if not jnp.isscalar(D_Z):
+            raise ValueError("D_Z must be a scalar.")
+        if B.shape != Im.shape[:1]:
+            raise ValueError("B must have the same shape as images.shape[:1]")
+        if I_R.shape != Im.shape:
+            raise ValueError("I_R must have the same shape as images.shape")
+        if weight.shape != Im.shape:
+            raise ValueError("weight must have the same shape as images.shape")
+
         Y = jnp.ones_like(Im, dtype=jnp.float32)
         fit_residual = jnp.ones(Im.shape, dtype=jnp.float32) * jnp.inf
 
         @jit
         def basic_step_ladmap(vals):
             k, S, D_R, D_Z, I_R, B, Y, mu, fit_residual = vals
-            I_B = (
-                S[jnp.newaxis, ...] * B[:, jnp.newaxis, jnp.newaxis]
-                + D_R[jnp.newaxis, ...]
-                + D_Z
-            )
+            I_B = S[newax, ...] * B[:, newax, newax] + D_R[newax, ...] + D_Z
             eta = jnp.sum(B**2) * 1.02
             S = (
                 S
-                + jnp.sum(
-                    B[:, jnp.newaxis, jnp.newaxis] * (Im - I_B - I_R + Y / mu), axis=0
-                )
-                / eta
+                + jnp.sum(B[:, newax, newax] * (Im - I_B - I_R + Y / mu), axis=0) / eta
             )
             S = idct2d(_jshrinkage(dct2d(S), self.lambda_flatfield / (eta * mu)))
 
-            I_B = (
-                S[jnp.newaxis, ...] * B[:, jnp.newaxis, jnp.newaxis]
-                + D_R[jnp.newaxis, ...]
-                + D_Z
-            )
+            I_B = S[newax, ...] * B[:, newax, newax] + D_R[newax, ...] + D_Z
             I_R = _jshrinkage(Im - I_B + Y / mu, weight / mu)
 
             R = Im - I_R
-            B = jnp.sum(S[jnp.newaxis, ...] * (R + Y / mu), axis=(1, 2)) / jnp.sum(
-                S**2
-            )
+            B = jnp.sum(S[newax, ...] * (R + Y / mu), axis=(1, 2)) / jnp.sum(S**2)
             B = jnp.maximum(B, 0)
 
-            BS = S[jnp.newaxis, ...] * B[:, jnp.newaxis, jnp.newaxis]
+            BS = S[newax, ...] * B[:, newax, newax]
             if self.get_darkfield:
-                D_Z = jnp.mean(Im - BS - D_R[jnp.newaxis, ...] - I_R + Y / 2.0 / mu)
+                D_Z = jnp.mean(Im - BS - D_R[newax, ...] - I_R + Y / 2.0 / mu)
                 D_Z = jnp.clip(D_Z, 0, D_Z_max)
                 eta_D = Im.shape[0] * 1.02
                 D_R = D_R + 1.0 / eta_D * jnp.sum(
-                    Im - BS - D_R[jnp.newaxis, ...] - D_Z - I_R + Y / mu, axis=0
+                    Im - BS - D_R[newax, ...] - D_Z - I_R + Y / mu, axis=0
                 )
                 D_R = idct2d(
                     _jshrinkage(dct2d(D_R), self.lambda_darkfield / eta_D / mu)
                 )
                 D_R = _jshrinkage(D_R, self.lambda_darkfield / eta_D / mu)
 
-            I_B = BS + D_R[jnp.newaxis, ...] + D_Z
+            I_B = BS + D_R[newax, ...] + D_Z
             fit_residual = R - I_B
             Y = Y + mu * fit_residual
             mu = jnp.minimum(mu * self.rho, max_mu)
@@ -273,7 +282,7 @@ class BaSiC(BaseModel):
         for i in range(self.max_reweight_iterations):
             # TODO: reuse the flatfield and darkfields?
             # TODO: loop jit?
-            S, D_R, D_Z, I_R, B, norm_ratio, converged = self._fit_ladmap_single(
+            S, D_R, D_Z, I_R, B, norm_ratio, converged = self.fit_ladmap_single(
                 images,
                 weight,
             )
@@ -283,7 +292,7 @@ class BaSiC(BaseModel):
             B = B * mean_S  # baseline
             D = D_R + D_Z  # darkfield
             weight = jnp.ones_like(images, dtype=np.float32) / (
-                jnp.abs(I_R / S[jnp.newaxis, ...]) + self.epsilon
+                jnp.abs(I_R / S[newax, ...]) + self.epsilon
             )
             # weight = weight / jnp.mean(weight)
 

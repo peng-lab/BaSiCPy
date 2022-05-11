@@ -93,6 +93,7 @@ def fetch(data_name: str):
 #%%
 import numpy as np
 from matplotlib import pyplot as plt
+newax = jnp.newaxis
 
 images=np.array(list(fetch("wsi_brain")[0]))
 print(images.shape)
@@ -418,29 +419,29 @@ def basic_fit_ladmap(
     @jit
     def basic_step_ladmap(vals):
         i,S,D_R,D_Z,I_R,B,Y,mu,fit_residual = vals
-        I_B = S[jnp.newaxis,...]*B[:,jnp.newaxis,jnp.newaxis] + D_R[jnp.newaxis,...] + D_Z
+        I_B = S[newax,...]*B[:,newax,newax] + D_R[newax,...] + D_Z
         eta=jnp.sum(B**2)*1.02
-        S = S+jnp.sum(B[:,jnp.newaxis,jnp.newaxis]*(I - I_B - I_R + Y/mu), axis=0)/eta
+        S = S+jnp.sum(B[:,newax,newax]*(I - I_B - I_R + Y/mu), axis=0)/eta
         S = idct2d(jshrinkage(dct2d(S), lambda_flatfield/(eta*mu)))
 
-        I_B = S[jnp.newaxis,...]*B[:,jnp.newaxis,jnp.newaxis] + D_R[jnp.newaxis,...] + D_Z
+        I_B = S[newax,...]*B[:,newax,newax] + D_R[newax,...] + D_Z
         I_R = jshrinkage(I - I_B + Y/mu, weight / mu)
 
         R = I - I_R
-        B = jnp.sum(S[jnp.newaxis,...]*(R+Y/mu), axis =(1,2))/jnp.sum(S**2)
+        B = jnp.sum(S[newax,...]*(R+Y/mu), axis =(1,2))/jnp.sum(S**2)
         B = jnp.maximum(B, 0)
 
-        BS=S[jnp.newaxis,...]*B[:,jnp.newaxis,jnp.newaxis]
+        BS=S[newax,...]*B[:,newax,newax]
         if get_darkfield:
-            D_Z = jnp.mean(I-BS-D_R[jnp.newaxis,...]-I_R+Y/2./mu)
+            D_Z = jnp.mean(I-BS-D_R[newax,...]-I_R+Y/2./mu)
             D_Z = jnp.clip(D_Z,0,D_Z_max)
             eta_D = I.shape[0]*1.02
-            D_R = D_R+1./eta_D * jnp.sum(I-BS-D_R[jnp.newaxis,...]-D_Z-I_R+Y/mu, axis=0)
+            D_R = D_R+1./eta_D * jnp.sum(I-BS-D_R[newax,...]-D_Z-I_R+Y/mu, axis=0)
             D_R = idct2d(jshrinkage(dct2d(D_R), lambda_darkfield/eta_D/mu))
             D_R = jshrinkage(D_R, lambda_darkfield/eta_D/mu)
 #            D_R = jnp.clip(D_R,-D_Z,None)
 
-        I_B = BS + D_R[jnp.newaxis,...] + D_Z
+        I_B = BS + D_R[newax,...] + D_Z
         fit_residual = R - I_B
         Y = Y + mu * fit_residual
         mu = jnp.minimum(mu * rho, max_mu)
