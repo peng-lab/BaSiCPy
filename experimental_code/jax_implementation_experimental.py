@@ -98,15 +98,55 @@ images=np.array(list(fetch("wsi_brain")[0]))
 print(images.shape)
 # %%
 plt.imshow(images[10])
-
-"""# test original implementation"""
-
+# %%
 import basicpy
 meanD = np.mean(images, axis=2)
 meanD = meanD / np.mean(meanD)
 W_meanD = basicpy.tools.dct2d_tools.dct2d(meanD.T)
 lambda_flatfield=np.sum(np.abs(W_meanD)) / 400 * 0.5
 lambda_darkfield=lambda_flatfield*0.2
+
+
+# %%
+%%time
+weight=np.ones_like(images, dtype=np.float32)
+from basicpy.tools import fit
+S, D_R,D_Z,I_R, B, norm_ratio, converged=fit._fit_ladmap_single(
+    images,
+    weight=np.ones_like(images),
+    lambda_darkfield=lambda_darkfield,
+    lambda_flatfield=lambda_flatfield,
+    get_darkfield=True,
+    optimization_tol=1e-4,
+    max_iterations=500,
+    rho=1.5,
+    mu_coef=12.5,
+    max_mu_coef=1e7)
+
+plt.plot(B)
+plt.show()
+plt.imshow(S)
+plt.colorbar()
+plt.show()
+plt.imshow(I_R[0])
+plt.colorbar()
+plt.show()
+plt.imshow((images-S[np.newaxis]*B[:,np.newaxis,np.newaxis]-I_R)[0])
+plt.colorbar()
+#%%
+%%time
+from basicpy import BaSiC
+b=BaSiC(get_darkfield=True,max_reweight_iterations=1)
+b.fit_ladmap(images)
+plt.imshow(b.flatfield)
+plt.colorbar()
+plt.show()
+plt.imshow(b.darkfield)
+plt.colorbar()
+
+#%%
+
+"""# test original implementation"""
 
 images2=np.swapaxes(images,0,-1).astype(np.float32)
 W=np.ones_like(images2,dtype=np.float32)
@@ -363,7 +403,6 @@ def basic_fit_ladmap(
 
     init_image_norm = np.linalg.norm(images.flatten(), ord=2)
 
-    #FIXME fix I definition for jax
     I = device_put(images).astype(jnp.float32)
     D_Z_max = jnp.min(I)
 
@@ -409,7 +448,7 @@ def basic_fit_ladmap(
         return (i+1,S,D_R,D_Z,I_R, B, Y, mu, fit_residual)
 
     @jit
-    def stopping_cond(vals):
+    def continuing_cond(vals):
         i,S,D_R,D_Z,I_R,B,Y,mu,fit_residual = vals
         norm_ratio = jnp.linalg.norm(fit_residual.flatten(), ord=2) \
                         / init_image_norm
@@ -417,9 +456,7 @@ def basic_fit_ladmap(
         return jnp.all(jnp.array([norm_ratio > optimization_tol, i < max_iterations]))
 
     vals=(0,S,D_R,D_Z,I_R,B,Y,mu,fit_residual)
-#    while stopping_cond(vals):
-#        vals = basic_step_ladmap(vals)
-    vals = lax.while_loop(stopping_cond, basic_step_ladmap, vals)
+    vals = lax.while_loop(continuing_cond, basic_step_ladmap, vals)
     i,S,D_R,D_Z,I_R,B,Y,mu,fit_residual = vals
 
     return S,D_R,D_Z,I_R, B, norm_ratio, i<max_iterations

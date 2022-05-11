@@ -15,13 +15,16 @@ from typing import Dict, Tuple, Union
 
 # 3rd party modules
 import numpy as np
+import jax.numpy as jnp
 from pydantic import BaseModel, Field, PrivateAttr
 from scipy.fftpack import dct
 from skimage.transform import resize
 
 # Package modules
-from basicpy.tools import inexact_alm_rspca_l1
 from basicpy.types import ArrayLike
+from basicpy.tools import fit
+from basicpy.tools.dct2d_tools import SciPyDCT
+
 
 # from basicpy.tools.dct2d_tools import dct2d, idct2d
 # from basicpy.tools.inexact_alm import inexact_alm_rspca_l1
@@ -37,11 +40,6 @@ else:
     # Default back to multiprocessing cpu_count, which is always going to count
     # the total number of cpus
     NUM_THREADS = cpu_count()
-
-
-class EstimationMode(Enum):
-
-    l0: str = "l0"
 
 
 class Device(Enum):
@@ -69,10 +67,6 @@ class BaSiC(BaseModel):
         0.1,
         description="Weight regularization term.",
     )
-    estimation_mode: EstimationMode = Field(
-        "l0",
-        description="Flatfield offset for weight updates.",
-    )
     flatfield: np.ndarray = Field(
         default_factory=lambda: np.zeros((128, 128), dtype=np.float64),
         description="Holds the flatfield component for the shading model.",
@@ -92,7 +86,7 @@ class BaSiC(BaseModel):
     )
     max_iterations: int = Field(
         500,
-        description="Maximum number of iterations.",
+        description="Maximum number of iterations for single optimization.",
     )
     max_reweight_iterations: int = Field(
         10,
@@ -103,12 +97,17 @@ class BaSiC(BaseModel):
         description="Maximum number of threads used for processing.",
         exclude=True,  # Don't dump to output json/yaml
     )
+    rho: float = Field(1.5, description="Parameter rho for mu update.")
+    mu_coef: float = Field(12.5, description="Coefficient for initial mu value.")
+    max_mu_coef: float = Field(
+        1e7, description="Maximum allowed value of mu, divided by the initial value."
+    )
     optimization_tol: float = Field(
         1e-6,
         description="Optimization tolerance.",
     )
     reweighting_tol: float = Field(
-        1e-3,
+        1e-2,
         description="Reweighting tolerance.",
     )
     varying_coeff: bool = Field(
@@ -125,13 +124,6 @@ class BaSiC(BaseModel):
     _reweight_score: float = PrivateAttr(None)
     _flatfield: np.ndarray = PrivateAttr(None)
     _darkfield: np.ndarray = PrivateAttr(None)
-    _alm_settings = {
-        "lambda_darkfield",
-        "lambda_flatfield",
-        "get_darkfield",
-        "optimization_tol",
-        "max_iterations",
-    }
 
     class Config:
 
@@ -160,6 +152,63 @@ class BaSiC(BaseModel):
         """Shortcut for BaSiC.transform"""
 
         return self.transform(images, timelapse)
+
+    def fit_ladmap(self, images: np.ndarray) -> None:
+        """
+        Fit the LADMAP algorithm to the images.
+        """
+        meanD = np.mean(images, axis=2)
+        meanD = meanD / np.mean(meanD)
+        W_meanD = SciPyDCT.dct2d(meanD.T)
+        self.lambda_flatfield = np.sum(np.abs(W_meanD)) / 400 * 0.5
+        self.lambda_darkfield = self.lambda_flatfield * 0.2
+
+        weight = np.ones_like(images, dtype=np.float32)
+        last_S = None
+        last_D = None
+        S = None
+        D = None
+        for i in range(self.max_reweight_iterations):
+            # TODO: reuse the flatfield and darkfields?
+            # TODO: loop jit?
+            S, D_R, D_Z, I_R, B, norm_ratio, converged = fit._fit_ladmap_single(
+                images,
+                weight,
+                self.lambda_darkfield,
+                self.lambda_flatfield,
+                self.get_darkfield,
+                self.optimization_tol,
+                self.max_iterations,
+                self.rho,
+                self.mu_coef,
+                self.max_mu_coef,
+            )
+            # TODO: warn if not converged
+            mean_S = jnp.mean(S)
+            S = S / mean_S  # flatfield
+            B = B * mean_S  # baseline
+            D = D_R + D_Z  # darkfield
+            weight = jnp.ones_like(images, dtype=np.float32) / (
+                jnp.abs(I_R / S[jnp.newaxis, ...]) + self.epsilon
+            )
+            # weight = weight / jnp.mean(weight)
+
+            if last_S is not None:
+                mad_flatfield = jnp.sum(np.abs(S - last_S)) / jnp.sum(np.abs(last_S))
+                if self.get_darkfield:
+                    mad_darkfield = jnp.sum(jnp.abs(D - last_D)) / max(
+                        jnp.sum(np.abs(last_D)), 1
+                    )  # assumes the amplitude of darkfield is more than 1
+                    self._reweight_score = max(mad_flatfield, mad_darkfield)
+                else:
+                    self._reweight_score = mad_flatfield
+                if self._reweight_score <= self.reweighting_tol:
+                    break
+            last_S = S
+            last_D = D
+            print(i)
+        self.flatfield = S
+        self.darkfield = D
 
     def fit(self, images: np.ndarray) -> None:
         """Generate illumination correction profiles.
@@ -195,81 +244,6 @@ class BaSiC(BaseModel):
             self.lambda_flatfield = np.sum(np.abs(W_D_mean)) / 400 * 0.5
         if self.lambda_darkfield == 0:
             self.lambda_darkfield = self.lambda_flatfield * 0.2
-
-        D = np.sort(D, axis=2)
-
-        X_A_offset = np.zeros(D.shape[:2])
-        weight = np.ones(D.shape)
-
-        # TODO: The original implementation includes a segmentation argument.
-        # if segmentation is not None:
-        #     segmentation = np.array(segmentation)
-        #     segmentation = np.transpose(segmentation, (1, 2, 0))
-        #     for i in range(weight.shape[2]):
-        #         weight[segmentation] = 1e-6
-        #     # weight[options.segmentation] = 1e-6
-
-        reweighting_iter = 0
-        flag_reweighting = True
-        flatfield_last = np.ones(D.shape[:2])
-        darkfield_last = np.random.randn(*D.shape[:2])
-
-        while flag_reweighting and reweighting_iter < self.max_reweight_iterations:
-            reweighting_iter += 1
-
-            # TODO: Included in the original code
-            # if initial_flatfield:
-            #     # TODO: implement inexact_alm_rspca_l1_intflat?
-            #     raise IOError("Initial flatfield option not implemented yet!")
-            # else:
-            X_k_A, X_k_E, X_k_A_offset, self._score = inexact_alm_rspca_l1(
-                D, weight=weight, **self.dict(include=self._alm_settings)
-            )
-
-            X_A = np.reshape(X_k_A, D.shape[:2] + (-1,), order="F")
-            X_E = np.reshape(X_k_E, D.shape[:2] + (-1,), order="F")
-            X_A_offset = np.reshape(X_k_A_offset, D.shape[:2], order="F")
-            X_E_norm = X_E / np.mean(X_A, axis=(0, 1))
-
-            # Update the weights:
-            weight = np.ones_like(X_E_norm) / (np.abs(X_E_norm) + self.epsilon)
-
-            # TODO: Included in the original code
-            # if segmentation is not None:
-            #     weight[segmentation] = 0
-
-            weight = weight * weight.size / np.sum(weight)
-
-            temp = np.mean(X_A, axis=2) - X_A_offset
-            flatfield_current = temp / np.mean(temp)
-            darkfield_current = X_A_offset
-            mad_flatfield = np.sum(np.abs(flatfield_current - flatfield_last)) / np.sum(
-                np.abs(flatfield_last)
-            )
-            temp_diff = np.sum(np.abs(darkfield_current - darkfield_last))
-            if temp_diff < 1e-7:
-                mad_darkfield = 0
-            else:
-                mad_darkfield = temp_diff / np.maximum(
-                    np.sum(np.abs(darkfield_last)), 1e-6
-                )
-            flatfield_last = flatfield_current
-            darkfield_last = darkfield_current
-            self._reweight_score = np.maximum(mad_flatfield, mad_darkfield)
-            if (
-                np.maximum(mad_flatfield, mad_darkfield) <= self.reweighting_tol
-                or reweighting_iter >= self.max_reweight_iterations
-            ):
-                flag_reweighting = False
-
-        shading = np.mean(X_A, 2) - X_A_offset
-        self.flatfield = shading / shading.mean()
-
-        if self.get_darkfield:
-            self.darkfield = X_A_offset
-
-        self._darkfield = self.darkfield
-        self._flatfield = self.flatfield
 
     def transform(
         self, images: np.ndarray, timelapse: bool = False
