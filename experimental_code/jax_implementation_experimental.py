@@ -93,6 +93,7 @@ def fetch(data_name: str):
 #%%
 import numpy as np
 from matplotlib import pyplot as plt
+from jax import numpy as jnp
 newax = jnp.newaxis
 
 images=np.array(list(fetch("wsi_brain")[0]))
