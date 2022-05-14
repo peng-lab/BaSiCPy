@@ -17,6 +17,7 @@ from functools import partial
 # 3rd party modules
 import numpy as np
 import jax.numpy as jnp
+from jax.tree_util import register_pytree_node_class
 from pydantic import BaseModel, Field, PrivateAttr
 from scipy.fftpack import dct
 from skimage.transform import resize
@@ -88,6 +89,7 @@ class Device(Enum):
 
 
 # multiple channels should be handled by creating a `basic` object for each chan
+@register_pytree_node_class
 class BaSiC(BaseModel):
     """A class for fitting and applying BaSiC illumination correction profiles."""
 
@@ -194,6 +196,15 @@ class BaSiC(BaseModel):
         """Shortcut for BaSiC.transform"""
 
         return self.transform(images, timelapse)
+
+    def tree_flatten(self):
+        children = (self.flatfield, self.darkfield)  # array properties
+        aux_data = None
+        return (children, aux_data)
+
+    @classmethod
+    def tree_unflatten(cls, aux_data, children):
+        return cls(*children)
 
     def _ladmap_step(self, Im, W, vals):
         k, S, D_R, D_Z, I_R, B, Y, mu, fit_residual = vals

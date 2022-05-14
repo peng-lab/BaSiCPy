@@ -110,6 +110,7 @@ lambda_darkfield=lambda_flatfield*0.2
 
 
 # %%
+"""
 %%time
 weight=np.ones_like(images, dtype=np.float32)
 from basicpy.tools import fit
@@ -135,6 +136,7 @@ plt.colorbar()
 plt.show()
 plt.imshow((images-S[np.newaxis]*B[:,np.newaxis,np.newaxis]-I_R)[0])
 plt.colorbar()
+"""
 #%%
 %%time
 from basicpy import BaSiC
