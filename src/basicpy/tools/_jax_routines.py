@@ -43,6 +43,7 @@ class BaseFit(BaseModel):
     class Config:
         extra = "ignore"
 
+    @jit
     def __call__(
         self,
         Im,
