@@ -190,19 +190,6 @@ class BaSiC(BaseModel):
 
         return self.transform(images, timelapse)
 
-    def fit_ladmap_single(
-        self,
-        Im,
-        W=None,
-        S=None,
-        D_R=None,
-        D_Z=None,
-        B=None,
-        I_R=None,
-    ):
-        # initialize valiables so that one can use this function directly
-        W, S, D_R, D_Z, B, I_R = _check_and_init_variables(Im, W, S, D_R, D_Z, B, I_R)
-
     def fit(self, images: np.ndarray) -> None:
         """
         Fit the LADMAP algorithm to the images.
@@ -212,14 +199,19 @@ class BaSiC(BaseModel):
         mean_image_dct = SciPyDCT.dct2d(mean_image.T)
 
         spectral_norm = np.linalg.norm(images.reshape((images.shape[0], -1)), ord=2)
-        fit_params = dict(
-            lambda_flatfield=np.sum(np.abs(mean_image_dct)) / 400 * 0.5,
-            lambda_darkfield=self.lambda_flatfield * 0.2,
-            # matrix 2-norm (largest sing. value)
-            init_mu=self.mu_coef / spectral_norm,
-            max_mu=self.init_mu * self.max_mu_coef,
-            D_Z_max=jnp.min(images),
-            image_norm=np.linalg.norm(images.flatten(), ord=2),
+        lambda_flatfield = np.sum(np.abs(mean_image_dct)) / 400 * 0.5
+        init_mu = self.mu_coef / spectral_norm
+        fit_params = self.dict()
+        fit_params.update(
+            dict(
+                lambda_flatfield=lambda_flatfield,
+                lambda_darkfield=lambda_flatfield * 0.2,
+                # matrix 2-norm (largest sing. value)
+                init_mu=init_mu,
+                max_mu=init_mu * self.max_mu_coef,
+                D_Z_max=jnp.min(images),
+                image_norm=np.linalg.norm(images.flatten(), ord=2),
+            )
         )
 
         # Initialize variables

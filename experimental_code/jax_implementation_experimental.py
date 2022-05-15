@@ -101,6 +101,7 @@ print(images.shape)
 # %%
 plt.imshow(images[10])
 # %%
+"""
 import basicpy
 meanD = np.mean(images, axis=2)
 meanD = meanD / np.mean(meanD)
@@ -108,7 +109,7 @@ W_meanD = basicpy.tools.dct2d_tools.dct2d(meanD.T)
 lambda_flatfield=np.sum(np.abs(W_meanD)) / 400 * 0.5
 lambda_darkfield=lambda_flatfield*0.2
 
-
+"""
 # %%
 """
 %%time
@@ -138,10 +139,9 @@ plt.imshow((images-S[np.newaxis]*B[:,np.newaxis,np.newaxis]-I_R)[0])
 plt.colorbar()
 """
 #%%
-%%time
 from basicpy import BaSiC
 b=BaSiC(get_darkfield=True,max_reweight_iterations=1)
-b.fit_ladmap(images)
+b.fit(images)
 plt.imshow(b.flatfield)
 plt.colorbar()
 plt.show()

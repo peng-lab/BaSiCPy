@@ -40,10 +40,44 @@ class BaseFit(BaseModel):
         description="Maximum number of iterations for single optimization.",
     )
 
+    class Config:
+        extra = "ignore"
+
     def __call__(
         self,
+        Im,
+        W,
+        S,
+        D_R,
+        D_Z,
+        B,
+        I_R,
     ):
-        pass
+        # initialize values
+        Y = jnp.ones_like(Im, dtype=jnp.float32)
+        mu = self.init_mu
+        fit_residual = jnp.ones(Im.shape, dtype=jnp.float32) * jnp.inf
+
+        vals = (0, S, D_R, D_Z, I_R, B, Y, mu, fit_residual)
+        ladmap_step = partial(
+            self._step,
+            Im,
+            W,
+        )
+        vals = lax.while_loop(self._cond, ladmap_step, vals)
+        k, S, D_R, D_Z, I_R, B, Y, mu, fit_residual = vals
+        norm_ratio = jnp.linalg.norm(fit_residual.flatten(), ord=2) / self.image_norm
+        return S, D_R, D_Z, I_R, B, norm_ratio, k < self.max_iterations
+
+    def tree_flatten(self):
+        # all of the fields are treated as "static" values for JAX
+        children = []
+        aux_data = self.dict()
+        return (children, aux_data)
+
+    @classmethod
+    def tree_unflatten(cls, aux_data, _children):
+        return cls(**aux_data)
 
 
 @register_pytree_node_class
@@ -108,35 +142,12 @@ class LadmapFit(BaseFit):
             jnp.array([norm_ratio > self.optimization_tol, k < self.max_iterations])
         )
 
-    @jit
-    def __call__(
-        self,
-        Im,
-        W,
-        S,
-        D_R,
-        D_Z,
-        B,
-        I_R,
-    ):
-        # initialize values
-        Y = jnp.ones_like(Im, dtype=jnp.float32)
-        mu = self.init_mu
-        fit_residual = jnp.ones(Im.shape, dtype=jnp.float32) * jnp.inf
 
-        vals = (0, S, D_R, D_Z, I_R, B, Y, mu, fit_residual)
-        ladmap_step = partial(
-            self._step,
-            Im,
-            W,
-        )
-        vals = lax.while_loop(self._ladmap_cond, ladmap_step, vals)
-        k, S, D_R, D_Z, I_R, B, Y, mu, fit_residual = vals
-        norm_ratio = jnp.linalg.norm(fit_residual.flatten(), ord=2) / self.image_norm
-        return S, D_R, D_Z, I_R, B, norm_ratio, k < self.max_iterations
+#    @classmethod
+#    def tree_unflatten(cls, aux_data, children):
+#        super(LadmapFit,cls,)._tree_unflatten(aux_data, children)
 
 
-@register_pytree_node_class
 class ApproximateFit(BaseFit):
     @jit
     def _step(
@@ -199,30 +210,3 @@ class ApproximateFit(BaseFit):
         return jnp.all(
             jnp.array([norm_ratio > self.optimization_tol, k < self.max_iterations])
         )
-
-    @jit
-    def __call__(
-        self,
-        Im,
-        W,
-        S,
-        D_R,
-        D_Z,
-        B,
-        I_R,
-    ):
-        # initialize values
-        Y = jnp.ones_like(Im, dtype=jnp.float32)
-        mu = self.init_mu
-        fit_residual = jnp.ones(Im.shape, dtype=jnp.float32) * jnp.inf
-
-        vals = (0, S, D_R, D_Z, I_R, B, Y, mu, fit_residual)
-        ladmap_step = partial(
-            self._step,
-            Im,
-            W,
-        )
-        vals = lax.while_loop(self._ladmap_cond, ladmap_step, vals)
-        k, S, D_R, D_Z, I_R, B, Y, mu, fit_residual = vals
-        norm_ratio = jnp.linalg.norm(fit_residual.flatten(), ord=2) / self.image_norm
-        return S, D_R, D_Z, I_R, B, norm_ratio, k < self.max_iterations
