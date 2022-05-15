@@ -121,14 +121,6 @@ class BaSiC(BaseModel):
         False,
         description="When True, will estimate the darkfield shading component.",
     )
-    lambda_darkfield: float = Field(
-        0.0,
-        description="Darkfield offset for weight updates.",
-    )
-    lambda_flatfield: float = Field(
-        0.0,
-        description="Flatfield offset for weight updates.",
-    )
     max_iterations: int = Field(
         500,
         description="Maximum number of iterations for single optimization.",
@@ -142,15 +134,11 @@ class BaSiC(BaseModel):
         description="Maximum number of threads used for processing.",
         exclude=True,  # Don't dump to output json/yaml
     )
-    init_mu: float = Field(0, description="Initial value for mu.")
-    D_Z_max: float = Field(0, description="Maximum value for D_Z.")
-    image_norm: float = Field(0, description="The 2nd order norm for the images.")
     rho: float = Field(1.5, description="Parameter rho for mu update.")
     mu_coef: float = Field(12.5, description="Coefficient for initial mu value.")
     max_mu_coef: float = Field(
         1e7, description="Maximum allowed value of mu, divided by the initial value."
     )
-    max_mu: float = Field(0, description="The maximum value of mu.")
     optimization_tol: float = Field(
         1e-6,
         description="Optimization tolerance.",

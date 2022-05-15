@@ -3,7 +3,7 @@ from jax import jit, lax
 from jax.tree_util import register_pytree_node_class
 from basicpy.tools.dct2d_tools import JaxDCT
 from functools import partial
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 idct2d, dct2d = JaxDCT.idct2d, JaxDCT.dct2d
 
@@ -14,6 +14,32 @@ def _jshrinkage(x, thresh):
 
 
 class BaseFit(BaseModel):
+    max_mu: float = Field(0, description="The maximum value of mu.")
+    init_mu: float = Field(0, description="Initial value for mu.")
+    D_Z_max: float = Field(0, description="Maximum value for D_Z.")
+    image_norm: float = Field(0, description="The 2nd order norm for the images.")
+    rho: float = Field(1.5, description="Parameter rho for mu update.")
+    optimization_tol: float = Field(
+        1e-6,
+        description="Optimization tolerance.",
+    )
+    lambda_darkfield: float = Field(
+        0.0,
+        description="Darkfield offset for weight updates.",
+    )
+    lambda_flatfield: float = Field(
+        0.0,
+        description="Flatfield offset for weight updates.",
+    )
+    get_darkfield: bool = Field(
+        False,
+        description="When True, will estimate the darkfield shading component.",
+    )
+    max_iterations: int = Field(
+        500,
+        description="Maximum number of iterations for single optimization.",
+    )
+
     def __call__(
         self,
     ):
@@ -77,9 +103,7 @@ class LadmapFit(BaseFit):
     @jit
     def _cond(self, vals):
         k, _, _, _, _, _, _, _, fit_residual = vals
-        norm_ratio = (
-            jnp.linalg.norm(fit_residual.flatten(), ord=2) / self.init_image_norm
-        )
+        norm_ratio = jnp.linalg.norm(fit_residual.flatten(), ord=2) / self.image_norm
         return jnp.all(
             jnp.array([norm_ratio > self.optimization_tol, k < self.max_iterations])
         )
