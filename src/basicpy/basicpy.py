@@ -12,14 +12,11 @@ from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
 from multiprocessing import cpu_count
 from typing import Dict, Tuple, Union
-from functools import partial
 
 # 3rd party modules
 import numpy as np
 import jax.numpy as jnp
-from jax.tree_util import register_pytree_node_class
 from pydantic import BaseModel, Field, PrivateAttr
-from scipy.fftpack import dct
 from skimage.transform import resize
 
 # Package modules
@@ -27,18 +24,17 @@ from basicpy.types import ArrayLike
 from basicpy.tools.dct2d_tools import SciPyDCT
 from jax import device_put
 from basicpy.tools.dct2d_tools import JaxDCT
+from basicpy.tools._jax_routines import LadmapFit, ApproximateFit
 
 idct2d, dct2d = JaxDCT.idct2d, JaxDCT.dct2d
 newax = jnp.newaxis
 
 
-def _jshrinkage(x, thresh):
-    return jnp.sign(x) * jnp.maximum(jnp.abs(x) - thresh, 0)
-
-
-def _check_and_init_variables(images, weight, S, D_R, D_Z, B, I_R):
-    if weight is None:
-        weight = jnp.ones(images.shape, dtype=jnp.float32)
+def _check_and_init_variables(
+    images, W=None, S=None, D_R=None, D_Z=None, B=None, I_R=None
+):
+    if W is None:
+        W = jnp.ones(images.shape, dtype=jnp.float32)
     if S is None:
         S = jnp.zeros(images.shape[1:], dtype=jnp.float32)
     if D_R is None:
@@ -60,9 +56,9 @@ def _check_and_init_variables(images, weight, S, D_R, D_Z, B, I_R):
         raise ValueError("B must have the same shape as images.shape[:1]")
     if I_R.shape != images.shape:
         raise ValueError("I_R must have the same shape as images.shape")
-    if weight.shape != images.shape:
+    if W.shape != images.shape:
         raise ValueError("weight must have the same shape as images.shape")
-    return weight, S, D_R, D_Z, B, I_R
+    return W, S, D_R, D_Z, B, I_R
 
 
 # from basicpy.tools.dct2d_tools import dct2d, idct2d
@@ -88,8 +84,13 @@ class Device(Enum):
     tpu: str = "tpu"
 
 
+class FittingMode(Enum):
+
+    ladmap: str = "ladmap"
+    approximate: str = "approximate"
+
+
 # multiple channels should be handled by creating a `basic` object for each chan
-@register_pytree_node_class
 class BaSiC(BaseModel):
     """A class for fitting and applying BaSiC illumination correction profiles."""
 
@@ -103,6 +104,10 @@ class BaSiC(BaseModel):
         description="Must be one of ['cpu','gpu','tpu'].",
         exclude=True,  # Don't dump to output json/yaml
     )
+    fitting_mode: FittingMode = Field(
+        FittingMode.ladmap, description="Must be one of ['ladmap', 'approximate']"
+    )
+
     epsilon: float = Field(
         0.1,
         description="Weight regularization term.",
@@ -197,54 +202,6 @@ class BaSiC(BaseModel):
 
         return self.transform(images, timelapse)
 
-    def tree_flatten(self):
-        children = (self.flatfield, self.darkfield)  # array properties
-        aux_data = None
-        return (children, aux_data)
-
-    @classmethod
-    def tree_unflatten(cls, aux_data, children):
-        return cls(*children)
-
-    def _ladmap_step(self, Im, W, vals):
-        k, S, D_R, D_Z, I_R, B, Y, mu, fit_residual = vals
-        I_B = S[newax, ...] * B[:, newax, newax] + D_R[newax, ...] + D_Z
-        eta = jnp.sum(B**2) * 1.02
-        S = S + jnp.sum(B[:, newax, newax] * (Im - I_B - I_R + Y / mu), axis=0) / eta
-        S = idct2d(_jshrinkage(dct2d(S), self.lambda_flatfield / (eta * mu)))
-
-        I_B = S[newax, ...] * B[:, newax, newax] + D_R[newax, ...] + D_Z
-        I_R = _jshrinkage(Im - I_B + Y / mu, W / mu)
-
-        R = Im - I_R
-        B = jnp.sum(S[newax, ...] * (R + Y / mu), axis=(1, 2)) / jnp.sum(S**2)
-        B = jnp.maximum(B, 0)
-
-        BS = S[newax, ...] * B[:, newax, newax]
-        if self.get_darkfield:
-            D_Z = jnp.mean(Im - BS - D_R[newax, ...] - I_R + Y / 2.0 / mu)
-            D_Z = jnp.clip(D_Z, 0, self.D_Z_max)
-            eta_D = Im.shape[0] * 1.02
-            D_R = D_R + 1.0 / eta_D * jnp.sum(
-                Im - BS - D_R[newax, ...] - D_Z - I_R + Y / mu, axis=0
-            )
-            D_R = idct2d(_jshrinkage(dct2d(D_R), self.lambda_darkfield / eta_D / mu))
-            D_R = _jshrinkage(D_R, self.lambda_darkfield / eta_D / mu)
-
-        I_B = BS + D_R[newax, ...] + D_Z
-        fit_residual = R - I_B
-        Y = Y + mu * fit_residual
-        mu = jnp.minimum(mu * self.rho, self.max_mu)
-
-        return (k + 1, S, D_R, D_Z, I_R, B, Y, mu, fit_residual)
-
-    def _ladmap_cond(self, vals):
-        k, _, _, _, _, _, _, _, fit_residual = vals
-        norm_ratio = jnp.linalg.norm(fit_residual.flatten(), ord=2) / self.image_norm
-        return jnp.all(
-            jnp.array([norm_ratio > self.optimization_tol, k < self.max_iterations])
-        )
-
     def fit_ladmap_single(
         self,
         Im,
@@ -255,64 +212,65 @@ class BaSiC(BaseModel):
         B=None,
         I_R=None,
     ):
-        # initialize values
+        # initialize valiables so that one can use this function directly
         W, S, D_R, D_Z, B, I_R = _check_and_init_variables(Im, W, S, D_R, D_Z, B, I_R)
 
-        Y = jnp.ones_like(Im, dtype=jnp.float32)
-        mu = self.init_mu
-        fit_residual = jnp.ones(Im.shape, dtype=jnp.float32) * jnp.inf
-        vals = (0, S, D_R, D_Z, I_R, B, Y, mu, fit_residual)
-        ladmap_step = partial(self._ladmap_step, Im, W)
-        while self._ladmap_cond(vals):
-            vals = ladmap_step(vals)
-        # vals = lax.while_loop(self._ladmap_cond, ladmap_step, vals)
-        k, S, D_R, D_Z, I_R, B, Y, mu, fit_residual = vals
-        norm_ratio = jnp.linalg.norm(fit_residual.flatten(), ord=2) / self.image_norm
-        return S, D_R, D_Z, I_R, B, norm_ratio, k < self.max_iterations
-
-    def fit_approximate_single(
-        self, images, weight, S=None, D_R=None, D_Z=None, B=None, I_R=None
-    ):
-        pass
-
-    def fit_ladmap(self, images: np.ndarray) -> None:
+    def fit(self, images: np.ndarray) -> None:
         """
         Fit the LADMAP algorithm to the images.
         """
         mean_image = np.mean(images, axis=2)
         mean_image = mean_image / np.mean(mean_image)
         mean_image_dct = SciPyDCT.dct2d(mean_image.T)
-        self.lambda_flatfield = np.sum(np.abs(mean_image_dct)) / 400 * 0.5
-        self.lambda_darkfield = self.lambda_flatfield * 0.2
-        # matrix 2-norm (largest sing. value)
-        spectral_norm = np.linalg.norm(images.reshape((images.shape[0], -1)), ord=2)
-        self.init_mu = self.mu_coef / spectral_norm
-        self.max_mu = self.init_mu * self.max_mu_coef
-        self.D_Z_max = jnp.min(images)
-        self.image_norm = np.linalg.norm(images.flatten(), ord=2)
 
+        spectral_norm = np.linalg.norm(images.reshape((images.shape[0], -1)), ord=2)
+        fit_params = dict(
+            lambda_flatfield=np.sum(np.abs(mean_image_dct)) / 400 * 0.5,
+            lambda_darkfield=self.lambda_flatfield * 0.2,
+            # matrix 2-norm (largest sing. value)
+            init_mu=self.mu_coef / spectral_norm,
+            max_mu=self.init_mu * self.max_mu_coef,
+            D_Z_max=jnp.min(images),
+            image_norm=np.linalg.norm(images.flatten(), ord=2),
+        )
+
+        # Initialize variables
         Im = device_put(images).astype(jnp.float32)
         W = jnp.ones_like(Im, dtype=jnp.float32)
+        S = jnp.zeros(images.shape[1:], dtype=jnp.float32)
+        D_R = jnp.zeros(images.shape[1:], dtype=jnp.float32)
+        D_Z = 0.0
+        B = jnp.ones(images.shape[0], dtype=jnp.float32)
+        I_R = jnp.zeros(images.shape, dtype=jnp.float32)
+
         last_S = None
         last_D = None
-        S = None
         D = None
+
+        if self.fitting_mode == FittingMode.ladmap:
+            fitting_step = LadmapFit(**fit_params)
+        else:
+            fitting_step = ApproximateFit(**fit_params)
+
         for i in range(self.max_reweight_iterations):
-            # TODO: reuse the flatfield and darkfields?
             # TODO: loop jit?
-            S, D_R, D_Z, I_R, B, norm_ratio, converged = self.fit_ladmap_single(
+            S, D_R, D_Z, I_R, B, norm_ratio, converged = fitting_step(
                 Im,
                 W,
+                S,
+                D_R,
+                D_Z,
+                B,
+                I_R,
             )
             # TODO: warn if not converged
             mean_S = jnp.mean(S)
-            S = S / mean_S  # flatfield
+            S = S / mean_S  # flatfields
             B = B * mean_S  # baseline
             D = D_R + D_Z  # darkfield
             W = jnp.ones_like(Im, dtype=np.float32) / (
                 jnp.abs(I_R / S[newax, ...]) + self.epsilon
             )
-            # weight = weight / jnp.mean(weight)
 
             if last_S is not None:
                 mad_flatfield = jnp.sum(np.abs(S - last_S)) / jnp.sum(np.abs(last_S))
@@ -331,8 +289,9 @@ class BaSiC(BaseModel):
         self.flatfield = S
         self.darkfield = D
 
-    def fit(self, images: np.ndarray) -> None:
-        """Generate illumination correction profiles.
+    """
+    def fit_old(self, images: np.ndarray) -> None:
+        Generate illumination correction profiles.
 
         Args:
             images: Input images to fit shading model. Images should be stacked
@@ -345,7 +304,7 @@ class BaSiC(BaseModel):
             >>> basic = BaSiC()  # use default settings
             >>> basic.fit(images)
 
-        """
+
         assert images.ndim == 3
 
         # Resize the images
@@ -354,17 +313,7 @@ class BaSiC(BaseModel):
         D = resize(
             images, (working_shape), order=1, mode="symmetric", preserve_range=True
         )
-
-        # Get initial frequencies
-        D_mean = D.mean(axis=2)
-        D_mean /= D_mean.mean()
-        W_D_mean = dct(dct(D_mean, norm="ortho").T, norm="ortho")
-
-        # Set lambdas if null
-        if self.lambda_flatfield == 0:
-            self.lambda_flatfield = np.sum(np.abs(W_D_mean)) / 400 * 0.5
-        if self.lambda_darkfield == 0:
-            self.lambda_darkfield = self.lambda_flatfield * 0.2
+    """
 
     def transform(
         self, images: np.ndarray, timelapse: bool = False
