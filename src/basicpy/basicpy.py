@@ -88,6 +88,12 @@ class BaSiC(BaseModel):
         False,
         description="When True, will estimate the darkfield shading component.",
     )
+    lambda_flatfield_coef: float = Field(
+        1.0 / 400 * 0.5, description="Weight of the flatfield term in the Lagrangian."
+    )
+    lambda_darkfield_coef: float = Field(
+        0.2, description="Relative weight of the darkfield term in the Lagrangian."
+    )
     max_iterations: int = Field(
         500,
         description="Maximum number of iterations for single optimization.",
@@ -169,7 +175,7 @@ class BaSiC(BaseModel):
         """
         if self.working_size is not None:
             if np.isscalar(self.working_size):
-                working_shape = (self.working_size,) * (Im.ndim - 1)
+                working_shape = [self.working_size] * (Im.ndim - 1)
             else:
                 if not Im.ndim - 1 == len(self.working_size):
                     raise ValueError(
@@ -197,10 +203,12 @@ class BaSiC(BaseModel):
 
         """
         Im = device_put(images).astype(jnp.float32)
+        Im = self._resize(Im)
+
         mean_image = jnp.mean(Im, axis=2)
         mean_image = mean_image / jnp.mean(Im)
         mean_image_dct = dct2d(mean_image.T)
-        lambda_flatfield = jnp.sum(jnp.abs(mean_image_dct)) / 400 * 0.5
+        lambda_flatfield = jnp.sum(jnp.abs(mean_image_dct)) * self.lambda_flatfield_coef
 
         spectral_norm = jnp.linalg.norm(Im.reshape((Im.shape[0], -1)), ord=2)
         init_mu = self.mu_coef / spectral_norm
@@ -208,7 +216,7 @@ class BaSiC(BaseModel):
         fit_params.update(
             dict(
                 lambda_flatfield=lambda_flatfield,
-                lambda_darkfield=lambda_flatfield * 0.2,
+                lambda_darkfield=lambda_flatfield * self.lambda_darkfield_coef,
                 # matrix 2-norm (largest sing. value)
                 init_mu=init_mu,
                 max_mu=init_mu * self.max_mu_coef,
@@ -231,11 +239,11 @@ class BaSiC(BaseModel):
         for i in range(self.max_reweight_iterations):
             # TODO: loop jit?
             # TODO: reusing last values?
-            S = jnp.zeros(images.shape[1:], dtype=jnp.float32)
-            D_R = jnp.zeros(images.shape[1:], dtype=jnp.float32)
+            S = jnp.zeros(Im.shape[1:], dtype=jnp.float32)
+            D_R = jnp.zeros(Im.shape[1:], dtype=jnp.float32)
             D_Z = 0.0
-            B = jnp.ones(images.shape[0], dtype=jnp.float32)
-            I_R = jnp.zeros(images.shape, dtype=jnp.float32)
+            B = jnp.ones(Im.shape[0], dtype=jnp.float32)
+            I_R = jnp.zeros(Im.shape, dtype=jnp.float32)
             S, D_R, D_Z, I_R, B, norm_ratio, converged = fitting_step(
                 Im,
                 W,
@@ -245,6 +253,7 @@ class BaSiC(BaseModel):
                 B,
                 I_R,
             )
+            self._score = norm_ratio
             # TODO: warn if not converged
             mean_S = jnp.mean(S)
             S = S / mean_S  # flatfields

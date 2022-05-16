@@ -161,7 +161,7 @@ plt.show()
 #    plt.show()
 #%%
 from basicpy import BaSiC
-b=BaSiC(get_darkfield=True,max_reweight_iterations=1,fitting_mode="approximate")
+b=BaSiC(get_darkfield=True,max_reweight_iterations=1,working_size=64,fitting_mode="approximate")
 b.fit(images)
 plt.imshow(b.flatfield)
 plt.colorbar()
