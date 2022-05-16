@@ -247,7 +247,7 @@ class BaSiC(BaseModel):
             mean_S = jnp.mean(S)
             S = S / mean_S  # flatfields
             B = B * mean_S  # baseline
-            D = D_R + D_Z  # darkfield
+            D = fitting_step.calc_darkfield(S, D_R, D_Z)  # darkfield
             W = jnp.ones_like(Im, dtype=np.float32) / (
                 jnp.abs(I_R / S[newax, ...]) + self.epsilon
             )

@@ -6,6 +6,7 @@ from functools import partial
 from pydantic import BaseModel, Field
 
 idct2d, dct2d = JaxDCT.idct2d, JaxDCT.dct2d
+newax = jnp.newaxis
 
 
 @jit
@@ -42,6 +43,14 @@ class BaseFit(BaseModel):
 
     class Config:
         extra = "ignore"
+
+    @jit
+    def _cond(self, vals):
+        k, _, _, _, _, _, _, _, fit_residual = vals
+        norm_ratio = jnp.linalg.norm(fit_residual.flatten(), ord=2) / self.image_norm
+        return jnp.all(
+            jnp.array([norm_ratio > self.optimization_tol, k < self.max_iterations])
+        )
 
     @jit
     def __call__(
@@ -91,64 +100,41 @@ class LadmapFit(BaseFit):
         vals,
     ):
         k, S, D_R, D_Z, I_R, B, Y, mu, fit_residual = vals
-        I_B = (
-            S[jnp.newaxis, ...] * B[:, jnp.newaxis, jnp.newaxis]
-            + D_R[jnp.newaxis, ...]
-            + D_Z
-        )
+        I_B = S[newax, ...] * B[:, newax, newax] + D_R[newax, ...] + D_Z
         eta = jnp.sum(B**2) * 1.02
-        S = (
-            S
-            + jnp.sum(
-                B[:, jnp.newaxis, jnp.newaxis] * (Im - I_B - I_R + Y / mu), axis=0
-            )
-            / eta
-        )
+        S = S + jnp.sum(B[:, newax, newax] * (Im - I_B - I_R + Y / mu), axis=0) / eta
         S = idct2d(_jshrinkage(dct2d(S), self.lambda_flatfield / (eta * mu)))
 
-        I_B = (
-            S[jnp.newaxis, ...] * B[:, jnp.newaxis, jnp.newaxis]
-            + D_R[jnp.newaxis, ...]
-            + D_Z
-        )
+        I_B = S[newax, ...] * B[:, newax, newax] + D_R[newax, ...] + D_Z
         I_R = _jshrinkage(Im - I_B + Y / mu, weight / mu)
 
         R = Im - I_R
-        B = jnp.sum(S[jnp.newaxis, ...] * (R + Y / mu), axis=(1, 2)) / jnp.sum(S**2)
+        B = jnp.sum(S[newax, ...] * (R + Y / mu), axis=(1, 2)) / jnp.sum(S**2)
         B = jnp.maximum(B, 0)
 
-        BS = S[jnp.newaxis, ...] * B[:, jnp.newaxis, jnp.newaxis]
+        BS = S[newax, ...] * B[:, newax, newax]
         if self.get_darkfield:
-            D_Z = jnp.mean(Im - BS - D_R[jnp.newaxis, ...] - I_R + Y / 2.0 / mu)
+            D_Z = jnp.mean(Im - BS - D_R[newax, ...] - I_R + Y / 2.0 / mu)
             D_Z = jnp.clip(D_Z, 0, self.D_Z_max)
             eta_D = Im.shape[0] * 1.02
             D_R = D_R + 1.0 / eta_D * jnp.sum(
-                Im - BS - D_R[jnp.newaxis, ...] - D_Z - I_R + Y / mu, axis=0
+                Im - BS - D_R[newax, ...] - D_Z - I_R + Y / mu, axis=0
             )
             D_R = idct2d(_jshrinkage(dct2d(D_R), self.lambda_darkfield / eta_D / mu))
             D_R = _jshrinkage(D_R, self.lambda_darkfield / eta_D / mu)
 
-        I_B = BS + D_R[jnp.newaxis, ...] + D_Z
+        I_B = BS + D_R[newax, ...] + D_Z
         fit_residual = R - I_B
         Y = Y + mu * fit_residual
         mu = jnp.minimum(mu * self.rho, self.max_mu)
 
         return (k + 1, S, D_R, D_Z, I_R, B, Y, mu, fit_residual)
 
-    @jit
-    def _cond(self, vals):
-        k, _, _, _, _, _, _, _, fit_residual = vals
-        norm_ratio = jnp.linalg.norm(fit_residual.flatten(), ord=2) / self.image_norm
-        return jnp.all(
-            jnp.array([norm_ratio > self.optimization_tol, k < self.max_iterations])
-        )
+    def calc_darkfield(_self, S, D_R, D_Z):
+        return D_R + D_Z
 
 
-#    @classmethod
-#    def tree_unflatten(cls, aux_data, children):
-#        super(LadmapFit,cls,)._tree_unflatten(aux_data, children)
-
-
+@register_pytree_node_class
 class ApproximateFit(BaseFit):
     @jit
     def _step(
@@ -157,57 +143,68 @@ class ApproximateFit(BaseFit):
         weight,
         vals,
     ):
+        ent1 = 1  # fixed
+        ent2 = 10
         k, S, D_R, D_Z, I_R, B, Y, mu, fit_residual = vals
-        I_B = (
-            S[jnp.newaxis, ...] * B[:, jnp.newaxis, jnp.newaxis]
-            + D_R[jnp.newaxis, ...]
-            + D_Z
-        )
-        eta = jnp.sum(B**2) * 1.02
-        S = (
-            S
-            + jnp.sum(
-                B[:, jnp.newaxis, jnp.newaxis] * (Im - I_B - I_R + Y / mu), axis=0
-            )
-            / eta
-        )
-        S = idct2d(_jshrinkage(dct2d(S), self.lambda_flatfield / (eta * mu)))
-
-        I_B = (
-            S[jnp.newaxis, ...] * B[:, jnp.newaxis, jnp.newaxis]
-            + D_R[jnp.newaxis, ...]
-            + D_Z
-        )
-        I_R = _jshrinkage(Im - I_B + Y / mu, weight / mu)
-
+        S_hat = dct2d(S)
+        I_B = S[newax, ...] * B[:, newax, newax] + D_R[newax, ...] + D_Z
+        temp_W = (Im - I_B - I_R + Y / mu) / ent1
+        #        plt.imshow(temp_W[0]);plt.show()
+        #        print(type(temp_W))
+        temp_W = jnp.mean(temp_W, axis=0)
+        S_hat = S_hat + dct2d(temp_W)
+        S_hat = _jshrinkage(S_hat, self.lambda_flatfield / (ent1 * mu))
+        S = idct2d(S_hat)
+        I_B = S[newax, ...] * B[:, newax, newax] + D_R[newax, ...] + D_Z
+        I_R = (Im - I_B + Y / mu) / ent1
+        I_R = _jshrinkage(I_R, weight / (ent1 * mu))
         R = Im - I_R
-        B = jnp.sum(S[jnp.newaxis, ...] * (R + Y / mu), axis=(1, 2)) / jnp.sum(S**2)
+        B = jnp.mean(R, axis=(1, 2)) / jnp.mean(R)
         B = jnp.maximum(B, 0)
 
-        BS = S[jnp.newaxis, ...] * B[:, jnp.newaxis, jnp.newaxis]
         if self.get_darkfield:
-            D_Z = jnp.mean(Im - BS - D_R[jnp.newaxis, ...] - I_R + Y / 2.0 / mu)
-            D_Z = jnp.clip(D_Z, 0, self.D_Z_max)
-            eta_D = Im.shape[0] * 1.02
-            D_R = D_R + 1.0 / eta_D * jnp.sum(
-                Im - BS - D_R[jnp.newaxis, ...] - D_Z - I_R + Y / mu, axis=0
-            )
-            D_R = idct2d(_jshrinkage(dct2d(D_R), self.lambda_darkfield / eta_D / mu))
-            D_R = _jshrinkage(D_R, self.lambda_darkfield / eta_D / mu)
+            B_valid = B < 1
+            _B2 = B[B_valid]
 
-        I_B = BS + D_R[jnp.newaxis, ...] + D_Z
+            S_inmask = S > jnp.mean(S) * (1 - 1e-6)
+            S_outmask = S < jnp.mean(S) * (1 + 1e-6)
+            A = (
+                jnp.mean(R[B_valid][:, S_inmask], axis=1)
+                - jnp.mean(R[B_valid][:, S_outmask], axis=1)
+            ) / jnp.mean(R)
+
+            # temp1 = np.sum(p['A1_coeff'][validA1coeff_idx]**2)
+            B_sq_sum = jnp.sum(_B2**2)
+            B_sum = jnp.sum(_B2)
+            A_sum = jnp.sum(A)
+            BA_sum = jnp.sum(_B2 * A)
+            denominator = B_sum * A_sum - BA_sum * jnp.sum(B_valid)
+            # limit B1_offset: 0<B1_offset<B1_uplimit
+
+            D_Z = jnp.clip(
+                (B_sq_sum * A_sum - B_sum * BA_sum) / (denominator + 1e-6),
+                0,
+                self.max_D_Z / jnp.mean(S),
+            )
+
+            Z = D_Z * (jnp.mean(S) - S)
+
+            D_R = (R * B_valid[:, newax, newax]).sum(
+                axis=0
+            ) / B_valid.sum() - _B2.sum() / B_valid.sum() * S
+            D_R = D_R - jnp.mean(D_R) - Z
+
+            # smooth A_offset
+            D_R = dct2d(D_R)
+            D_R = _jshrinkage(D_R, self.lambda_darkfield / (ent2 * mu))
+            D_R = idct2d(D_R)
+            D_R = _jshrinkage(D_R, self.lambda_darkfield / (ent2 * mu))
+            D_R = D_R + Z
         fit_residual = R - I_B
         Y = Y + mu * fit_residual
         mu = jnp.minimum(mu * self.rho, self.max_mu)
 
         return (k + 1, S, D_R, D_Z, I_R, B, Y, mu, fit_residual)
 
-    @jit
-    def _cond(self, vals):
-        k, _, _, _, _, _, _, _, fit_residual = vals
-        norm_ratio = (
-            jnp.linalg.norm(fit_residual.flatten(), ord=2) / self.init_image_norm
-        )
-        return jnp.all(
-            jnp.array([norm_ratio > self.optimization_tol, k < self.max_iterations])
-        )
+    def calc_darkfield(S, D_R, D_Z):
+        return D_R + D_Z * S

@@ -149,7 +149,15 @@ plt.imshow(b.darkfield)
 plt.colorbar()
 
 #%%
-
+from basicpy import BaSiC
+b=BaSiC(get_darkfield=True,max_reweight_iterations=1,fitting_mode="approximate")
+b.fit(images)
+plt.imshow(b.flatfield)
+plt.colorbar()
+plt.show()
+plt.imshow(b.darkfield)
+plt.colorbar()
+#%%
 """# test original implementation"""
 
 images2=np.swapaxes(images,0,-1).astype(np.float32)
