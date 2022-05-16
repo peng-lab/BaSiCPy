@@ -24,42 +24,10 @@ from basicpy.types import ArrayLike
 from basicpy.tools.dct2d_tools import SciPyDCT
 from jax import device_put
 from basicpy.tools.dct2d_tools import JaxDCT
-from basicpy.tools._jax_routines import LadmapFit, ApproximateFit
+from basicpy._jax_routines import LadmapFit, ApproximateFit
 
 idct2d, dct2d = JaxDCT.idct2d, JaxDCT.dct2d
 newax = jnp.newaxis
-
-
-def _check_and_init_variables(
-    images, W=None, S=None, D_R=None, D_Z=None, B=None, I_R=None
-):
-    if W is None:
-        W = jnp.ones(images.shape, dtype=jnp.float32)
-    if S is None:
-        S = jnp.zeros(images.shape[1:], dtype=jnp.float32)
-    if D_R is None:
-        D_R = jnp.zeros(images.shape[1:], dtype=jnp.float32)
-    if D_Z is None:
-        D_Z = 0.0
-    if B is None:
-        B = jnp.ones(images.shape[0], dtype=jnp.float32)
-    if I_R is None:
-        I_R = jnp.zeros(images.shape, dtype=jnp.float32)
-
-    if S.shape != images.shape[1:]:
-        raise ValueError("S must have the same shape as images.shape[1:]")
-    if D_R.shape != images.shape[1:]:
-        raise ValueError("D_R must have the same shape as images.shape[1:]")
-    if not jnp.isscalar(D_Z):
-        raise ValueError("D_Z must be a scalar.")
-    if B.shape != images.shape[:1]:
-        raise ValueError("B must have the same shape as images.shape[:1]")
-    if I_R.shape != images.shape:
-        raise ValueError("I_R must have the same shape as images.shape")
-    if W.shape != images.shape:
-        raise ValueError("weight must have the same shape as images.shape")
-    return W, S, D_R, D_Z, B, I_R
-
 
 # from basicpy.tools.dct2d_tools import dct2d, idct2d
 # from basicpy.tools.inexact_alm import inexact_alm_rspca_l1
