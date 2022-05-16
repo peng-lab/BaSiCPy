@@ -163,35 +163,35 @@ class ApproximateFit(BaseFit):
         B = jnp.maximum(B, 0)
 
         if self.get_darkfield:
-            B_valid = B < 1
-            _B2 = B[B_valid]
+            B_valid = (B < 1).astype(jnp.float32)
 
-            S_inmask = S > jnp.mean(S) * (1 - 1e-6)
-            S_outmask = S < jnp.mean(S) * (1 + 1e-6)
+            S_mean = jnp.mean(S)
+            S_inmask = (S > S_mean * (1 - 1e-6)).astype(jnp.float32)
+            S_outmask = (S < S_mean * (1 + 1e-6)).astype(jnp.float32)
             A = (
-                jnp.mean(R[B_valid][:, S_inmask], axis=1)
-                - jnp.mean(R[B_valid][:, S_outmask], axis=1)
+                jnp.mean(R * S_inmask[newax, ...], axis=(1, 2))
+                - jnp.mean(R * S_outmask[newax, ...], axis=(1, 2))
             ) / jnp.mean(R)
 
             # temp1 = np.sum(p['A1_coeff'][validA1coeff_idx]**2)
-            B_sq_sum = jnp.sum(_B2**2)
-            B_sum = jnp.sum(_B2)
-            A_sum = jnp.sum(A)
-            BA_sum = jnp.sum(_B2 * A)
+            B_sq_sum = jnp.sum(B * B_valid**2)
+            B_sum = jnp.sum(B * B_valid)
+            A_sum = jnp.sum(A * B_valid)
+            BA_sum = jnp.sum(B * A * B_valid)
             denominator = B_sum * A_sum - BA_sum * jnp.sum(B_valid)
             # limit B1_offset: 0<B1_offset<B1_uplimit
 
             D_Z = jnp.clip(
                 (B_sq_sum * A_sum - B_sum * BA_sum) / (denominator + 1e-6),
                 0,
-                self.max_D_Z / jnp.mean(S),
+                self.D_Z_max / jnp.mean(S),
             )
 
             Z = D_Z * (jnp.mean(S) - S)
 
             D_R = (R * B_valid[:, newax, newax]).sum(
                 axis=0
-            ) / B_valid.sum() - _B2.sum() / B_valid.sum() * S
+            ) / B_valid.sum() - B_sum / B_valid.sum() * S
             D_R = D_R - jnp.mean(D_R) - Z
 
             # smooth A_offset
@@ -206,5 +206,5 @@ class ApproximateFit(BaseFit):
 
         return (k + 1, S, D_R, D_Z, I_R, B, Y, mu, fit_residual)
 
-    def calc_darkfield(S, D_R, D_Z):
+    def calc_darkfield(_self, S, D_R, D_Z):
         return D_R + D_Z * S
