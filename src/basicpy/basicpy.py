@@ -22,7 +22,6 @@ from pydantic import BaseModel, Field, PrivateAttr
 
 # Package modules
 from basicpy.types import ArrayLike
-from basicpy.tools.dct2d_tools import SciPyDCT
 from basicpy.tools.dct2d_tools import JaxDCT
 from basicpy._jax_routines import LadmapFit, ApproximateFit
 
@@ -197,12 +196,13 @@ class BaSiC(BaseModel):
             >>> basic.fit(images)
 
         """
-        mean_image = np.mean(images, axis=2)
-        mean_image = mean_image / np.mean(mean_image)
-        mean_image_dct = SciPyDCT.dct2d(mean_image.T)
+        Im = device_put(images).astype(jnp.float32)
+        mean_image = jnp.mean(Im, axis=2)
+        mean_image = mean_image / jnp.mean(Im)
+        mean_image_dct = dct2d(mean_image.T)
+        lambda_flatfield = jnp.sum(jnp.abs(mean_image_dct)) / 400 * 0.5
 
-        spectral_norm = np.linalg.norm(images.reshape((images.shape[0], -1)), ord=2)
-        lambda_flatfield = np.sum(np.abs(mean_image_dct)) / 400 * 0.5
+        spectral_norm = jnp.linalg.norm(Im.reshape((Im.shape[0], -1)), ord=2)
         init_mu = self.mu_coef / spectral_norm
         fit_params = self.dict()
         fit_params.update(
@@ -212,13 +212,12 @@ class BaSiC(BaseModel):
                 # matrix 2-norm (largest sing. value)
                 init_mu=init_mu,
                 max_mu=init_mu * self.max_mu_coef,
-                D_Z_max=jnp.min(images),
-                image_norm=np.linalg.norm(images.flatten(), ord=2),
+                D_Z_max=jnp.min(Im),
+                image_norm=jnp.linalg.norm(Im.flatten(), ord=2),
             )
         )
 
         # Initialize variables
-        Im = device_put(images).astype(jnp.float32)
         W = jnp.ones_like(Im, dtype=jnp.float32)
         last_S = None
         last_D = None
