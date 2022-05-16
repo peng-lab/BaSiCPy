@@ -11,14 +11,14 @@ import os
 from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
 from multiprocessing import cpu_count
-from typing import Dict, Tuple, Union
+from typing import Dict, Iterable, Tuple, Union, Optional
 
 # 3rd party modules
 import numpy as np
 from jax import device_put
 import jax.numpy as jnp
+from jax.image import resize, ResizeMethod
 from pydantic import BaseModel, Field, PrivateAttr
-from skimage.transform import resize
 
 # Package modules
 from basicpy.types import ArrayLike
@@ -111,17 +111,21 @@ class BaSiC(BaseModel):
         1e-6,
         description="Optimization tolerance.",
     )
+    resize_method: ResizeMethod = Field(
+        ResizeMethod.CUBIC,
+        description="Resize method to use when downsampling images.",
+    )
     reweighting_tol: float = Field(
         1e-2,
         description="Reweighting tolerance.",
     )
-    varying_coeff: bool = Field(
-        True,
-        description="This description will need to be filled in.",
+    residual_weighting: bool = Field(
+        False,
+        description="Weighting by the residuals.",
     )
-    working_size: int = Field(
+    working_size: Optional[Union[int, Iterable[int]]] = Field(
         128,
-        description="Size for running computations. Should be a power of 2 (2^n).",
+        description="Size for running computations. None means no rescaling.",
     )
 
     # Private attributes for internal processing
@@ -160,9 +164,38 @@ class BaSiC(BaseModel):
 
         return self.transform(images, timelapse)
 
+    def _resize(self, Im):
+        """
+        Resize the images to the working size.
+        """
+        if self.working_size is not None:
+            if np.isscalar(self.working_size):
+                working_shape = (self.working_size,) * (Im.ndim - 1)
+            else:
+                if not Im.ndim - 1 == len(self.working_size):
+                    raise ValueError(
+                        "working_size must be a scalar or match the image dimensions"
+                    )
+                else:
+                    working_shape = self.working_size
+            Im = resize(Im, [Im.shape[0], *working_shape], self.resize_method)
+        return Im
+
     def fit(self, images: np.ndarray) -> None:
         """
-        Fit the LADMAP algorithm to the images.
+        Generate illumination correction profiles from images.
+
+        Args:
+            images: Input images to fit shading model.
+                    Must be 3-dimensional array with dimension of (T,Y,X).
+
+        Example:
+            >>> from basicpy import BaSiC
+            >>> from basicpy.tools import load_images
+            >>> images = load_images('./images')
+            >>> basic = BaSiC()  # use default settings
+            >>> basic.fit(images)
+
         """
         mean_image = np.mean(images, axis=2)
         mean_image = mean_image / np.mean(mean_image)
@@ -187,7 +220,6 @@ class BaSiC(BaseModel):
         # Initialize variables
         Im = device_put(images).astype(jnp.float32)
         W = jnp.ones_like(Im, dtype=jnp.float32)
-
         last_S = None
         last_D = None
         D = None
@@ -199,6 +231,7 @@ class BaSiC(BaseModel):
 
         for i in range(self.max_reweight_iterations):
             # TODO: loop jit?
+            # TODO: reusing last values?
             S = jnp.zeros(images.shape[1:], dtype=jnp.float32)
             D_R = jnp.zeros(images.shape[1:], dtype=jnp.float32)
             D_Z = 0.0
@@ -241,32 +274,6 @@ class BaSiC(BaseModel):
 
         self.flatfield = S
         self.darkfield = D
-
-    """
-    def fit_old(self, images: np.ndarray) -> None:
-        Generate illumination correction profiles.
-
-        Args:
-            images: Input images to fit shading model. Images should be stacked
-                along the z-dimension.
-
-        Example:
-            >>> from basicpy import BaSiC
-            >>> from basicpy.tools import load_images
-            >>> images = load_images('./images')
-            >>> basic = BaSiC()  # use default settings
-            >>> basic.fit(images)
-
-
-        assert images.ndim == 3
-
-        # Resize the images
-        images = images.astype(np.float64)
-        working_shape = (self.working_size, self.working_size, images.shape[2])
-        D = resize(
-            images, (working_shape), order=1, mode="symmetric", preserve_range=True
-        )
-    """
 
     def transform(
         self, images: np.ndarray, timelapse: bool = False
