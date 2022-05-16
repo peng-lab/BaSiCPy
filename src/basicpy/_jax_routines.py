@@ -230,5 +230,22 @@ class ApproximateFit(BaseFit):
 
         return (k + 1, S, D_R, D_Z, I_R, B, Y, mu, fit_residual)
 
+    def _step_only_baseline(self, Im, weight, S, D, vals):
+        ent1 = 1  # fixed
+        k, I_R, B, Y, mu, fit_residual = vals
+        I_B = S[newax, ...] * B[:, newax, newax] + D[newax, ...]
+
+        # update I_R using approximated l0 norm
+        I_R = I_R + (Im - I_B - I_R + (1 / mu) * Y) / ent1
+        I_R = _jshrinkage(I_R, weight / (ent1 * mu))
+
+        R1 = Im - I_R
+        B = jnp.mean(R1, axis=(1, 2)) - jnp.mean(D)
+        B[B < 0] = 0
+        fit_residual = Im - I_B - I_R
+        Y = Y + mu * fit_residual
+        mu = jnp.minimum(mu * self.rho, self.max_mu)
+        return (k + 1, I_R, B, Y, mu, fit_residual)
+
     def calc_darkfield(_self, S, D_R, D_Z):
         return D_R + D_Z * S

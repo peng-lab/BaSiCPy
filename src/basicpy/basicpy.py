@@ -62,6 +62,11 @@ class FittingMode(Enum):
 class BaSiC(BaseModel):
     """A class for fitting and applying BaSiC illumination correction profiles."""
 
+    baseline: Optional[np.ndarray] = Field(
+        None,
+        description="Holds the baseline for the shading model.",
+        exclude=True,  # Don't dump to output json/yaml
+    )
     darkfield: np.ndarray = Field(
         default_factory=lambda: np.zeros((128, 128), dtype=np.float64),
         description="Holds the darkfield component for the shading model.",
@@ -123,11 +128,15 @@ class BaSiC(BaseModel):
     )
     reweighting_tol: float = Field(
         1e-2,
-        description="Reweighting tolerance.",
+        description="Reweighting tolerance in mean absolute difference of images.",
     )
     residual_weighting: bool = Field(
         False,
         description="Weighting by the residuals.",
+    )
+    sort_intensity: bool = Field(
+        False,
+        description="Wheather or not to sort the intensities of the image.",
     )
     working_size: Optional[Union[int, Iterable[int]]] = Field(
         128,
@@ -203,8 +212,11 @@ class BaSiC(BaseModel):
             >>> basic.fit(images)
 
         """
+        # TODO: sorted version and baseline calc.
         Im = device_put(images).astype(jnp.float32)
         Im = self._resize(Im)
+        if self.sort_intensity:
+            Im = jnp.sort(Im, axis=0)
 
         mean_image = jnp.mean(Im, axis=2)
         mean_image = mean_image / jnp.mean(Im)
@@ -230,7 +242,9 @@ class BaSiC(BaseModel):
         W = jnp.ones_like(Im, dtype=jnp.float32)
         last_S = None
         last_D = None
+        S = None
         D = None
+        B = None
 
         if self.fitting_mode == FittingMode.ladmap:
             fitting_step = LadmapFit(**fit_params)
@@ -281,8 +295,12 @@ class BaSiC(BaseModel):
             last_S = S
             last_D = D
 
+        if self.sort_intensity:
+            B = fitting_step.calc_baseline(S, D_R, D_Z)
+
         self.flatfield = S
         self.darkfield = D
+        self.baseline = B
 
     def transform(
         self, images: np.ndarray, timelapse: bool = False
