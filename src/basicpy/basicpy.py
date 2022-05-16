@@ -19,6 +19,7 @@ from jax import device_put
 import jax.numpy as jnp
 from jax.image import resize, ResizeMethod
 from pydantic import BaseModel, Field, PrivateAttr
+from skimage.transform import resize as _resize
 
 # Package modules
 from basicpy.types import ArrayLike
@@ -312,8 +313,8 @@ class BaSiC(BaseModel):
 
         # Check the image size
         if not all(i == d for i, d in zip(self._flatfield.shape, images.shape)):
-            self._flatfield = resize(self.flatfield, images.shape[:2])
-            self._darkfield = resize(self.darkfield, images.shape[:2])
+            self._flatfield = _resize(self.flatfield, images.shape[:2])
+            self._darkfield = _resize(self.darkfield, images.shape[:2])
 
         # Initialize the output
         output = np.zeros(images.shape, dtype=images.dtype)
