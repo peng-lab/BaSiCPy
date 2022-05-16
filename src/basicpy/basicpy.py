@@ -218,10 +218,10 @@ class BaSiC(BaseModel):
             S = S / mean_S  # flatfields
             B = B * mean_S  # baseline
             D = fitting_step.calc_darkfield(S, D_R, D_Z)  # darkfield
+            I_B = B[:, newax, newax] * S[newax, ...] + D_R[newax, ...] + D_Z
             W = jnp.ones_like(Im, dtype=np.float32) / (
-                jnp.abs(I_R / S[newax, ...]) + self.epsilon
+                jnp.abs(I_R / I_B) + self.epsilon
             )
-            W = W / np.mean(W)
             self._weight = W
             self._residual = I_R
 

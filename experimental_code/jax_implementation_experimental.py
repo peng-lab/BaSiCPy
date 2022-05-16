@@ -147,7 +147,7 @@ darkfield_withdark_original = X_A_offset
 
 #%%
 from basicpy import BaSiC
-b=BaSiC(get_darkfield=True,max_reweight_iterations=3,fitting_mode="ladmap")
+b=BaSiC(get_darkfield=True,max_reweight_iterations=10,fitting_mode="ladmap")
 b.fit(images)
 plt.imshow(b.flatfield)
 plt.colorbar()
@@ -161,18 +161,14 @@ plt.show()
 #    plt.show()
 #%%
 from basicpy import BaSiC
-b=BaSiC(get_darkfield=True,max_reweight_iterations=4,fitting_mode="approximate")
+b=BaSiC(get_darkfield=True,max_reweight_iterations=10,fitting_mode="approximate")
 b.fit(images)
 plt.imshow(b.flatfield)
 plt.colorbar()
 plt.show()
 plt.imshow(b.darkfield)
 plt.colorbar()
-
-for w in b._weight:
-    plt.imshow(w)
-    plt.colorbar()
-    plt.show()
+plt.show()
 
 # %%
 mean_image = np.mean(images, axis=2)
