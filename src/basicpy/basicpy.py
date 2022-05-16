@@ -15,6 +15,7 @@ from typing import Dict, Tuple, Union
 
 # 3rd party modules
 import numpy as np
+from jax import device_put
 import jax.numpy as jnp
 from pydantic import BaseModel, Field, PrivateAttr
 from skimage.transform import resize
@@ -22,7 +23,6 @@ from skimage.transform import resize
 # Package modules
 from basicpy.types import ArrayLike
 from basicpy.tools.dct2d_tools import SciPyDCT
-from jax import device_put
 from basicpy.tools.dct2d_tools import JaxDCT
 from basicpy._jax_routines import LadmapFit, ApproximateFit
 
