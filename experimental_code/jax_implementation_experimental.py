@@ -95,30 +95,13 @@ import numpy as np
 from matplotlib import pyplot as plt
 from jax import numpy as jnp
 newax = jnp.newaxis
+from skimage.transform import downscale_local_mean
 
 images=np.array(list(fetch("wsi_brain")[0]))
+images = np.array([downscale_local_mean(im,(4,4)) for im in images])
 print(images.shape)
 # %%
 plt.imshow(images[10])
-#%%
-from basicpy import BaSiC
-b=BaSiC(get_darkfield=True,max_reweight_iterations=1)
-b.fit(images)
-plt.imshow(b.flatfield)
-plt.colorbar()
-plt.show()
-plt.imshow(b.darkfield)
-plt.colorbar()
-
-#%%
-from basicpy import BaSiC
-b=BaSiC(get_darkfield=True,max_reweight_iterations=1,fitting_mode="approximate")
-b.fit(images)
-plt.imshow(b.flatfield)
-plt.colorbar()
-plt.show()
-plt.imshow(b.darkfield)
-plt.colorbar()
 #%%
 """# test original implementation"""
 
@@ -161,3 +144,105 @@ X_A_offset = np.reshape(A_offset, images2.shape[:2], order="F")
 print(X_A.shape,X_E.shape,X_A_offset.shape)
 flatfield_withdark_original = np.mean(X_A, axis=2) - X_A_offset
 darkfield_withdark_original = X_A_offset
+
+#%%
+from basicpy import BaSiC
+b=BaSiC(get_darkfield=True,max_reweight_iterations=3,fitting_mode="ladmap")
+b.fit(images)
+plt.imshow(b.flatfield)
+plt.colorbar()
+plt.show()
+plt.imshow(b.darkfield)
+plt.colorbar()
+plt.show()
+#for w in b._weight:
+#    plt.imshow(w)
+#    plt.colorbar()
+#    plt.show()
+#%%
+from basicpy import BaSiC
+b=BaSiC(get_darkfield=True,max_reweight_iterations=4,fitting_mode="approximate")
+b.fit(images)
+plt.imshow(b.flatfield)
+plt.colorbar()
+plt.show()
+plt.imshow(b.darkfield)
+plt.colorbar()
+
+for w in b._weight:
+    plt.imshow(w)
+    plt.colorbar()
+    plt.show()
+
+# %%
+mean_image = np.mean(images, axis=2)
+mean_image = mean_image / np.mean(mean_image)
+mean_image_dct = SciPyDCT.dct2d(mean_image.T)
+
+spectral_norm = np.linalg.norm(images.reshape((images.shape[0], -1)), ord=2)
+lambda_flatfield = np.sum(np.abs(mean_image_dct)) / 400 * 0.5
+init_mu = self.mu_coef / spectral_norm
+fit_params = self.dict()
+fit_params.update(
+    dict(
+        lambda_flatfield=lambda_flatfield,
+        lambda_darkfield=lambda_flatfield * 0.2,
+        # matrix 2-norm (largest sing. value)
+        init_mu=init_mu,
+        max_mu=init_mu * self.max_mu_coef,
+        D_Z_max=jnp.min(images),
+        image_norm=np.linalg.norm(images.flatten(), ord=2),
+    )
+)
+
+# Initialize variables
+Im = device_put(images).astype(jnp.float32)
+W = jnp.ones_like(Im, dtype=jnp.float32)
+
+last_S = None
+last_D = None
+D = None
+
+if self.fitting_mode == FittingMode.ladmap:
+    fitting_step = LadmapFit(**fit_params)
+else:
+    fitting_step = ApproximateFit(**fit_params)
+
+for i in range(self.max_reweight_iterations):
+    # TODO: loop jit?
+    S = jnp.zeros(images.shape[1:], dtype=jnp.float32)
+    D_R = jnp.zeros(images.shape[1:], dtype=jnp.float32)
+    D_Z = 0.0
+    B = jnp.ones(images.shape[0], dtype=jnp.float32)
+    I_R = jnp.zeros(images.shape, dtype=jnp.float32)
+    S, D_R, D_Z, I_R, B, norm_ratio, converged = fitting_step(
+        Im,
+        W,
+        S,
+        D_R,
+        D_Z,
+        B,
+        I_R,
+    )
+    # TODO: warn if not converged
+    mean_S = jnp.mean(S)
+    S = S / mean_S  # flatfields
+    B = B * mean_S  # baseline
+    D = fitting_step.calc_darkfield(S, D_R, D_Z)  # darkfield
+    W = jnp.ones_like(Im, dtype=np.float32) / (
+        jnp.abs(I_R / S[newax, ...]) + self.epsilon
+    )
+
+    if last_S is not None:
+        mad_flatfield = jnp.sum(jnp.abs(S - last_S)) / jnp.sum(np.abs(last_S))
+        if self.get_darkfield:
+            mad_darkfield = jnp.sum(jnp.abs(D - last_D)) / max(
+                jnp.sum(jnp.abs(last_D)), 1
+            )  # assumes the amplitude of darkfield is more than 1
+            self._reweight_score = max(mad_flatfield, mad_darkfield)
+        else:
+            self._reweight_score = mad_flatfield
+        if self._reweight_score <= self.reweighting_tol:
+            break
+    last_S = S
+    last_D = D

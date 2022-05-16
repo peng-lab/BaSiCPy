@@ -129,6 +129,8 @@ class BaSiC(BaseModel):
     _reweight_score: float = PrivateAttr(None)
     _flatfield: np.ndarray = PrivateAttr(None)
     _darkfield: np.ndarray = PrivateAttr(None)
+    _weight: float = PrivateAttr(None)
+    _residual: float = PrivateAttr(None)
 
     class Config:
 
@@ -185,11 +187,6 @@ class BaSiC(BaseModel):
         # Initialize variables
         Im = device_put(images).astype(jnp.float32)
         W = jnp.ones_like(Im, dtype=jnp.float32)
-        S = jnp.zeros(images.shape[1:], dtype=jnp.float32)
-        D_R = jnp.zeros(images.shape[1:], dtype=jnp.float32)
-        D_Z = 0.0
-        B = jnp.ones(images.shape[0], dtype=jnp.float32)
-        I_R = jnp.zeros(images.shape, dtype=jnp.float32)
 
         last_S = None
         last_D = None
@@ -202,6 +199,11 @@ class BaSiC(BaseModel):
 
         for i in range(self.max_reweight_iterations):
             # TODO: loop jit?
+            S = jnp.zeros(images.shape[1:], dtype=jnp.float32)
+            D_R = jnp.zeros(images.shape[1:], dtype=jnp.float32)
+            D_Z = 0.0
+            B = jnp.ones(images.shape[0], dtype=jnp.float32)
+            I_R = jnp.zeros(images.shape, dtype=jnp.float32)
             S, D_R, D_Z, I_R, B, norm_ratio, converged = fitting_step(
                 Im,
                 W,
@@ -219,12 +221,15 @@ class BaSiC(BaseModel):
             W = jnp.ones_like(Im, dtype=np.float32) / (
                 jnp.abs(I_R / S[newax, ...]) + self.epsilon
             )
+            W = W / np.mean(W)
+            self._weight = W
+            self._residual = I_R
 
             if last_S is not None:
-                mad_flatfield = jnp.sum(np.abs(S - last_S)) / jnp.sum(np.abs(last_S))
+                mad_flatfield = jnp.sum(jnp.abs(S - last_S)) / jnp.sum(np.abs(last_S))
                 if self.get_darkfield:
                     mad_darkfield = jnp.sum(jnp.abs(D - last_D)) / max(
-                        jnp.sum(np.abs(last_D)), 1
+                        jnp.sum(jnp.abs(last_D)), 1
                     )  # assumes the amplitude of darkfield is more than 1
                     self._reweight_score = max(mad_flatfield, mad_darkfield)
                 else:
@@ -233,7 +238,7 @@ class BaSiC(BaseModel):
                     break
             last_S = S
             last_D = D
-            print(i)
+
         self.flatfield = S
         self.darkfield = D
 
