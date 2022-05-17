@@ -134,7 +134,6 @@ plt.show()
 #%%
 from basicpy import BaSiC
 b=BaSiC(get_darkfield=True,
-sort_intensity=True,
 max_reweight_iterations=3,
 working_size=64,
 fitting_mode="approximate",
@@ -150,48 +149,21 @@ plt.show()
 plt.plot(b.baseline)
 plt.show()
 
-
 #%%
-"""# test original implementation"""
-
-images2=np.swapaxes(images,0,-1).astype(np.float32)
-W=np.ones_like(images2,dtype=np.float32)
-print(images2.shape,W.shape,lambda_flatfield,lambda_darkfield)
-#%%
-%%time
-A1_hat, E1_hat, A_offset, stopCriterion=basicpy.tools.inexact_alm.inexact_alm_rspca_l1(
-    images2,
-    weight=W,
-    lambda_flatfield=lambda_flatfield,
-    lambda_darkfield=lambda_darkfield,
-    get_darkfield=False,
-    optimization_tol=1e-4,
-    max_iterations=500,
+from basicpy import BaSiC
+b=BaSiC(get_darkfield=True,
+sort_intensity=True,
+max_reweight_iterations=3,
+working_size=64,
+fitting_mode="approximate",
+#sort_intensity=True
 )
-print(A1_hat.shape,E1_hat.shape,A_offset.shape,stopCriterion)
-X_A = np.reshape(A1_hat, images2.shape[:2] + (-1,), order="F")
-X_E = np.reshape(E1_hat, images2.shape[:2] + (-1,), order="F")
-X_A_offset = np.reshape(A_offset, images2.shape[:2], order="F")
-print(X_A.shape,X_E.shape,X_A_offset.shape)
-flatfield_flatonly_original = np.mean(X_A, axis=2) - X_A_offset
-
-#%%
-%%time
-A1_hat, E1_hat, A_offset, stopCriterion=basicpy.tools.inexact_alm.inexact_alm_rspca_l1(
-    images2,
-    weight=W,
-    lambda_flatfield=lambda_flatfield,
-    lambda_darkfield=lambda_darkfield,
-    get_darkfield=True,
-    optimization_tol=1e-4,
-    max_iterations=500,
-)
-print(A1_hat.shape,E1_hat.shape,A_offset.shape,stopCriterion)
-X_A = np.reshape(A1_hat, images2.shape[:2] + (-1,), order="F")
-X_E = np.reshape(E1_hat, images2.shape[:2] + (-1,), order="F")
-X_A_offset = np.reshape(A_offset, images2.shape[:2], order="F")
-print(X_A.shape,X_E.shape,X_A_offset.shape)
-flatfield_withdark_original = np.mean(X_A, axis=2) - X_A_offset
-darkfield_withdark_original = X_A_offset
-
-#%%
+b.fit(images)
+plt.imshow(b.flatfield)
+plt.colorbar()
+plt.show()
+plt.imshow(b.darkfield)
+plt.colorbar()
+plt.show()
+plt.plot(b.baseline)
+plt.show()

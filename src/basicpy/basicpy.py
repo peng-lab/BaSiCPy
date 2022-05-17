@@ -329,6 +329,8 @@ class BaSiC(BaseModel):
             Im = device_put(images).astype(jnp.float32)
             Im = self._resize(Im)
             for i in range(self.max_reweight_iterations_baseline):
+                B = jnp.ones(Im.shape[0], dtype=jnp.float32)
+                I_R = jnp.zeros(Im.shape, dtype=jnp.float32)
                 logger.info(f"reweighting iteration for baseline {i}")
                 I_R, B, norm_ratio, converged = fitting_step.fit_baseline(
                     Im,

@@ -310,18 +310,27 @@ class ApproximateFit(BaseFit):
         return (k + 1, S, D_R, D_Z, I_R, B, Y, mu, fit_residual)
 
     def _step_only_baseline(self, Im, weight, S, D, vals):
-        ent1 = 1  # fixed
+        """
+        A1_hat = bsxfun(@plus, W_idct_hat*A1_coeff,A_offset);
+        E1_hat = E1_hat + (D - A1_hat - E1_hat + (1/mu)*Y1)./ent1;
+        E1_hat = max(E1_hat - weight/(ent1*mu), 0)+min(E1_hat + weight/(ent1*mu), 0);
+        R1 = D-E1_hat;
+        """
         k, I_R, B, Y, mu, fit_residual = vals
         I_B = S[newax, ...] * B[:, newax, newax] + D[newax, ...]
 
         # update I_R using approximated l0 norm
-        I_R = I_R + (Im - I_B - I_R + (1 / mu) * Y) / ent1
-        I_R = _jshrinkage(I_R, weight / (ent1 * mu))
+        I_R = I_R + (Im - I_B - I_R + (1 / mu) * Y) / self._ent1
+        I_R = _jshrinkage(I_R, weight / (self._ent1 * mu))
 
         R1 = Im - I_R
+        # A1_coeff = mean(R1)-mean(A_offset);
         B = jnp.mean(R1, axis=(1, 2)) - jnp.mean(D)
+        # A1_coeff(A1_coeff<0) = 0;
         B = B * (B > 0)
+        # Z1 = D - A1_hat - E1_hat;
         fit_residual = Im - I_B - I_R
+        # Y1 = Y1 + mu*Z1;
         Y = Y + mu * fit_residual
         mu = jnp.minimum(mu * self.rho, self.max_mu)
         return (k + 1, I_R, B, Y, mu, fit_residual)
