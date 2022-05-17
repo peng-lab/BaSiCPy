@@ -15,6 +15,10 @@ def _jshrinkage(x, thresh):
 
 
 class BaseFit(BaseModel):
+    epsilon: float = Field(
+        0.1,
+        description="Weight regularization term.",
+    )
     max_mu: float = Field(0, description="The maximum value of mu.")
     init_mu: float = Field(0, description="Initial value for mu.")
     D_Z_max: float = Field(0, description="Maximum value for D_Z.")
@@ -154,6 +158,11 @@ class LadmapFit(BaseFit):
 
         return (k + 1, S, D_R, D_Z, I_R, B, Y, mu, fit_residual)
 
+    def calc_weights(self, I_B, I_R):
+        return jnp.ones_like(I_R, dtype=jnp.float32) / (
+            jnp.abs(I_R / I_B) + self.epsilon
+        )
+
     def calc_darkfield(_self, S, D_R, D_Z):
         return D_R + D_Z
 
@@ -246,6 +255,11 @@ class ApproximateFit(BaseFit):
         Y = Y + mu * fit_residual
         mu = jnp.minimum(mu * self.rho, self.max_mu)
         return (k + 1, I_R, B, Y, mu, fit_residual)
+
+    def calc_weights(self, I_B, I_R):
+        return jnp.ones_like(I_R, dtype=jnp.float32) / (
+            jnp.abs(I_R / I_B) + self.epsilon
+        )
 
     def calc_darkfield(_self, S, D_R, D_Z):
         return D_R + D_Z * S
