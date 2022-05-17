@@ -12,6 +12,8 @@ from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
 from multiprocessing import cpu_count
 from typing import Dict, Tuple, Union
+import time
+import logging
 
 # 3rd party modules
 import numpy as np
@@ -20,11 +22,11 @@ from scipy.fftpack import dct
 from skimage.transform import resize
 
 # Package modules
-from pybasic.tools import inexact_alm_rspca_l1
-from pybasic.types import ArrayLike
+from basicpy.tools import inexact_alm_rspca_l1
+from basicpy.types import ArrayLike
 
-# from pybasic.tools.dct2d_tools import dct2d, idct2d
-# from pybasic.tools.inexact_alm import inexact_alm_rspca_l1
+# from basicpy.tools.dct2d_tools import dct2d, idct2d
+# from basicpy.tools.inexact_alm import inexact_alm_rspca_l1
 
 # Get number of available threads to limit CPU thrashing
 # From preadator: https://pypi.org/project/preadator/
@@ -37,6 +39,9 @@ else:
     # Default back to multiprocessing cpu_count, which is always going to count
     # the total number of cpus
     NUM_THREADS = cpu_count()
+
+# initialize logger with the package name
+logger = logging.getLogger(__name__)
 
 
 class EstimationMode(Enum):
@@ -140,6 +145,11 @@ class BaSiC(BaseModel):
     def __init__(self, **kwargs) -> None:
         """Initialize BaSiC with the provided settings."""
 
+        log_str = f"Initializing BaSiC {id(self)} with parameters: \n"
+        for k, v in kwargs.items():
+            log_str += f"{k}: {v}\n"
+        logger.info(log_str)
+
         super().__init__(**kwargs)
 
         if self.working_size != 128:
@@ -157,9 +167,9 @@ class BaSiC(BaseModel):
     def __call__(
         self, images: np.ndarray, timelapse: bool = False
     ) -> Union[Tuple[np.ndarray, np.ndarray], np.ndarray]:
-        """Shortcut for BaSiC.predict"""
+        """Shortcut for BaSiC.transform"""
 
-        return self.predict(images, timelapse)
+        return self.transform(images, timelapse)
 
     def fit(self, images: np.ndarray) -> None:
         """Generate illumination correction profiles.
@@ -169,8 +179,8 @@ class BaSiC(BaseModel):
                 along the z-dimension.
 
         Example:
-            >>> from pybasic import BaSiC
-            >>> from pybasic.tools import load_images
+            >>> from basicpy import BaSiC
+            >>> from basicpy.tools import load_images
             >>> images = load_images('./images')
             >>> basic = BaSiC()  # use default settings
             >>> basic.fit(images)
@@ -178,6 +188,8 @@ class BaSiC(BaseModel):
         """
         assert images.ndim == 3
 
+        logger.info("=== BaSiC fit started ===")
+        start_time = time.monotonic()
         # Resize the images
         images = images.astype(np.float64)
         working_shape = (self.working_size, self.working_size, images.shape[2])
@@ -209,12 +221,11 @@ class BaSiC(BaseModel):
         #         weight[segmentation] = 1e-6
         #     # weight[options.segmentation] = 1e-6
 
-        reweighting_iter = 0
-        flag_reweighting = True
         flatfield_last = np.ones(D.shape[:2])
         darkfield_last = np.random.randn(*D.shape[:2])
 
-        while flag_reweighting and reweighting_iter < self.max_reweight_iterations:
+        for reweighting_iter in range(self.max_reweight_iterations):
+            logger.info(f"reweighting iteration {reweighting_iter}")
             reweighting_iter += 1
 
             # TODO: Included in the original code
@@ -256,11 +267,14 @@ class BaSiC(BaseModel):
             flatfield_last = flatfield_current
             darkfield_last = darkfield_current
             self._reweight_score = np.maximum(mad_flatfield, mad_darkfield)
-            if (
-                np.maximum(mad_flatfield, mad_darkfield) <= self.reweighting_tol
-                or reweighting_iter >= self.max_reweight_iterations
-            ):
-                flag_reweighting = False
+            logger.info(f"Iteration {reweighting_iter} finished.")
+            logger.info(f"reweighting score: {self._reweight_score}")
+            logger.info(f"elapsed time: {time.monotonic() - start_time} seconds")
+            if self._reweight_score <= self.reweighting_tol:
+                logger.info("Reweighting converged.")
+                break
+            if reweighting_iter == self.max_reweight_iterations - 1:
+                logger.warning("Reweighting did not converge.")
 
         shading = np.mean(X_A, 2) - X_A_offset
         self.flatfield = shading / shading.mean()
@@ -270,8 +284,11 @@ class BaSiC(BaseModel):
 
         self._darkfield = self.darkfield
         self._flatfield = self.flatfield
+        logger.info(
+            f"=== BaSiC fit finished in {time.monotonic()-start_time} seconds ==="
+        )
 
-    def predict(
+    def transform(
         self, images: np.ndarray, timelapse: bool = False
     ) -> Union[Tuple[np.ndarray, np.ndarray], np.ndarray]:
         """Apply profile to images.
@@ -290,10 +307,13 @@ class BaSiC(BaseModel):
 
         Example:
             >>> basic.fit(images)
-            >>> corrected = basic.predict(images)
+            >>> corrected = basic.transform(images)
             >>> for i, im in enumerate(corrected):
             ...     imsave(f"image_{i}.tif")
         """
+
+        logger.info("=== BaSiC transform started ===")
+        start_time = time.monotonic()
 
         # Convert to the correct format
         im_float = images.astype(np.float64)
@@ -313,6 +333,7 @@ class BaSiC(BaseModel):
         def unshade(ins, outs, i, dark, flat):
             outs[..., i] = (ins[..., i] - dark) / flat
 
+        logger.info(f"unshading in {self.max_workers} threads")
         # If one or fewer workers, don't user ThreadPool. Useful for debugging.
         if self.max_workers <= 1:
             for i in range(images.shape[-1]):
@@ -331,14 +352,17 @@ class BaSiC(BaseModel):
                 for thread in threads:
                     assert thread is None
 
+        logger.info(
+            f"=== BaSiC transform finished in {time.monotonic()-start_time} seconds ==="
+        )
         return output.astype(images.dtype)
 
     # REFACTOR large datasets will probably prefer saving corrected images to
     # files directly, a generator may be handy
-    def fit_predict(
+    def fit_transform(
         self, images: ArrayLike, timelapse: bool = True
     ) -> Union[Tuple[np.ndarray, np.ndarray], np.ndarray]:
-        """Fit and predict on data.
+        """Fit and transform on data.
 
         Args:
             images: input images to fit and correct
@@ -347,10 +371,10 @@ class BaSiC(BaseModel):
             profiles and corrected images
 
         Example:
-            >>> profiles, corrected = basic.fit_predict(images)
+            >>> profiles, corrected = basic.fit_transform(images)
         """
         self.fit(images)
-        corrected = self.predict(images, timelapse)
+        corrected = self.transform(images, timelapse)
 
         # NOTE or only return corrected images and user can get profiles separately
         return corrected

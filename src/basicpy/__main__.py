@@ -1,18 +1,17 @@
-"""CLI entry point for PyBaSiC."""
+"""CLI entry point for BaSiCPy."""
 from pathlib import Path
 import argparse
 import logging
 from typing import Optional
 
-from pybasic import BaSiC
-from pybasic.pybasic import Device
+from basicpy import BaSiC
+from basicpy.basicpy import Device
 
 # Initialize the logger
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     datefmt="%d-%b-%y %H:%M:%S",
 )
-logger = logging.getLogger("basicpy.main")
 
 
 def main(
@@ -34,7 +33,7 @@ def main(
     # TODO: Handle file loading better, use pattern
     # images = image_tools.load_images(input_dir.iterdir())
 
-    # corrected = basic.fit_predict(images, timelapse=settings["timelapse"])
+    # corrected = basic.fit_transform(images, timelapse=settings["timelapse"])
 
     # TODO: Save the files
     # for i in range(corrected.shape[-1]):
@@ -122,10 +121,9 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
+    logger = logging.getLogger("basicpy")
     if args.verbose:
-        logging.getLogger("basicpy").setLevel(logging.DEBUG)
-    else:
-        logger.setLevel(logging.INFO)
+        logger.setLevel(logging.DEBUG)
 
     logger.info("BaSiCPy Input Arguments")
     logger.info("-----------------------")
