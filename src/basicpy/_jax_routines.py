@@ -3,7 +3,7 @@ from jax import jit, lax
 from jax.tree_util import register_pytree_node_class
 from basicpy.tools.dct2d_tools import JaxDCT
 from functools import partial
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, PrivateAttr
 
 idct2d, dct2d = JaxDCT.idct2d, JaxDCT.dct2d
 newax = jnp.newaxis
@@ -74,15 +74,46 @@ class BaseFit(BaseModel):
         fit_residual = jnp.ones(Im.shape, dtype=jnp.float32) * jnp.inf
 
         vals = (0, S, D_R, D_Z, I_R, B, Y, mu, fit_residual)
-        ladmap_step = partial(
+        step = partial(
             self._step,
             Im,
             W,
         )
-        vals = lax.while_loop(self._cond, ladmap_step, vals)
+        vals = lax.while_loop(self._cond, step, vals)
         k, S, D_R, D_Z, I_R, B, Y, mu, fit_residual = vals
         norm_ratio = jnp.linalg.norm(fit_residual.flatten(), ord=2) / self.image_norm
         return S, D_R, D_Z, I_R, B, norm_ratio, k < self.max_iterations
+
+    @jit
+    def _fit_baseline(
+        self,
+        Im,
+        W,
+        S,
+        D_R,
+        D_Z,
+        B,
+        I_R,
+    ):
+        # initialize values
+        Y = jnp.ones_like(Im, dtype=jnp.float32)
+        mu = self.init_mu
+        fit_residual = jnp.ones(Im.shape, dtype=jnp.float32) * jnp.inf
+
+        D = self.calc_darkfield(S, D_R, D_Z)
+        vals = (0, I_R, B, Y, mu, fit_residual)
+        step = partial(
+            self._step_only_baseline,
+            Im,
+            W,
+            S,
+            D,
+        )
+
+        vals = lax.while_loop(self._cond, step, vals)
+        k, I_R, B, Y, mu, fit_residual = vals
+        norm_ratio = jnp.linalg.norm(fit_residual.flatten(), ord=2) / self.image_norm
+        return I_R, B, norm_ratio, k < self.max_iterations
 
     def __call__(
         self,
@@ -107,11 +138,6 @@ class BaseFit(BaseModel):
         if W.shape != Im.shape:
             raise ValueError("weight must have the same shape as images.shape")
         return self._fit(Im, W, S, D_R, D_Z, B, I_R)
-
-    def fit_baseline(
-        self,
-    ):
-        pass
 
     def tree_flatten(self):
         # all of the fields are treated as "static" values for JAX
@@ -175,6 +201,9 @@ class LadmapFit(BaseFit):
 
 @register_pytree_node_class
 class ApproximateFit(BaseFit):
+    _ent1: float = PrivateAttr(1.0)
+    _ent2: float = PrivateAttr(10.0)
+
     @jit
     def _step(
         self,
@@ -182,21 +211,19 @@ class ApproximateFit(BaseFit):
         weight,
         vals,
     ):
-        ent1 = 1  # fixed
-        ent2 = 10
         k, S, D_R, D_Z, I_R, B, Y, mu, fit_residual = vals
         S_hat = dct2d(S)
         I_B = S[newax, ...] * B[:, newax, newax] + D_R[newax, ...] + D_Z
-        temp_W = (Im - I_B - I_R + Y / mu) / ent1
+        temp_W = (Im - I_B - I_R + Y / mu) / self._ent1
         #        plt.imshow(temp_W[0]);plt.show()
         #        print(type(temp_W))
         temp_W = jnp.mean(temp_W, axis=0)
         S_hat = S_hat + dct2d(temp_W)
-        S_hat = _jshrinkage(S_hat, self.lambda_flatfield / (ent1 * mu))
+        S_hat = _jshrinkage(S_hat, self.lambda_flatfield / (self._ent1 * mu))
         S = idct2d(S_hat)
         I_B = S[newax, ...] * B[:, newax, newax] + D_R[newax, ...] + D_Z
-        I_R = (Im - I_B + Y / mu) / ent1
-        I_R = _jshrinkage(I_R, weight / (ent1 * mu))
+        I_R = (Im - I_B + Y / mu) / self._ent1
+        I_R = _jshrinkage(I_R, weight / (self._ent1 * mu))
         R = Im - I_R
         B = jnp.mean(R, axis=(1, 2)) / jnp.mean(R)
         B = jnp.maximum(B, 0)
@@ -235,9 +262,9 @@ class ApproximateFit(BaseFit):
 
             # smooth A_offset
             D_R = dct2d(D_R)
-            D_R = _jshrinkage(D_R, self.lambda_darkfield / (ent2 * mu))
+            D_R = _jshrinkage(D_R, self.lambda_darkfield / (self._ent2 * mu))
             D_R = idct2d(D_R)
-            D_R = _jshrinkage(D_R, self.lambda_darkfield / (ent2 * mu))
+            D_R = _jshrinkage(D_R, self.lambda_darkfield / (self._ent2 * mu))
             D_R = D_R + Z
         fit_residual = R - I_B
         Y = Y + mu * fit_residual
