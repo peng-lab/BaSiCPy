@@ -130,7 +130,6 @@ class BaSiC(BaseModel):
     _reweight_score: float = PrivateAttr(None)
     _flatfield: np.ndarray = PrivateAttr(None)
     _darkfield: np.ndarray = PrivateAttr(None)
-    _logger: logging.Logger = PrivateAttr(None)
     _alm_settings = {
         "lambda_darkfield",
         "lambda_flatfield",
@@ -164,9 +163,6 @@ class BaSiC(BaseModel):
         if self.device is not Device.cpu:
             # TODO: sanity checks on device selection
             pass
-
-        # Initialize logger
-        self._logger = logging.getLogger(__name__ + f".BaSiC.{id(self)}")
 
     def __call__(
         self, images: np.ndarray, timelapse: bool = False
