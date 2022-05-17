@@ -282,7 +282,7 @@ class BaSiC(BaseModel):
                 B,
                 I_R,
             )
-            logger.info("single-step optimization score: {norm_ratio}.")
+            logger.info(f"single-step optimization score: {norm_ratio}.")
             self._score = norm_ratio
             if not converged:
                 logger.warning("single-step optimization did not converge.")

@@ -257,9 +257,9 @@ class ApproximateFit(BaseFit):
         return (k + 1, I_R, B, Y, mu, fit_residual)
 
     def calc_weights(self, I_B, I_R):
-        return jnp.ones_like(I_R, dtype=jnp.float32) / (
-            jnp.abs(I_R / I_B) + self.epsilon
-        )
+        XE_norm = I_R / (jnp.mean(I_B, axis=(1, 2))[:, newax, newax] + 1e-6)
+        weight = jnp.ones_like(I_R) / (jnp.abs(XE_norm) + self.epsilon)
+        return weight / jnp.mean(weight)
 
     def calc_darkfield(_self, S, D_R, D_Z):
         return D_R + D_Z * S

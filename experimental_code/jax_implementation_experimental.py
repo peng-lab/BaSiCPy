@@ -90,7 +90,6 @@ def fetch(data_name: str):
     corrected = (imread(f) for f in corrected_paths)
 
     return uncorrected, corrected
-#%%
 import numpy as np
 from matplotlib import pyplot as plt
 from jax import numpy as jnp
@@ -100,8 +99,33 @@ from skimage.transform import downscale_local_mean
 images=np.array(list(fetch("wsi_brain")[0]))
 images = np.array([downscale_local_mean(im,(4,4)) for im in images])
 print(images.shape)
-# %%
 plt.imshow(images[10])
+# %%
+from basicpy import BaSiC
+b=BaSiC(get_darkfield=True,max_reweight_iterations=10,fitting_mode="ladmap")
+b.fit(images)
+plt.imshow(b.flatfield)
+plt.colorbar()
+plt.show()
+plt.imshow(b.darkfield)
+plt.colorbar()
+plt.show()
+#for w in b._weight:
+#    plt.imshow(w)
+#    plt.colorbar()
+#    plt.show()
+#%%
+from basicpy import BaSiC
+b=BaSiC(get_darkfield=True,max_reweight_iterations=3,working_size=64,fitting_mode="approximate")
+b.fit(images)
+plt.imshow(b.flatfield)
+plt.colorbar()
+plt.show()
+plt.imshow(b.darkfield)
+plt.colorbar()
+plt.show()
+
+
 #%%
 """# test original implementation"""
 
@@ -146,29 +170,3 @@ flatfield_withdark_original = np.mean(X_A, axis=2) - X_A_offset
 darkfield_withdark_original = X_A_offset
 
 #%%
-from basicpy import BaSiC
-b=BaSiC(get_darkfield=True,max_reweight_iterations=10,fitting_mode="ladmap")
-b.fit(images)
-plt.imshow(b.flatfield)
-plt.colorbar()
-plt.show()
-plt.imshow(b.darkfield)
-plt.colorbar()
-plt.show()
-#for w in b._weight:
-#    plt.imshow(w)
-#    plt.colorbar()
-#    plt.show()
-#%%
-from basicpy import BaSiC
-b=BaSiC(get_darkfield=True,max_reweight_iterations=1,working_size=64,fitting_mode="approximate")
-b.fit(images)
-plt.imshow(b.flatfield)
-plt.colorbar()
-plt.show()
-plt.imshow(b.darkfield)
-plt.colorbar()
-plt.show()
-
-
-# %%
