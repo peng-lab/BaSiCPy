@@ -50,7 +50,8 @@ class BaseFit(BaseModel):
 
     @jit
     def _cond(self, vals):
-        k, _, _, _, _, _, _, _, fit_residual = vals
+        k = vals[0]
+        fit_residual = vals[-1]
         norm_ratio = jnp.linalg.norm(fit_residual.flatten(), ord=2) / self.image_norm
         return jnp.all(
             jnp.array([norm_ratio > self.optimization_tol, k < self.max_iterations])
@@ -106,6 +107,11 @@ class BaseFit(BaseModel):
         if W.shape != Im.shape:
             raise ValueError("weight must have the same shape as images.shape")
         return self._fit(Im, W, S, D_R, D_Z, B, I_R)
+
+    def fit_baseline(
+        self,
+    ):
+        pass
 
     def tree_flatten(self):
         # all of the fields are treated as "static" values for JAX

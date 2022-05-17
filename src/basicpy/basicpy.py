@@ -317,8 +317,8 @@ class BaSiC(BaseModel):
             last_S = S
             last_D = D
 
-        if self.sort_intensity:
-            B = fitting_step.calc_baseline(S, D_R, D_Z)
+        #        if self.sort_intensity:
+        #            B = fitting_step.fit_baseline(S, D_R, D_Z)
 
         self.flatfield = S
         self.darkfield = D
