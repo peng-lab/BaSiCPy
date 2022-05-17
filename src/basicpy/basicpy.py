@@ -113,6 +113,10 @@ class BaSiC(BaseModel):
         10,
         description="Maximum number of reweighting iterations.",
     )
+    max_reweight_iterations_baseline: int = Field(
+        5,
+        description="Maximum number of reweighting iterations for baseline.",
+    )
     max_workers: int = Field(
         NUM_THREADS,
         description="Maximum number of threads used for processing.",
@@ -273,7 +277,7 @@ class BaSiC(BaseModel):
             D_Z = 0.0
             B = jnp.ones(Im.shape[0], dtype=jnp.float32)
             I_R = jnp.zeros(Im.shape, dtype=jnp.float32)
-            S, D_R, D_Z, I_R, B, norm_ratio, converged = fitting_step(
+            S, D_R, D_Z, I_R, B, norm_ratio, converged = fitting_step.fit(
                 Im,
                 W,
                 S,
@@ -290,7 +294,7 @@ class BaSiC(BaseModel):
             S = S / mean_S  # flatfields
             B = B * mean_S  # baseline
             D = fitting_step.calc_darkfield(S, D_R, D_Z)  # darkfield
-            I_B = B[:, newax, newax] * S[newax, ...] + D_R[newax, ...] + D_Z
+            I_B = B[:, newax, newax] * S[newax, ...] + D[newax, ...]
             W = fitting_step.calc_weights(I_B, I_R)
 
             self._weight = W
@@ -317,8 +321,28 @@ class BaSiC(BaseModel):
             last_S = S
             last_D = D
 
-        #        if self.sort_intensity:
-        #            B = fitting_step.fit_baseline(S, D_R, D_Z)
+        assert S is not None
+        assert D is not None
+        assert B is not None
+
+        if self.sort_intensity:
+            Im = device_put(images).astype(jnp.float32)
+            Im = self._resize(Im)
+            for i in range(self.max_reweight_iterations_baseline):
+                logger.info(f"reweighting iteration for baseline {i}")
+                I_R, B, norm_ratio, converged = fitting_step.fit_baseline(
+                    Im,
+                    W,
+                    S,
+                    D,
+                    B,
+                    I_R,
+                )
+                I_B = B[:, newax, newax] * S[newax, ...] + D[newax, ...]
+                W = fitting_step.calc_weights(I_B, I_R)
+                self._weight = W
+                self._residual = I_R
+                logger.info(f"Iteration {i} finished.")
 
         self.flatfield = S
         self.darkfield = D

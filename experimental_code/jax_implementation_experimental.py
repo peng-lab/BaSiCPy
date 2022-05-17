@@ -102,13 +102,30 @@ print(images.shape)
 plt.imshow(images[10])
 # %%
 from basicpy import BaSiC
-b=BaSiC(get_darkfield=True,max_reweight_iterations=10,fitting_mode="ladmap")
+b=BaSiC(get_darkfield=True,
+max_reweight_iterations=10,fitting_mode="ladmap")
 b.fit(images)
 plt.imshow(b.flatfield)
 plt.colorbar()
 plt.show()
 plt.imshow(b.darkfield)
 plt.colorbar()
+plt.show()
+plt.plot(b.baseline)
+plt.show()
+## %%
+from basicpy import BaSiC
+b=BaSiC(get_darkfield=True,
+sort_intensity=True,
+max_reweight_iterations=10,fitting_mode="ladmap")
+b.fit(images)
+plt.imshow(b.flatfield)
+plt.colorbar()
+plt.show()
+plt.imshow(b.darkfield)
+plt.colorbar()
+plt.show()
+plt.plot(b.baseline)
 plt.show()
 #for w in b._weight:
 #    plt.imshow(w)
@@ -117,6 +134,7 @@ plt.show()
 #%%
 from basicpy import BaSiC
 b=BaSiC(get_darkfield=True,
+sort_intensity=True,
 max_reweight_iterations=3,
 working_size=64,
 fitting_mode="approximate",
@@ -128,6 +146,8 @@ plt.colorbar()
 plt.show()
 plt.imshow(b.darkfield)
 plt.colorbar()
+plt.show()
+plt.plot(b.baseline)
 plt.show()
 
 

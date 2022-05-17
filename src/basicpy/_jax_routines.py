@@ -4,6 +4,7 @@ from jax.tree_util import register_pytree_node_class
 from basicpy.tools.dct2d_tools import JaxDCT
 from functools import partial
 from pydantic import BaseModel, Field, PrivateAttr
+from typing import Tuple
 
 idct2d, dct2d = JaxDCT.idct2d, JaxDCT.dct2d
 newax = jnp.newaxis
@@ -58,7 +59,7 @@ class BaseFit(BaseModel):
         )
 
     @jit
-    def _fit(
+    def _fit_jit(
         self,
         Im,
         W,
@@ -85,13 +86,12 @@ class BaseFit(BaseModel):
         return S, D_R, D_Z, I_R, B, norm_ratio, k < self.max_iterations
 
     @jit
-    def _fit_baseline(
+    def _fit_baseline_jit(
         self,
         Im,
         W,
         S,
-        D_R,
-        D_Z,
+        D,
         B,
         I_R,
     ):
@@ -100,7 +100,6 @@ class BaseFit(BaseModel):
         mu = self.init_mu
         fit_residual = jnp.ones(Im.shape, dtype=jnp.float32) * jnp.inf
 
-        D = self.calc_darkfield(S, D_R, D_Z)
         vals = (0, I_R, B, Y, mu, fit_residual)
         step = partial(
             self._step_only_baseline,
@@ -115,7 +114,7 @@ class BaseFit(BaseModel):
         norm_ratio = jnp.linalg.norm(fit_residual.flatten(), ord=2) / self.image_norm
         return I_R, B, norm_ratio, k < self.max_iterations
 
-    def __call__(
+    def fit(
         self,
         Im,
         W,
@@ -137,7 +136,28 @@ class BaseFit(BaseModel):
             raise ValueError("I_R must have the same shape as images.shape")
         if W.shape != Im.shape:
             raise ValueError("weight must have the same shape as images.shape")
-        return self._fit(Im, W, S, D_R, D_Z, B, I_R)
+        return self._fit_jit(Im, W, S, D_R, D_Z, B, I_R)
+
+    def fit_baseline(
+        self,
+        Im,
+        W,
+        S,
+        D,
+        B,
+        I_R,
+    ) -> Tuple[jnp.ndarray, jnp.ndarray, float, bool]:
+        if S.shape != Im.shape[1:]:
+            raise ValueError("S must have the same shape as images.shape[1:]")
+        if D.shape != Im.shape[1:]:
+            raise ValueError("D must have the same shape as images.shape[1:]")
+        if B.shape != Im.shape[:1]:
+            raise ValueError("B must have the same shape as images.shape[:1]")
+        if I_R.shape != Im.shape:
+            raise ValueError("I_R must have the same shape as images.shape")
+        if W.shape != Im.shape:
+            raise ValueError("weight must have the same shape as images.shape")
+        return self._fit_baseline_jit(Im, W, S, D, B, I_R)
 
     def tree_flatten(self):
         # all of the fields are treated as "static" values for JAX
@@ -189,6 +209,23 @@ class LadmapFit(BaseFit):
         mu = jnp.minimum(mu * self.rho, self.max_mu)
 
         return (k + 1, S, D_R, D_Z, I_R, B, Y, mu, fit_residual)
+
+    @jit
+    def _step_only_baseline(self, Im, weight, S, D, vals):
+        k, I_R, B, Y, mu, fit_residual = vals
+        I_B = S[newax, ...] * B[:, newax, newax] + D[newax, ...]
+        I_R = _jshrinkage(Im - I_B + Y / mu, weight / mu)
+
+        R = Im - I_R
+        B = jnp.sum(S[newax, ...] * (R + Y / mu), axis=(1, 2)) / jnp.sum(S**2)
+        B = jnp.maximum(B, 0)
+
+        I_B = S[newax, ...] * B[:, newax, newax] + D[newax, ...]
+        fit_residual = R - I_B
+        Y = Y + mu * fit_residual
+        mu = jnp.minimum(mu * self.rho, self.max_mu)
+
+        return (k + 1, I_R, B, Y, mu, fit_residual)
 
     def calc_weights(self, I_B, I_R):
         return jnp.ones_like(I_R, dtype=jnp.float32) / (
@@ -283,7 +320,7 @@ class ApproximateFit(BaseFit):
 
         R1 = Im - I_R
         B = jnp.mean(R1, axis=(1, 2)) - jnp.mean(D)
-        B[B < 0] = 0
+        B = B * (B > 0)
         fit_residual = Im - I_B - I_R
         Y = Y + mu * fit_residual
         mu = jnp.minimum(mu * self.rho, self.max_mu)
