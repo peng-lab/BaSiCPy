@@ -12,6 +12,8 @@ from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
 from multiprocessing import cpu_count
 from typing import Dict, Iterable, Tuple, Union, Optional
+import time
+import logging
 
 # 3rd party modules
 import numpy as np
@@ -43,6 +45,9 @@ else:
     # Default back to multiprocessing cpu_count, which is always going to count
     # the total number of cpus
     NUM_THREADS = cpu_count()
+
+# initialize logger with the package name
+logger = logging.getLogger(__name__)
 
 
 class Device(Enum):
@@ -158,6 +163,11 @@ class BaSiC(BaseModel):
     def __init__(self, **kwargs) -> None:
         """Initialize BaSiC with the provided settings."""
 
+        log_str = f"Initializing BaSiC {id(self)} with parameters: \n"
+        for k, v in kwargs.items():
+            log_str += f"{k}: {v}\n"
+        logger.info(log_str)
+
         super().__init__(**kwargs)
 
         if self.working_size != 128:
@@ -212,6 +222,9 @@ class BaSiC(BaseModel):
             >>> basic.fit(images)
 
         """
+        logger.info("=== BaSiC fit started ===")
+        start_time = time.monotonic()
+
         # TODO: sorted version and baseline calc.
         Im = device_put(images).astype(jnp.float32)
         Im = self._resize(Im)
@@ -252,7 +265,8 @@ class BaSiC(BaseModel):
             fitting_step = ApproximateFit(**fit_params)
 
         for i in range(self.max_reweight_iterations):
-            # TODO: loop jit?
+            logger.info(f"reweighting iteration {i}")
+            # TODO: loop jit
             # TODO: reusing last values?
             S = jnp.zeros(Im.shape[1:], dtype=jnp.float32)
             D_R = jnp.zeros(Im.shape[1:], dtype=jnp.float32)
@@ -268,8 +282,10 @@ class BaSiC(BaseModel):
                 B,
                 I_R,
             )
+            logger.info("single-step optimization score: {norm_ratio}.")
             self._score = norm_ratio
-            # TODO: warn if not converged
+            if not converged:
+                logger.warning("single-step optimization did not converge.")
             mean_S = jnp.mean(S)
             S = S / mean_S  # flatfields
             B = B * mean_S  # baseline
@@ -280,6 +296,7 @@ class BaSiC(BaseModel):
             self._weight = W
             self._residual = I_R
 
+            logger.info(f"Iteration {i} finished.")
             if last_S is not None:
                 mad_flatfield = jnp.sum(jnp.abs(S - last_S)) / jnp.sum(np.abs(last_S))
                 if self.get_darkfield:
@@ -289,8 +306,14 @@ class BaSiC(BaseModel):
                     self._reweight_score = max(mad_flatfield, mad_darkfield)
                 else:
                     self._reweight_score = mad_flatfield
+                logger.info(f"reweighting score: {self._reweight_score}")
+                logger.info(f"elapsed time: {time.monotonic() - start_time} seconds")
+
                 if self._reweight_score <= self.reweighting_tol:
+                    logger.info("Reweighting converged.")
                     break
+            if i == self.max_reweight_iterations - 1:
+                logger.warning("Reweighting did not converge.")
             last_S = S
             last_D = D
 
@@ -300,6 +323,9 @@ class BaSiC(BaseModel):
         self.flatfield = S
         self.darkfield = D
         self.baseline = B
+        logger.info(
+            f"=== BaSiC fit finished in {time.monotonic()-start_time} seconds ==="
+        )
 
     def transform(
         self, images: np.ndarray, timelapse: bool = False
@@ -325,6 +351,9 @@ class BaSiC(BaseModel):
             ...     imsave(f"image_{i}.tif")
         """
 
+        logger.info("=== BaSiC transform started ===")
+        start_time = time.monotonic()
+
         # Convert to the correct format
         im_float = images.astype(np.float64)
 
@@ -343,6 +372,7 @@ class BaSiC(BaseModel):
         def unshade(ins, outs, i, dark, flat):
             outs[..., i] = (ins[..., i] - dark) / flat
 
+        logger.info(f"unshading in {self.max_workers} threads")
         # If one or fewer workers, don't user ThreadPool. Useful for debugging.
         if self.max_workers <= 1:
             for i in range(images.shape[-1]):
@@ -361,6 +391,9 @@ class BaSiC(BaseModel):
                 for thread in threads:
                     assert thread is None
 
+        logger.info(
+            f"=== BaSiC transform finished in {time.monotonic()-start_time} seconds ==="
+        )
         return output.astype(images.dtype)
 
     # REFACTOR large datasets will probably prefer saving corrected images to
