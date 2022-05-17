@@ -12,10 +12,11 @@ Original file is located at
 
 # copy from basicpy.data
 
-import pooch
-from os import path
-from skimage.io import imread
 import glob
+from os import path
+
+import pooch
+from skimage.io import imread
 
 EXPERIMENTAL_TEST_DATA_PROPS = {
     "cell_culture": {
@@ -91,8 +92,9 @@ def fetch(data_name: str):
 
     return uncorrected, corrected
 import numpy as np
-from matplotlib import pyplot as plt
 from jax import numpy as jnp
+from matplotlib import pyplot as plt
+
 newax = jnp.newaxis
 from skimage.transform import downscale_local_mean
 
@@ -102,6 +104,7 @@ print(images.shape)
 plt.imshow(images[10])
 # %%
 from basicpy import BaSiC
+
 b=BaSiC(get_darkfield=True,
 max_reweight_iterations=10,fitting_mode="ladmap")
 b.fit(images)
@@ -115,6 +118,7 @@ plt.plot(b.baseline)
 plt.show()
 ## %%
 from basicpy import BaSiC
+
 b=BaSiC(get_darkfield=True,
 sort_intensity=True,
 max_reweight_iterations=10,fitting_mode="ladmap")
@@ -133,6 +137,7 @@ plt.show()
 #    plt.show()
 #%%
 from basicpy import BaSiC
+
 b=BaSiC(get_darkfield=True,
 max_reweight_iterations=3,
 working_size=64,
@@ -151,10 +156,10 @@ plt.show()
 
 #%%
 from basicpy import BaSiC
+
 b=BaSiC(get_darkfield=True,
 sort_intensity=True,
-max_reweight_iterations=3,
-working_size=64,
+max_reweight_iterations=1,
 fitting_mode="approximate",
 #sort_intensity=True
 )
@@ -167,3 +172,5 @@ plt.colorbar()
 plt.show()
 plt.plot(b.baseline)
 plt.show()
+
+# %%

@@ -7,26 +7,28 @@ Todo:
 # Core modules
 from __future__ import annotations
 
+import logging
 import os
+import time
 from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
 from multiprocessing import cpu_count
-from typing import Dict, Iterable, Tuple, Union, Optional
-import time
-import logging
+from typing import Dict, Iterable, Optional, Tuple, Union
+
+import jax.numpy as jnp
 
 # 3rd party modules
 import numpy as np
 from jax import device_put
-import jax.numpy as jnp
-from jax.image import resize, ResizeMethod
+from jax.image import ResizeMethod, resize
 from pydantic import BaseModel, Field, PrivateAttr
 from skimage.transform import resize as _resize
 
+from basicpy._jax_routines import ApproximateFit, LadmapFit
+from basicpy.tools.dct2d_tools import JaxDCT
+
 # Package modules
 from basicpy.types import ArrayLike
-from basicpy.tools.dct2d_tools import JaxDCT
-from basicpy._jax_routines import LadmapFit, ApproximateFit
 
 idct2d, dct2d = JaxDCT.idct2d, JaxDCT.dct2d
 newax = jnp.newaxis
@@ -159,6 +161,10 @@ class BaSiC(BaseModel):
     _darkfield: np.ndarray = PrivateAttr(None)
     _weight: float = PrivateAttr(None)
     _residual: float = PrivateAttr(None)
+    _S: float = PrivateAttr(None)
+    _B: float = PrivateAttr(None)
+    _D_R: float = PrivateAttr(None)
+    _D_Z: float = PrivateAttr(None)
 
     class Config:
 
@@ -290,10 +296,14 @@ class BaSiC(BaseModel):
             self._score = norm_ratio
             if not converged:
                 logger.warning("single-step optimization did not converge.")
+            self._S = S
+            self._D_R = D_R
+            self._B = B
+            self._D_Z = D_Z
+            D = fitting_step.calc_darkfield(S, D_R, D_Z)  # darkfield
             mean_S = jnp.mean(S)
             S = S / mean_S  # flatfields
             B = B * mean_S  # baseline
-            D = fitting_step.calc_darkfield(S, D_R, D_Z)  # darkfield
             I_B = B[:, newax, newax] * S[newax, ...] + D[newax, ...]
             W = fitting_step.calc_weights(I_B, I_R)
 

@@ -22,10 +22,10 @@ repos:
   #   hooks:
   #     - id: autoflake
   #       args: ["--in-place", "--remove-all-unused-imports"]
-  - repo: https://github.com/PyCQA/isort # isort is currently strugginly with relative imports
-    rev: 5.10.1
-    hooks:
-      - id: isort
+  # - repo: https://github.com/PyCQA/isort # isort is currently strugginly with relative imports
+  #   rev: 5.10.1
+  #   hooks:
+  #     - id: isort
   - repo: https://github.com/asottile/pyupgrade
     rev: v2.31.0
     hooks:

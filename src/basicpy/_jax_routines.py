@@ -1,10 +1,12 @@
-from jax import numpy as jnp
-from jax import jit, lax
-from jax.tree_util import register_pytree_node_class
-from basicpy.tools.dct2d_tools import JaxDCT
 from functools import partial
-from pydantic import BaseModel, Field, PrivateAttr
 from typing import Tuple
+
+from jax import jit, lax
+from jax import numpy as jnp
+from jax.tree_util import register_pytree_node_class
+from pydantic import BaseModel, Field, PrivateAttr
+
+from basicpy.tools.dct2d_tools import JaxDCT
 
 idct2d, dct2d = JaxDCT.idct2d, JaxDCT.dct2d
 newax = jnp.newaxis
@@ -259,7 +261,7 @@ class ApproximateFit(BaseFit):
         S_hat = _jshrinkage(S_hat, self.lambda_flatfield / (self._ent1 * mu))
         S = idct2d(S_hat)
         I_B = S[newax, ...] * B[:, newax, newax] + D_R[newax, ...] + D_Z
-        I_R = (Im - I_B + Y / mu) / self._ent1
+        I_R = Im - I_B + Y / mu / self._ent1
         I_R = _jshrinkage(I_R, weight / (self._ent1 * mu))
         R = Im - I_R
         B = jnp.mean(R, axis=(1, 2)) / jnp.mean(R)
@@ -284,25 +286,30 @@ class ApproximateFit(BaseFit):
             denominator = B_sum * A_sum - BA_sum * jnp.sum(B_valid)
             # limit B1_offset: 0<B1_offset<B1_uplimit
 
+            # D_Z = max(D_Z,0);
+            # D_Z = min(D_Z,max_D_Z ./mean(S(:)));
             D_Z = jnp.clip(
                 (B_sq_sum * A_sum - B_sum * BA_sum) / (denominator + 1e-6),
                 0,
                 self.D_Z_max / jnp.mean(S),
             )
 
+            # Z = D_Z.*mean(S(:))-D_Z.*S(:);
             Z = D_Z * (jnp.mean(S) - S)
 
+            # D_R = mean(R(:,B_valid),2)-mean(B(B_valid)).*S(:);
             D_R = (R * B_valid[:, newax, newax]).sum(
                 axis=0
             ) / B_valid.sum() - B_sum / B_valid.sum() * S
+            # D_R = D_R-mean(D_R(:));
+            # D_R = D_R-mean(D_R(:))-B_offset;
+            D_R = D_R - jnp.mean(D_R)
             D_R = D_R - jnp.mean(D_R) - Z
 
-            # smooth A_offset
             D_R = dct2d(D_R)
             D_R = _jshrinkage(D_R, self.lambda_darkfield / (self._ent2 * mu))
             D_R = idct2d(D_R)
             D_R = _jshrinkage(D_R, self.lambda_darkfield / (self._ent2 * mu))
-            D_R = D_R + Z
         fit_residual = R - I_B
         Y = Y + mu * fit_residual
         mu = jnp.minimum(mu * self.rho, self.max_mu)
@@ -327,7 +334,7 @@ class ApproximateFit(BaseFit):
         # A1_coeff = mean(R1)-mean(A_offset);
         B = jnp.mean(R1, axis=(1, 2)) - jnp.mean(D)
         # A1_coeff(A1_coeff<0) = 0;
-        B = B * (B > 0)
+        B = jnp.maximum(B, 0)
         # Z1 = D - A1_hat - E1_hat;
         fit_residual = Im - I_B - I_R
         # Y1 = Y1 + mu*Z1;
@@ -341,4 +348,4 @@ class ApproximateFit(BaseFit):
         return weight / jnp.mean(weight)
 
     def calc_darkfield(_self, S, D_R, D_Z):
-        return D_R + D_Z * S
+        return D_R + D_Z * (1 + S)
