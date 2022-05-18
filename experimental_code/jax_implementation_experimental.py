@@ -171,7 +171,8 @@ from basicpy import BaSiC
 
 b=BaSiC(get_darkfield=True,
 sort_intensity=True,
-max_reweight_iterations=1,
+max_reweight_iterations_baseline=2,
+max_reweight_iterations=6,
 fitting_mode="approximate",
 #sort_intensity=True
 )

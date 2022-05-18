@@ -332,6 +332,8 @@ class BaSiC(BaseModel):
             Im = self._resize(Im)
             for i in range(self.max_reweight_iterations_baseline):
                 B = jnp.ones(Im.shape[0], dtype=jnp.float32)
+                if self.fitting_mode == FittingMode.approximate:
+                    B = jnp.mean(Im, axis=(1, 2))
                 I_R = jnp.zeros(Im.shape, dtype=jnp.float32)
                 logger.info(f"reweighting iteration for baseline {i}")
                 I_R, B, norm_ratio, converged = fitting_step.fit_baseline(
@@ -343,7 +345,7 @@ class BaSiC(BaseModel):
                     I_R,
                 )
                 I_B = B[:, newax, newax] * S[newax, ...] + D[newax, ...]
-                W = fitting_step.calc_weights(I_B, I_R)
+                W = fitting_step.calc_weights_baseline(I_B, I_R)
                 self._weight = W
                 self._residual = I_R
                 logger.info(f"Iteration {i} finished.")

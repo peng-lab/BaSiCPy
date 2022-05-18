@@ -234,6 +234,9 @@ class LadmapFit(BaseFit):
             jnp.abs(I_R / I_B) + self.epsilon
         )
 
+    def calc_weights_baseline(self, I_B, I_R):
+        return self.calc_weights(I_B, I_R)
+
     def calc_darkfield(_self, S, D_R, D_Z):
         return D_R + D_Z
 
@@ -343,6 +346,12 @@ class ApproximateFit(BaseFit):
     def calc_weights(self, I_B, I_R):
         XE_norm = I_R / (jnp.mean(I_B, axis=(1, 2))[:, newax, newax] + 1e-6)
         weight = jnp.ones_like(I_R) / (jnp.abs(XE_norm) + self.epsilon)
+        return weight / jnp.mean(weight)
+
+    def calc_weights_baseline(self, I_B, I_R):
+        mean_vec = np.mean(I_B, axis=0)
+        XE_norm = mean_vec[newax, ...] / (I_R + 1e-6)
+        weight = 1.0 / (jnp.abs(XE_norm) + self.epsilon)
         return weight / jnp.mean(weight)
 
     def calc_darkfield(_self, S, D_R, D_Z):
