@@ -171,10 +171,9 @@ from basicpy import BaSiC
 
 b=BaSiC(get_darkfield=True,
 sort_intensity=True,
-max_reweight_iterations_baseline=2,
+max_reweight_iterations_baseline=5,
 max_reweight_iterations=6,
 fitting_mode="approximate",
-#sort_intensity=True
 )
 b.fit(images)
 plt.imshow(b.flatfield)
@@ -401,3 +400,112 @@ plt.title("with dark darkfield")
 plt.imshow(darkfield_withdark_tingying)
 plt.colorbar()
 plt.suptitle("Tingying implementation")
+
+#%%
+def background_timelapse(
+        Im,
+        flatfield: np.ndarray = None,
+        darkfield: np.ndarray = None,
+        verbosity = True,
+        **kwargs
+        ):
+
+    """
+    Computes the baseline drift for the input images and returns a numpy 1D array
+    Parameters:
+    ----------
+    images_list : list
+        A list of 2D arrays as the list of input images. The list can be provided by
+        using pybasic.load_data() function.
+
+    flatfield : numpy 2D array
+        A flatfield image for input images with the same shape as them. The flatfield
+        image may be calculated using pybasic.basic() function.
+
+    darkfield : numpy 2D array, optional
+        A darkfield image for input images with the same shape as them. The darkfield
+        image may be calculated using the `pybasic.basic()` function.
+
+    verbosity : Boolean
+        If True the reweighting iteration number is printed (default is True).
+    Returns:
+    --------
+        A 1d numpy array containing baseline drift for each input image. The length of
+        the array equals the length of the list of input images.
+
+    """
+
+    nrows = ncols = Im.shape[-2]
+
+    # Reszing
+    # cv2.INTER_LINEAR is not exactly the same method as 'bilinear' in MATLAB
+
+    Im = Im.reshape([-1, nrows * nrows], order = 'F')
+    print(Im.shape)
+
+    _weights = np.ones(Im.shape)
+    eplson = 0.1
+    tol = 1e-6
+    for reweighting_iter in range(1,6):
+        S = np.reshape(flatfield, (1,-1), order='F')
+        D = np.reshape(darkfield, (1,-1), order='F')
+        B = np.mean(Im, 1).reshape([-1,1])
+
+        # main iteration loop starts:
+        # The first element of the second array of np.linalg.svd
+        _temp = np.linalg.svd(Im, full_matrices=False)[1]
+        norm_two = _temp[0]
+
+        mu = 12.5/norm_two # this one can be tuned
+        mu_bar = mu * 1e7
+        rho = 1.5 # this one can be tuned
+        d_norm = np.linalg.norm(Im, ord = 'fro')
+        ent1 = 1
+        _iter = 0
+        converged = False;
+        I_B = np.zeros(Im.shape)
+        I_R = np.zeros(Im.shape)
+        Y = 0
+
+        while not converged:
+            _iter = _iter + 1;
+            I_B = S * B + D
+
+            # update E1 using l0 norm
+            I_R = I_R + np.divide((Im - I_B - I_R + (1/mu)*Y), ent1)
+            I_R = np.maximum(I_R - _weights/(ent1*mu), 0) +\
+                     np.minimum(I_R + _weights/(ent1*mu), 0)
+            # update A1_coeff, A2_coeff and A_offset
+            #if coeff_flag
+
+            R = Im - I_R
+            B = np.mean(R,1).reshape(-1,1) - np.mean(D,1)
+            B[B<0] = 0
+            residual = Im - I_B - I_R
+
+            Y = Y + mu*residual
+
+            mu = min(mu*rho, mu_bar)
+
+            # stop Criterion
+            stopCriterion = np.linalg.norm(residual, ord = 'fro') / d_norm
+            # print(stopCriterion, tol)
+            if stopCriterion < tol:
+                converged = True
+            # if total_svd % 10 == 0:
+            #     print('stop')
+
+        # updating weight
+        # XE_norm = E1_hat / np.mean(A1_hat)
+        mean_vec = np.mean(I_B, axis=1)
+        I_R = np.transpose(np.tile(mean_vec, (nrows * nrows, 1))) / (I_R + 1e-6)
+        _weights = 1./(np.abs(I_R)+eplson)
+        print(np.mean(_weights))
+
+        _weights = np.divide( np.multiply(_weights, _weights.shape[0] * _weights.shape[1]), np.sum(_weights))
+
+    return np.squeeze(B)
+
+baseline = background_timelapse(images,np.array(b.flatfield),np.array(b.darkfield))
+plt.plot(baseline)
+# %%

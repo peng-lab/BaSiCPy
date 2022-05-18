@@ -98,7 +98,7 @@ class BaseFit(BaseModel):
         I_R,
     ):
         # initialize values
-        Y = jnp.ones_like(Im, dtype=jnp.float32)
+        Y = jnp.zeros_like(Im, dtype=jnp.float32)
         mu = self.init_mu
         fit_residual = jnp.ones(Im.shape, dtype=jnp.float32) * jnp.inf
 
@@ -349,8 +349,8 @@ class ApproximateFit(BaseFit):
         return weight / jnp.mean(weight)
 
     def calc_weights_baseline(self, I_B, I_R):
-        mean_vec = np.mean(I_B, axis=0)
-        XE_norm = mean_vec[newax, ...] / (I_R + 1e-6)
+        mean_vec = jnp.mean(I_B, axis=(1, 2))
+        XE_norm = mean_vec[:, newax, newax] / (I_R + 1e-6)
         weight = 1.0 / (jnp.abs(XE_norm) + self.epsilon)
         return weight / jnp.mean(weight)
 
