@@ -190,8 +190,8 @@ plt.show()
 """# test original implementation"""
 
 #%%
-%%time
-A1_hat, E1_hat, A_offset, stopCriterion=basicpy.tools.inexact_alm.inexact_alm_rspca_l1(
+from basicpy._deprecated import inexact_alm
+A1_hat, E1_hat, A_offset, stopCriterion=inexact_alm.inexact_alm_rspca_l1(
     images2,
     weight=W,
     lambda_flatfield=lambda_flatfield,
@@ -207,9 +207,7 @@ X_A_offset = np.reshape(A_offset, images2.shape[:2], order="F")
 print(X_A.shape,X_E.shape,X_A_offset.shape)
 flatfield_flatonly_original = np.mean(X_A, axis=2) - X_A_offset
 
-#%%
-%%time
-A1_hat, E1_hat, A_offset, stopCriterion=basicpy.tools.inexact_alm.inexact_alm_rspca_l1(
+A1_hat, E1_hat, A_offset, stopCriterion=inexact_alm.inexact_alm_rspca_l1(
     images2,
     weight=W,
     lambda_flatfield=lambda_flatfield,
@@ -226,7 +224,6 @@ print(X_A.shape,X_E.shape,X_A_offset.shape)
 flatfield_withdark_original = np.mean(X_A, axis=2) - X_A_offset
 darkfield_withdark_original = X_A_offset
 
-#%%
 plt.figure(figsize=(15,5))
 plt.subplot(131)
 plt.title("flat only flatfield")
