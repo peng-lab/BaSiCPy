@@ -1,15 +1,20 @@
 from functools import partial
 from typing import Tuple
 
+import numpy as np
 from jax import jit, lax
 from jax import numpy as jnp
 from jax.tree_util import register_pytree_node_class
 from pydantic import BaseModel, Field, PrivateAttr
 
-from basicpy.tools.dct2d_tools import JaxDCT
+from basicpy.tools.dct2d_tools import JaxDCT, SciPyDCT
 
 idct2d, dct2d = JaxDCT.idct2d, JaxDCT.dct2d
 newax = jnp.newaxis
+
+
+def shrinkage(x, thresh):
+    return np.sign(x) * np.maximum(np.abs(x) - thresh, 0)
 
 
 @jit
@@ -51,7 +56,6 @@ class BaseFit(BaseModel):
     class Config:
         extra = "ignore"
 
-    @jit
     def _cond(self, vals):
         k = vals[0]
         fit_residual = vals[-1]
@@ -60,7 +64,6 @@ class BaseFit(BaseModel):
             jnp.array([norm_ratio > self.optimization_tol, k < self.max_iterations])
         )
 
-    @jit
     def _fit_jit(
         self,
         Im,
@@ -82,12 +85,13 @@ class BaseFit(BaseModel):
             Im,
             W,
         )
-        vals = lax.while_loop(self._cond, step, vals)
+        while self._cond(vals):
+            vals = step(vals)
+        #        vals = lax.while_loop(self._cond, step, vals)
         k, S, D_R, D_Z, I_R, B, Y, mu, fit_residual = vals
         norm_ratio = jnp.linalg.norm(fit_residual.flatten(), ord=2) / self.image_norm
         return S, D_R, D_Z, I_R, B, norm_ratio, k < self.max_iterations
 
-    @jit
     def _fit_baseline_jit(
         self,
         Im,
@@ -238,12 +242,11 @@ class LadmapFit(BaseFit):
         return D_R + D_Z
 
 
-@register_pytree_node_class
+# @register_pytree_node_class
 class ApproximateFit(BaseFit):
     _ent1: float = PrivateAttr(1.0)
     _ent2: float = PrivateAttr(10.0)
 
-    @jit
     def _step(
         self,
         Im,
@@ -251,68 +254,64 @@ class ApproximateFit(BaseFit):
         vals,
     ):
         k, S, D_R, D_Z, I_R, B, Y, mu, fit_residual = vals
-        S_hat = dct2d(S)
+        S_hat = SciPyDCT.dct2d(np.array(S))
         I_B = S[newax, ...] * B[:, newax, newax] + D_R[newax, ...] + D_Z
         temp_W = (Im - I_B - I_R + Y / mu) / self._ent1
-        #        plt.imshow(temp_W[0]);plt.show()
-        #        print(type(temp_W))
-        temp_W = jnp.mean(temp_W, axis=0)
-        S_hat = S_hat + dct2d(temp_W)
-        S_hat = _jshrinkage(S_hat, self.lambda_flatfield / (self._ent1 * mu))
-        S = idct2d(S_hat)
+        #    plt.imshow(temp_W[0]);plt.show()
+        #    print(type(temp_W))
+        temp_W = np.mean(temp_W, axis=0)
+        S_hat = S_hat + SciPyDCT.dct2d(np.array(temp_W))
+        S_hat = shrinkage(S_hat, self.lambda_flatfield / (self._ent1 * mu))
+        S = SciPyDCT.idct2d(np.array(S_hat))
         I_B = S[newax, ...] * B[:, newax, newax] + D_R[newax, ...] + D_Z
-        I_R = Im - I_B + Y / mu / self._ent1
-        I_R = _jshrinkage(I_R, weight / (self._ent1 * mu))
+        I_R = (Im - I_B + Y / mu) / self._ent1
+        I_R = shrinkage(I_R, weight / (self._ent1 * mu))
         R = Im - I_R
-        B = jnp.mean(R, axis=(1, 2)) / jnp.mean(R)
-        B = jnp.maximum(B, 0)
+        B = np.mean(R, axis=(1, 2)) / np.mean(R)
+        B = np.maximum(B, 0)
 
         if self.get_darkfield:
-            B_valid = (B < 1).astype(jnp.float32)
+            B_valid = B < 1
 
-            S_mean = jnp.mean(S)
-            S_inmask = (S > S_mean * (1 - 1e-6)).astype(jnp.float32)
-            S_outmask = (S < S_mean * (1 + 1e-6)).astype(jnp.float32)
+            S_inmask = S > np.mean(S) * (1 - 1e-6)
+            S_outmask = S < np.mean(S) * (1 + 1e-6)
             A = (
-                jnp.mean(R * S_inmask[newax, ...], axis=(1, 2))
-                - jnp.mean(R * S_outmask[newax, ...], axis=(1, 2))
-            ) / jnp.mean(R)
+                np.sum(R * S_inmask[newax, ...], axis=(1, 2))
+                / np.sum(S_inmask * R.shape[0])
+                - np.sum(R * S_outmask[newax, ...], axis=(1, 2))
+                / np.sum(S_outmask * R.shape[0])
+            ) / np.mean(R)
 
             # temp1 = np.sum(p['A1_coeff'][validA1coeff_idx]**2)
-            B_sq_sum = jnp.sum(B * B_valid**2)
-            B_sum = jnp.sum(B * B_valid)
-            A_sum = jnp.sum(A * B_valid)
-            BA_sum = jnp.sum(B * A * B_valid)
-            denominator = B_sum * A_sum - BA_sum * jnp.sum(B_valid)
+            B_sq_sum = np.sum(B**2 * B_valid)
+            B_sum = np.sum(B * B_valid)
+            A_sum = np.sum(A * B_valid)
+            BA_sum = np.sum(B * A * B_valid)
+            denominator = B_sum * A_sum - BA_sum * np.sum(B_valid)
             # limit B1_offset: 0<B1_offset<B1_uplimit
 
-            # D_Z = max(D_Z,0);
-            # D_Z = min(D_Z,max_D_Z ./mean(S(:)));
-            D_Z = jnp.clip(
+            D_Z = np.clip(
                 (B_sq_sum * A_sum - B_sum * BA_sum) / (denominator + 1e-6),
                 0,
-                self.D_Z_max / jnp.mean(S),
+                self.D_Z_max / np.mean(S),
             )
 
-            # Z = D_Z.*mean(S(:))-D_Z.*S(:);
-            Z = D_Z * (jnp.mean(S) - S)
+            Z = D_Z * (np.mean(S) - S)
 
-            # D_R = mean(R(:,B_valid),2)-mean(B(B_valid)).*S(:);
-            D_R = (R * B_valid[:, newax, newax]).sum(
-                axis=0
-            ) / B_valid.sum() - B_sum / B_valid.sum() * S
-            # D_R = D_R-mean(D_R(:));
-            # D_R = D_R-mean(D_R(:))-B_offset;
-            D_R = D_R - jnp.mean(D_R)
-            D_R = D_R - jnp.mean(D_R) - Z
+            D_R = (R * B_valid[:, newax, newax]).sum(axis=0) / B_valid.sum() - (
+                B * B_valid
+            ).sum() / B_valid.sum() * S
+            D_R = D_R - np.mean(D_R) - Z
 
+            # smooth A_offset
             D_R = dct2d(D_R)
-            D_R = _jshrinkage(D_R, self.lambda_darkfield / (self._ent2 * mu))
+            D_R = shrinkage(D_R, self.lambda_darkfield / (self._ent2 * mu))
             D_R = idct2d(D_R)
-            D_R = _jshrinkage(D_R, self.lambda_darkfield / (self._ent2 * mu))
+            D_R = shrinkage(D_R, self.lambda_darkfield / (self._ent2 * mu))
+            D_R = D_R + Z
         fit_residual = R - I_B
         Y = Y + mu * fit_residual
-        mu = jnp.minimum(mu * self.rho, self.max_mu)
+        mu = np.minimum(mu * self.rho, self.max_mu)
 
         return (k + 1, S, D_R, D_Z, I_R, B, Y, mu, fit_residual)
 

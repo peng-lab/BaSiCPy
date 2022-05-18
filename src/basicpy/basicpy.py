@@ -180,14 +180,6 @@ class BaSiC(BaseModel):
 
         super().__init__(**kwargs)
 
-        if self.working_size != 128:
-            self.darkfield = np.zeros((self.working_size,) * 2, dtype=np.float64)
-            self.flatfield = np.zeros((self.working_size,) * 2, dtype=np.float64)
-
-        # Initialize the internal cache
-        self._darkfield = np.zeros((self.working_size,) * 2, dtype=np.float64)
-        self._flatfield = np.zeros((self.working_size,) * 2, dtype=np.float64)
-
         if self.device is not Device.cpu:
             # TODO: sanity checks on device selection
             pass
