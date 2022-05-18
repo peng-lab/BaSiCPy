@@ -318,12 +318,6 @@ class ApproximateFit(BaseFit):
 
     @jit
     def _step_only_baseline(self, Im, weight, S, D, vals):
-        """
-        A1_hat = bsxfun(@plus, W_idct_hat*A1_coeff,A_offset);
-        E1_hat = E1_hat + (D - A1_hat - E1_hat + (1/mu)*Y1)./ent1;
-        E1_hat = max(E1_hat - weight/(ent1*mu), 0)+min(E1_hat + weight/(ent1*mu), 0);
-        R1 = D-E1_hat;
-        """
         k, I_R, B, Y, mu, fit_residual = vals
         I_B = S[newax, ...] * B[:, newax, newax] + D[newax, ...]
 
