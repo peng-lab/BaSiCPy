@@ -7,10 +7,12 @@ Todo:
 # Core modules
 from __future__ import annotations
 
+import json
 import os
 from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
 from multiprocessing import cpu_count
+from pathlib import Path
 from typing import Dict, Tuple, Union
 import time
 import logging
@@ -23,7 +25,7 @@ from skimage.transform import resize
 
 # Package modules
 from basicpy.tools import inexact_alm_rspca_l1
-from basicpy.types import ArrayLike
+from basicpy.types import ArrayLike, PathLike
 
 # from basicpy.tools.dct2d_tools import dct2d, idct2d
 # from basicpy.tools.inexact_alm import inexact_alm_rspca_l1
@@ -137,6 +139,9 @@ class BaSiC(BaseModel):
         "optimization_tol",
         "max_iterations",
     }
+
+    _settings_fname = "settings.json"
+    _profiles_fname = "profiles.npy"
 
     class Config:
 
@@ -397,3 +402,46 @@ class BaSiC(BaseModel):
             current settings
         """
         return self.dict()
+
+    def save_model(self, model_dir: PathLike, overwrite: bool = False) -> None:
+        """Save current model to folder.
+
+        Args:
+            model_dir: path to model directory
+
+        Raises:
+            FileExistsError: if model directory already exists"""
+        path = Path(model_dir)
+
+        try:
+            path.mkdir()
+        except FileExistsError:
+            if not overwrite:
+                raise FileExistsError("Model folder already exists.")
+
+        # save settings
+        with open(path / self._settings_fname, "w") as fp:
+            # see pydantic docs for output options
+            fp.write(self.json())
+
+        # NOTE emit warning if profiles are all zeros? fit probably not run
+        # save profiles
+        profiles = np.dstack((self.flatfield, self.darkfield))
+        np.save(path / self._profiles_fname, profiles)
+
+    @classmethod
+    def load_model(cls, model_dir: PathLike) -> BaSiC:
+        """Create a new instance from a model folder."""
+        path = Path(model_dir)
+
+        if not path.exists():
+            raise FileNotFoundError("Model directory not found.")
+
+        with open(path / cls._settings_fname) as fp:
+            model = json.load(fp)
+
+        profiles = np.load(path / cls._profiles_fname)
+        model["flatfield"] = profiles[..., 0]
+        model["darkfield"] = profiles[..., 1]
+
+        return BaSiC(**model)
