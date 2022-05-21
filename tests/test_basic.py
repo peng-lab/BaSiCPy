@@ -21,7 +21,7 @@ def synthesized_test_data():
     grid = np.meshgrid(*(2 * (np.linspace(-size // 2 + 1, size // 2, size),)))
 
     # Create the parabolic gradient (flatfield) with and offset (darkfield)
-    gradient = sum(d ** 2 for d in grid)
+    gradient = sum(d**2 for d in grid)
     gradient = 0.01 * (np.max(gradient) - gradient) + 10
     gradient_int = gradient.astype(np.uint8)
 
@@ -29,7 +29,7 @@ def synthesized_test_data():
     truth = gradient / gradient.mean()
 
     # Create an image stack and add poisson noise
-    images = np.random.poisson(lam=gradient_int.flatten(), size=(n_images, size ** 2))
+    images = np.random.poisson(lam=gradient_int.flatten(), size=(n_images, size**2))
     images = images.transpose().reshape((size, size, n_images))
 
     return gradient, images, truth
@@ -47,7 +47,7 @@ def test_basic_verify_init():
 
 
 # Test BaSiC fitting function
-def test_basic_fit(capsys, synthesized_test_data):
+def test_basic_fit_synthesized(synthesized_test_data):
 
     basic = BaSiC(get_darkfield=False)
     gradient, images, truth = synthesized_test_data
@@ -57,6 +57,18 @@ def test_basic_fit(capsys, synthesized_test_data):
 
     assert np.max(basic.flatfield / truth) < 1 + SYNTHESIZED_TEST_DATA_MAX_ERROR
     assert np.min(basic.flatfield / truth) > 1 - SYNTHESIZED_TEST_DATA_MAX_ERROR
+
+    """
+    code for debug plotting :
+    plt.figure(figsize=(15,5)) ;
+    plt.subplot(131) ; plt.imshow(truth) ;plt.title("truth") ;
+    plt.colorbar() ;
+    plt.subplot(132) ; plt.imshow(basic.flatfield) ;plt.title("estimated") ;
+    plt.colorbar() ;
+    plt.subplot(133) ; plt.imshow(basic.flatfield / truth) ;plt.title("ratio") ;
+    plt.colorbar() ;
+    plt.show()
+    """
 
 
 # Test BaSiC transform function
