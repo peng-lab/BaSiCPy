@@ -72,7 +72,7 @@ class BaseFit(BaseModel):
         I_R,
     ):
         # initialize values
-        Y = jnp.ones_like(Im, dtype=jnp.float32)
+        Y = jnp.zeros_like(Im, dtype=jnp.float32)
         mu = self.init_mu
         fit_residual = jnp.ones(Im.shape, dtype=jnp.float32) * jnp.inf
 
@@ -82,6 +82,8 @@ class BaseFit(BaseModel):
             Im,
             W,
         )
+        #        while self._cond(vals):
+        #            vals = step(vals)
         vals = lax.while_loop(self._cond, step, vals)
         k, S, D_R, D_Z, I_R, B, Y, mu, fit_residual = vals
         norm_ratio = jnp.linalg.norm(fit_residual.flatten(), ord=2) / self.image_norm
@@ -111,6 +113,8 @@ class BaseFit(BaseModel):
             D,
         )
 
+        #        while self._cond(vals):
+        #            vals = step(vals)
         vals = lax.while_loop(self._cond, step, vals)
         k, I_R, B, Y, mu, fit_residual = vals
         norm_ratio = jnp.linalg.norm(fit_residual.flatten(), ord=2) / self.image_norm

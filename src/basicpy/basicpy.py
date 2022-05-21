@@ -238,7 +238,15 @@ class BaSiC(BaseModel):
         mean_image_dct = dct2d(mean_image.T)
         lambda_flatfield = jnp.sum(jnp.abs(mean_image_dct)) * self.lambda_flatfield_coef
 
-        spectral_norm = jnp.linalg.norm(Im.reshape((Im.shape[0], -1)), ord=2)
+        # spectral_norm = jnp.linalg.norm(Im.reshape((Im.shape[0], -1)), ord=2)
+        if self.fitting_mode == FittingMode.ladmap:
+            spectral_norm = jnp.linalg.norm(Im.reshape((Im.shape[0], -1)), ord=2)
+        else:
+            _temp = jnp.linalg.svd(Im.reshape((Im.shape[0], -1)), full_matrices=False)[
+                1
+            ]
+            spectral_norm = _temp[0]
+
         init_mu = self.mu_coef / spectral_norm
         fit_params = self.dict()
         fit_params.update(
