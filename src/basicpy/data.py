@@ -29,19 +29,19 @@ ORIGINAL_TEST_DATA_PROPS = {
 
 RESCALED_TEST_DATA_PROPS = {
     "cell_culture": {
-        "hash": "md5:797bbc4c891e5fe59f4200e771b55c3a",
+        "hash": "md5:b9718febdb2aa7a84f90c7d149cf2caf",
     },
     "timelapse_brightfield": {
-        "hash": "md5:460e5f78ac69856705704fedad9f9e59",
+        "hash": "md5:87a99a3c3dda7e170e272e9cd6f1ccd6",
     },
     "timelapse_nanog": {
-        "hash": "md5:815d53cac35b671269b17bd627d7baa7",
+        "hash": "md5:e6c2f7776575e6ad4ff65950f8371c05",
     },
     "timelapse_pu1": {
-        "hash": "md5:bee97561e87c51e90b46da9b439e8b7b",
+        "hash": "md5:02c4c74f9375369f2bf3c6f3bbca9109",
     },
     "wsi_brain": {
-        "hash": "md5:6e163786ddec2a690aa4bb47a64bcded",
+        "hash": "md5:52bcb25df3187b4947cbf89798933d0c",
     },
 }
 for k in RESCALED_TEST_DATA_PROPS.keys():
@@ -56,10 +56,9 @@ ORIGINAL_POOCH = pooch.create(
 
 RESCALED_POOCH = pooch.create(
     path=pooch.os_cache("basicpy"),
-    base_url="https://github.com/peng-lab/BaSiCPy/raw/{version}/data/",
-    #    version=version,
-    # If this is a development version, get the data from the "main" branch
-    version_dev="dev",
+    # FIXME change when the version is about to release
+    # see https://www.fatiando.org/pooch/latest/sample-data.html
+    base_url="https://github.com/peng-lab/BaSiCPy/raw/dev/data/",
     registry={v["filename"]: v["hash"] for v in RESCALED_TEST_DATA_PROPS.values()},
 )
 
@@ -111,7 +110,7 @@ def _fetch_original(data_name: str):
 def _fetch_rescaled(data_name: str):
     file_name = RESCALED_TEST_DATA_PROPS[data_name]["filename"]
     test_file_path = RESCALED_POOCH.fetch(file_name)
-    return np.load(test_file_path)
+    return np.load(test_file_path)["images"]
 
 
 def cell_culture():
