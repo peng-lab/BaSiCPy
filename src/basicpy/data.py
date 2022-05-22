@@ -59,6 +59,7 @@ RESCALED_POOCH = pooch.create(
     # FIXME change when the version is about to release
     # see https://www.fatiando.org/pooch/latest/sample-data.html
     base_url="https://github.com/peng-lab/BaSiCPy/raw/dev/data/",
+    # base_url="https://github.com/yfukai/BaSiCpy/raw/data_in_package/data/",
     registry={v["filename"]: v["hash"] for v in RESCALED_TEST_DATA_PROPS.values()},
 )
 
