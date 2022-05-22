@@ -4,13 +4,10 @@ import numpy as np
 import pytest
 
 
-@pytest.mark.parametrize("data_name", data.EXPERIMENTAL_TEST_DATA_PROPS.keys())
-def test_fetch(data_name):
+@pytest.mark.parametrize("data_name", data.RESCALED_TEST_DATA_PROPS.keys())
+def test_fetch_rescaled(data_name):
     """Test fetching the data for all datasets."""
-    uncorrected, corrected = data.fetch(data_name)
-    uncorrected = np.array(list(uncorrected))
-    corrected = np.array(list(corrected))
+    images = data.fetch(data_name)
+    images = np.array(list(images))
 
-    assert uncorrected.ndim == 3
-    assert corrected.ndim == 3
-    assert np.array_equal(uncorrected.shape, corrected.shape)
+    assert images.ndim == 3
