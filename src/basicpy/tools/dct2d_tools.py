@@ -2,6 +2,7 @@
 
 import importlib.util
 import os
+import logging
 from abc import ABC, abstractmethod, abstractproperty
 
 import numpy as np
@@ -11,13 +12,16 @@ __all__ = ["dct2d", "idct2d"]
 # default backend must be installed
 DEFAULT_BACKEND = "SCIPY"
 
+# initialize logger with the package name
+logger = logging.getLogger(__name__)
+
 
 def is_installed(pkg: str):
     return bool(importlib.util.find_spec(pkg))
 
 
 has_cv2 = is_installed("cv2")
-# has_scipy = is_installed("scipy")
+# has_scipy = is_installed("scipy")  # SCIPY is default and must be importable
 has_jax = all(is_installed(pkg) for pkg in ["jax", "jaxlib"])
 
 
@@ -42,6 +46,8 @@ if has_jax:
 
     import jax
 
+    import basicpy.tools._jax_idct
+
     class JaxDCT(DCT):
         _backend = "JAX"
 
@@ -51,11 +57,11 @@ if has_jax:
                 jax.scipy.fft.dct(arr.T, norm="ortho").T, norm="ortho"
             )
 
-        # FIXME only dct type 2 is implemented in JAX...
+        # custom idct since JAX only implements dct type 2 (not idct, dct type 3)
         @staticmethod
         def idct2d(arr: np.ndarray) -> np.ndarray:
-            return jax.scipy.fft.idct(
-                jax.scipy.fft.idct(arr.T, norm="ortho").T, norm="ortho"
+            return basicpy.tools._jax_idct.idct(
+                basicpy.tools._jax_idct.idct(arr.T, norm="ortho").T, norm="ortho"
             )
 
 
@@ -91,11 +97,15 @@ class SciPyDCT(DCT):
 # collect all subclasses into a dictionary
 DCT_BACKENDS = {sc()._backend: sc() for sc in DCT.__subclasses__()}  # type: ignore
 
-
-# TODO use logger, warn if backend does not exist
-dct = DCT_BACKENDS.get(
-    os.environ.get("BASIC_DCT_BACKEND"), DCT_BACKENDS[DEFAULT_BACKEND]  # type: ignore
-)
+ENV_DCT_BACKEND = str(os.environ.get("BASIC_DCT_BACKEND"))
+if ENV_DCT_BACKEND not in DCT_BACKENDS.keys():
+    logger.warning(
+        "the value of the environment variable BASIC_DCT_BACKEND is "
+        + 'not in ["JAX","OPENCV","SCIPY"]'
+    )
+    dct = DCT_BACKENDS[DEFAULT_BACKEND]
+else:
+    dct = DCT_BACKENDS[ENV_DCT_BACKEND]
 
 dct2d = dct.dct2d
 idct2d = dct.idct2d

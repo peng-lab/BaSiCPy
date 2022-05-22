@@ -7,11 +7,15 @@ Todo:
 # Core modules
 from __future__ import annotations
 
+import json
 import os
 from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
 from multiprocessing import cpu_count
+from pathlib import Path
 from typing import Dict, Tuple, Union
+import time
+import logging
 
 # 3rd party modules
 import numpy as np
@@ -21,7 +25,7 @@ from skimage.transform import resize
 
 # Package modules
 from basicpy.tools import inexact_alm_rspca_l1
-from basicpy.types import ArrayLike
+from basicpy.types import ArrayLike, PathLike
 
 # from basicpy.tools.dct2d_tools import dct2d, idct2d
 # from basicpy.tools.inexact_alm import inexact_alm_rspca_l1
@@ -37,6 +41,9 @@ else:
     # Default back to multiprocessing cpu_count, which is always going to count
     # the total number of cpus
     NUM_THREADS = cpu_count()
+
+# initialize logger with the package name
+logger = logging.getLogger(__name__)
 
 
 class EstimationMode(Enum):
@@ -133,12 +140,20 @@ class BaSiC(BaseModel):
         "max_iterations",
     }
 
+    _settings_fname = "settings.json"
+    _profiles_fname = "profiles.npy"
+
     class Config:
 
         arbitrary_types_allowed = True
 
     def __init__(self, **kwargs) -> None:
         """Initialize BaSiC with the provided settings."""
+
+        log_str = f"Initializing BaSiC {id(self)} with parameters: \n"
+        for k, v in kwargs.items():
+            log_str += f"{k}: {v}\n"
+        logger.info(log_str)
 
         super().__init__(**kwargs)
 
@@ -178,6 +193,8 @@ class BaSiC(BaseModel):
         """
         assert images.ndim == 3
 
+        logger.info("=== BaSiC fit started ===")
+        start_time = time.monotonic()
         # Resize the images
         images = images.astype(np.float64)
         working_shape = (self.working_size, self.working_size, images.shape[2])
@@ -209,12 +226,11 @@ class BaSiC(BaseModel):
         #         weight[segmentation] = 1e-6
         #     # weight[options.segmentation] = 1e-6
 
-        reweighting_iter = 0
-        flag_reweighting = True
         flatfield_last = np.ones(D.shape[:2])
         darkfield_last = np.random.randn(*D.shape[:2])
 
-        while flag_reweighting and reweighting_iter < self.max_reweight_iterations:
+        for reweighting_iter in range(self.max_reweight_iterations):
+            logger.info(f"reweighting iteration {reweighting_iter}")
             reweighting_iter += 1
 
             # TODO: Included in the original code
@@ -256,11 +272,14 @@ class BaSiC(BaseModel):
             flatfield_last = flatfield_current
             darkfield_last = darkfield_current
             self._reweight_score = np.maximum(mad_flatfield, mad_darkfield)
-            if (
-                np.maximum(mad_flatfield, mad_darkfield) <= self.reweighting_tol
-                or reweighting_iter >= self.max_reweight_iterations
-            ):
-                flag_reweighting = False
+            logger.info(f"Iteration {reweighting_iter} finished.")
+            logger.info(f"reweighting score: {self._reweight_score}")
+            logger.info(f"elapsed time: {time.monotonic() - start_time} seconds")
+            if self._reweight_score <= self.reweighting_tol:
+                logger.info("Reweighting converged.")
+                break
+            if reweighting_iter == self.max_reweight_iterations - 1:
+                logger.warning("Reweighting did not converge.")
 
         shading = np.mean(X_A, 2) - X_A_offset
         self.flatfield = shading / shading.mean()
@@ -270,6 +289,9 @@ class BaSiC(BaseModel):
 
         self._darkfield = self.darkfield
         self._flatfield = self.flatfield
+        logger.info(
+            f"=== BaSiC fit finished in {time.monotonic()-start_time} seconds ==="
+        )
 
     def transform(
         self, images: np.ndarray, timelapse: bool = False
@@ -295,6 +317,9 @@ class BaSiC(BaseModel):
             ...     imsave(f"image_{i}.tif")
         """
 
+        logger.info("=== BaSiC transform started ===")
+        start_time = time.monotonic()
+
         # Convert to the correct format
         im_float = images.astype(np.float64)
 
@@ -313,6 +338,7 @@ class BaSiC(BaseModel):
         def unshade(ins, outs, i, dark, flat):
             outs[..., i] = (ins[..., i] - dark) / flat
 
+        logger.info(f"unshading in {self.max_workers} threads")
         # If one or fewer workers, don't user ThreadPool. Useful for debugging.
         if self.max_workers <= 1:
             for i in range(images.shape[-1]):
@@ -331,6 +357,9 @@ class BaSiC(BaseModel):
                 for thread in threads:
                     assert thread is None
 
+        logger.info(
+            f"=== BaSiC transform finished in {time.monotonic()-start_time} seconds ==="
+        )
         return output.astype(images.dtype)
 
     # REFACTOR large datasets will probably prefer saving corrected images to
@@ -373,3 +402,46 @@ class BaSiC(BaseModel):
             current settings
         """
         return self.dict()
+
+    def save_model(self, model_dir: PathLike, overwrite: bool = False) -> None:
+        """Save current model to folder.
+
+        Args:
+            model_dir: path to model directory
+
+        Raises:
+            FileExistsError: if model directory already exists"""
+        path = Path(model_dir)
+
+        try:
+            path.mkdir()
+        except FileExistsError:
+            if not overwrite:
+                raise FileExistsError("Model folder already exists.")
+
+        # save settings
+        with open(path / self._settings_fname, "w") as fp:
+            # see pydantic docs for output options
+            fp.write(self.json())
+
+        # NOTE emit warning if profiles are all zeros? fit probably not run
+        # save profiles
+        profiles = np.dstack((self.flatfield, self.darkfield))
+        np.save(path / self._profiles_fname, profiles)
+
+    @classmethod
+    def load_model(cls, model_dir: PathLike) -> BaSiC:
+        """Create a new instance from a model folder."""
+        path = Path(model_dir)
+
+        if not path.exists():
+            raise FileNotFoundError("Model directory not found.")
+
+        with open(path / cls._settings_fname) as fp:
+            model = json.load(fp)
+
+        profiles = np.load(path / cls._profiles_fname)
+        model["flatfield"] = profiles[..., 0]
+        model["darkfield"] = profiles[..., 1]
+
+        return BaSiC(**model)
