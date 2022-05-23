@@ -56,7 +56,7 @@ ORIGINAL_POOCH = pooch.create(
 
 RESCALED_POOCH = pooch.create(
     path=pooch.os_cache("basicpy"),
-    # FIXME change when the version is about to release
+    # FIXME change the URL when the beta version is about to release
     # see https://www.fatiando.org/pooch/latest/sample-data.html
     base_url="https://github.com/peng-lab/BaSiCPy/raw/dev/data/",
     # base_url="https://github.com/yfukai/BaSiCpy/raw/data_in_package/data/",
@@ -65,7 +65,7 @@ RESCALED_POOCH = pooch.create(
 
 
 def fetch(data_name: str, original: bool = False):
-    """Fetch a sample dataset from Zenodo.
+    """Fetch a sample dataset from Zenodo or GitHub.
     Args:
         data_name: The name of the dataset. Must be one of ["cell_culture",
             "timelapse_brightfield", "timelapse_nanog", "timelapse_pu1",
