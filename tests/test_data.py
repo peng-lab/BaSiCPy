@@ -25,4 +25,8 @@ def test_fetch_rescaled(data_name):
 @pytest.mark.slow
 @pytest.mark.parametrize("data_name", data.ORIGINAL_TEST_DATA_PROPS.keys())
 def test_fetch_original(data_name):
-    pass
+    images = data.fetch(data_name, original=True)
+    images = np.array(list(images))
+
+    assert images.ndim == 3
+    assert images.shape[0] > 1
