@@ -109,6 +109,8 @@ def _fetch_original(data_name: str):
 
 
 def _fetch_rescaled(data_name: str):
+    if data_name not in RESCALED_TEST_DATA_PROPS.keys():
+        raise ValueError(f"{data_name} is not a valid test data name")
     file_name = RESCALED_TEST_DATA_PROPS[data_name]["filename"]
     test_file_path = RESCALED_POOCH.fetch(file_name)
     return np.load(test_file_path)["images"]
