@@ -1,4 +1,3 @@
-from re import I
 from basicpy import data
 import numpy as np
 import pytest
@@ -19,3 +18,11 @@ def test_fetch_rescaled(data_name):
     data.timelapse_nanog()
     data.timelapse_pu1()
     data.wsi_brain()
+
+
+# This test takes long time to download the original data and skipped by default.
+# https://docs.pytest.org/en/latest/example/simple.html#control-skipping-of-tests-according-to-command-line-option
+@pytest.mark.slow
+@pytest.mark.parametrize("data_name", data.ORIGINAL_TEST_DATA_PROPS.keys())
+def test_fetch_original(data_name):
+    pass
