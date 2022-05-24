@@ -5,7 +5,7 @@ from pathlib import Path
 
 from nox import Session, session
 
-python_versions = ["3.10", "3.9", "3.8", "3.7"]
+python_versions = ["3.10", "3.9", "3.8"]
 
 
 @session(python=python_versions)

@@ -7,23 +7,33 @@ Todo:
 # Core modules
 from __future__ import annotations
 
+import logging
+import json
 import os
+import time
+from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
 from multiprocessing import cpu_count
-from typing import Dict, Tuple, Union
-import time
-import logging
+from typing import Dict, Iterable, Optional, Tuple, Union
+
+import jax.numpy as jnp
 
 # 3rd party modules
 import numpy as np
+from jax import device_put
+from jax.image import ResizeMethod, resize
 from pydantic import BaseModel, Field, PrivateAttr
-from scipy.fftpack import dct
-from skimage.transform import resize
+from skimage.transform import resize as _resize
+
+from basicpy._jax_routines import ApproximateFit, LadmapFit
+from basicpy.tools.dct2d_tools import JaxDCT
 
 # Package modules
-from basicpy.tools import inexact_alm_rspca_l1
-from basicpy.types import ArrayLike
+from basicpy.types import ArrayLike, PathLike
+
+idct2d, dct2d = JaxDCT.idct2d, JaxDCT.dct2d
+newax = jnp.newaxis
 
 # from basicpy.tools.dct2d_tools import dct2d, idct2d
 # from basicpy.tools.inexact_alm import inexact_alm_rspca_l1
@@ -44,11 +54,6 @@ else:
 logger = logging.getLogger(__name__)
 
 
-class EstimationMode(Enum):
-
-    l0: str = "l0"
-
-
 class Device(Enum):
 
     cpu: str = "cpu"
@@ -56,10 +61,21 @@ class Device(Enum):
     tpu: str = "tpu"
 
 
+class FittingMode(Enum):
+
+    ladmap: str = "ladmap"
+    approximate: str = "approximate"
+
+
 # multiple channels should be handled by creating a `basic` object for each chan
 class BaSiC(BaseModel):
     """A class for fitting and applying BaSiC illumination correction profiles."""
 
+    baseline: Optional[np.ndarray] = Field(
+        None,
+        description="Holds the baseline for the shading model.",
+        exclude=True,  # Don't dump to output json/yaml
+    )
     darkfield: np.ndarray = Field(
         default_factory=lambda: np.zeros((128, 128), dtype=np.float64),
         description="Holds the darkfield component for the shading model.",
@@ -70,13 +86,13 @@ class BaSiC(BaseModel):
         description="Must be one of ['cpu','gpu','tpu'].",
         exclude=True,  # Don't dump to output json/yaml
     )
+    fitting_mode: FittingMode = Field(
+        FittingMode.ladmap, description="Must be one of ['ladmap', 'approximate']"
+    )
+
     epsilon: float = Field(
         0.1,
         description="Weight regularization term.",
-    )
-    estimation_mode: EstimationMode = Field(
-        "l0",
-        description="Flatfield offset for weight updates.",
     )
     flatfield: np.ndarray = Field(
         default_factory=lambda: np.zeros((128, 128), dtype=np.float64),
@@ -87,42 +103,53 @@ class BaSiC(BaseModel):
         False,
         description="When True, will estimate the darkfield shading component.",
     )
-    lambda_darkfield: float = Field(
-        0.0,
-        description="Darkfield offset for weight updates.",
+    lambda_flatfield_coef: float = Field(
+        1.0 / 400 * 0.5, description="Weight of the flatfield term in the Lagrangian."
     )
-    lambda_flatfield: float = Field(
-        0.0,
-        description="Flatfield offset for weight updates.",
+    lambda_darkfield_coef: float = Field(
+        0.2, description="Relative weight of the darkfield term in the Lagrangian."
     )
     max_iterations: int = Field(
         500,
-        description="Maximum number of iterations.",
+        description="Maximum number of iterations for single optimization.",
     )
     max_reweight_iterations: int = Field(
         10,
         description="Maximum number of reweighting iterations.",
+    )
+    max_reweight_iterations_baseline: int = Field(
+        5,
+        description="Maximum number of reweighting iterations for baseline.",
     )
     max_workers: int = Field(
         NUM_THREADS,
         description="Maximum number of threads used for processing.",
         exclude=True,  # Don't dump to output json/yaml
     )
+    rho: float = Field(1.5, description="Parameter rho for mu update.")
+    mu_coef: float = Field(12.5, description="Coefficient for initial mu value.")
+    max_mu_coef: float = Field(
+        1e7, description="Maximum allowed value of mu, divided by the initial value."
+    )
     optimization_tol: float = Field(
         1e-6,
         description="Optimization tolerance.",
     )
+    resize_method: ResizeMethod = Field(
+        ResizeMethod.CUBIC,
+        description="Resize method to use when downsampling images.",
+    )
     reweighting_tol: float = Field(
-        1e-3,
-        description="Reweighting tolerance.",
+        1e-2,
+        description="Reweighting tolerance in mean absolute difference of images.",
     )
-    varying_coeff: bool = Field(
-        True,
-        description="This description will need to be filled in.",
+    sort_intensity: bool = Field(
+        False,
+        description="Wheather or not to sort the intensities of the image.",
     )
-    working_size: int = Field(
+    working_size: Optional[Union[int, Iterable[int]]] = Field(
         128,
-        description="Size for running computations. Should be a power of 2 (2^n).",
+        description="Size for running computations. None means no rescaling.",
     )
 
     # Private attributes for internal processing
@@ -130,14 +157,15 @@ class BaSiC(BaseModel):
     _reweight_score: float = PrivateAttr(None)
     _flatfield: np.ndarray = PrivateAttr(None)
     _darkfield: np.ndarray = PrivateAttr(None)
-    _logger: logging.Logger = PrivateAttr(None)
-    _alm_settings = {
-        "lambda_darkfield",
-        "lambda_flatfield",
-        "get_darkfield",
-        "optimization_tol",
-        "max_iterations",
-    }
+    _weight: float = PrivateAttr(None)
+    _residual: float = PrivateAttr(None)
+    _S: float = PrivateAttr(None)
+    _B: float = PrivateAttr(None)
+    _D_R: float = PrivateAttr(None)
+    _D_Z: float = PrivateAttr(None)
+
+    _settings_fname = "settings.json"
+    _profiles_fname = "profiles.npy"
 
     class Config:
 
@@ -153,14 +181,6 @@ class BaSiC(BaseModel):
 
         super().__init__(**kwargs)
 
-        if self.working_size != 128:
-            self.darkfield = np.zeros((self.working_size,) * 2, dtype=np.float64)
-            self.flatfield = np.zeros((self.working_size,) * 2, dtype=np.float64)
-
-        # Initialize the internal cache
-        self._darkfield = np.zeros((self.working_size,) * 2, dtype=np.float64)
-        self._flatfield = np.zeros((self.working_size,) * 2, dtype=np.float64)
-
         if self.device is not Device.cpu:
             # TODO: sanity checks on device selection
             pass
@@ -175,12 +195,35 @@ class BaSiC(BaseModel):
 
         return self.transform(images, timelapse)
 
-    def fit(self, images: np.ndarray) -> None:
-        """Generate illumination correction profiles.
+    def _resize(self, Im):
+        """
+        Resize the images to the working size.
+        """
+        if self.working_size is not None:
+            if np.isscalar(self.working_size):
+                working_shape = [self.working_size] * (Im.ndim - 1)
+            else:
+                if not Im.ndim - 1 == len(self.working_size):
+                    raise ValueError(
+                        "working_size must be a scalar or match the image dimensions"
+                    )
+                else:
+                    working_shape = self.working_size
+            Im = resize(Im, [Im.shape[0], *working_shape], self.resize_method)
+        return Im
+
+    def fit(
+        self, images: np.ndarray, fitting_weight: Optional[np.ndarray] = None
+    ) -> None:
+        """
+        Generate illumination correction profiles from images.
 
         Args:
-            images: Input images to fit shading model. Images should be stacked
-                along the z-dimension.
+            images: Input images to fit shading model.
+                    Must be 3-dimensional array with dimension of (T,Y,X).
+            fitting_weight: relative fitting weight for each pixel.
+                    Higher value means more contribution to fitting.
+                    Must has the same shape as images.
 
         Example:
             >>> from basicpy import BaSiC
@@ -190,105 +233,158 @@ class BaSiC(BaseModel):
             >>> basic.fit(images)
 
         """
-        assert images.ndim == 3
 
-        self._logger.info("=== BaSiC fit started ===")
+        logger.info("=== BaSiC fit started ===")
         start_time = time.monotonic()
-        # Resize the images
-        images = images.astype(np.float64)
-        working_shape = (self.working_size, self.working_size, images.shape[2])
-        D = resize(
-            images, (working_shape), order=1, mode="symmetric", preserve_range=True
+        if fitting_weight is not None and fitting_weight.shape != images.shape:
+            raise ValueError("fitting_weight must have the same shape as images.")
+
+        Im = device_put(images).astype(jnp.float32)
+        Im = self._resize(Im)
+
+        if fitting_weight is not None:
+            Ws = device_put(fitting_weight).astype(jnp.float32)
+            Ws = self._resize(Ws)
+            # normalize relative weight to 0 to 1
+            Ws_min = jnp.min(Ws)
+            Ws_max = jnp.max(Ws)
+            Ws = (Ws - Ws_min) / (Ws_max - Ws_min)
+        else:
+            Ws = jnp.ones_like(Im)
+
+        # Im2 and Ws2 will possibly be sorted
+        if self.sort_intensity:
+            inds = jnp.argsort(Im, axis=0)
+            Im2 = jnp.take_along_axis(Im, inds, axis=0)
+            Ws2 = jnp.take_along_axis(Ws, inds, axis=0)
+        else:
+            Im2 = Im
+            Ws2 = Ws
+
+        mean_image = jnp.mean(Im2, axis=2)
+        mean_image = mean_image / jnp.mean(Im2)
+        mean_image_dct = dct2d(mean_image.T)
+        lambda_flatfield = jnp.sum(jnp.abs(mean_image_dct)) * self.lambda_flatfield_coef
+
+        # spectral_norm = jnp.linalg.norm(Im.reshape((Im.shape[0], -1)), ord=2)
+        if self.fitting_mode == FittingMode.ladmap:
+            spectral_norm = jnp.linalg.norm(Im2.reshape((Im2.shape[0], -1)), ord=2)
+        else:
+            _temp = jnp.linalg.svd(Im2.reshape((Im2.shape[0], -1)), full_matrices=False)
+            spectral_norm = _temp[1][0]
+
+        init_mu = self.mu_coef / spectral_norm
+        fit_params = self.dict()
+        fit_params.update(
+            dict(
+                lambda_flatfield=lambda_flatfield,
+                lambda_darkfield=lambda_flatfield * self.lambda_darkfield_coef,
+                # matrix 2-norm (largest sing. value)
+                init_mu=init_mu,
+                max_mu=init_mu * self.max_mu_coef,
+                D_Z_max=jnp.min(Im2),
+                image_norm=jnp.linalg.norm(Im2.flatten(), ord=2),
+            )
         )
 
-        # Get initial frequencies
-        D_mean = D.mean(axis=2)
-        D_mean /= D_mean.mean()
-        W_D_mean = dct(dct(D_mean, norm="ortho").T, norm="ortho")
+        # Initialize variables
+        W = jnp.ones_like(Im2, dtype=jnp.float32)
+        last_S = None
+        last_D = None
+        S = None
+        D = None
+        B = None
 
-        # Set lambdas if null
-        if self.lambda_flatfield == 0:
-            self.lambda_flatfield = np.sum(np.abs(W_D_mean)) / 400 * 0.5
-        if self.lambda_darkfield == 0:
-            self.lambda_darkfield = self.lambda_flatfield * 0.2
+        if self.fitting_mode == FittingMode.ladmap:
+            fitting_step = LadmapFit(**fit_params)
+        else:
+            fitting_step = ApproximateFit(**fit_params)
 
-        D = np.sort(D, axis=2)
-
-        X_A_offset = np.zeros(D.shape[:2])
-        weight = np.ones(D.shape)
-
-        # TODO: The original implementation includes a segmentation argument.
-        # if segmentation is not None:
-        #     segmentation = np.array(segmentation)
-        #     segmentation = np.transpose(segmentation, (1, 2, 0))
-        #     for i in range(weight.shape[2]):
-        #         weight[segmentation] = 1e-6
-        #     # weight[options.segmentation] = 1e-6
-
-        flatfield_last = np.ones(D.shape[:2])
-        darkfield_last = np.random.randn(*D.shape[:2])
-
-        for reweighting_iter in range(self.max_reweight_iterations):
-            self._logger.info(f"reweighting iteration {reweighting_iter}")
-            reweighting_iter += 1
-
-            # TODO: Included in the original code
-            # if initial_flatfield:
-            #     # TODO: implement inexact_alm_rspca_l1_intflat?
-            #     raise IOError("Initial flatfield option not implemented yet!")
-            # else:
-            X_k_A, X_k_E, X_k_A_offset, self._score = inexact_alm_rspca_l1(
-                D, weight=weight, **self.dict(include=self._alm_settings)
+        for i in range(self.max_reweight_iterations):
+            logger.info(f"reweighting iteration {i}")
+            S = jnp.zeros(Im2.shape[1:], dtype=jnp.float32)
+            D_R = jnp.zeros(Im2.shape[1:], dtype=jnp.float32)
+            D_Z = 0.0
+            B = jnp.ones(Im2.shape[0], dtype=jnp.float32)
+            I_R = jnp.zeros(Im2.shape, dtype=jnp.float32)
+            S, D_R, D_Z, I_R, B, norm_ratio, converged = fitting_step.fit(
+                Im2,
+                W,
+                S,
+                D_R,
+                D_Z,
+                B,
+                I_R,
             )
+            logger.info(f"single-step optimization score: {norm_ratio}.")
+            self._score = norm_ratio
+            if not converged:
+                logger.warning("single-step optimization did not converge.")
+            self._S = S
+            self._D_R = D_R
+            self._B = B
+            self._D_Z = D_Z
+            D = fitting_step.calc_darkfield(S, D_R, D_Z)  # darkfield
+            mean_S = jnp.mean(S)
+            S = S / mean_S  # flatfields
+            B = B * mean_S  # baseline
+            I_B = B[:, newax, newax] * S[newax, ...] + D[newax, ...]
+            W = fitting_step.calc_weights(I_B, I_R) * Ws2
 
-            X_A = np.reshape(X_k_A, D.shape[:2] + (-1,), order="F")
-            X_E = np.reshape(X_k_E, D.shape[:2] + (-1,), order="F")
-            X_A_offset = np.reshape(X_k_A_offset, D.shape[:2], order="F")
-            X_E_norm = X_E / np.mean(X_A, axis=(0, 1))
+            self._weight = W
+            self._residual = I_R
 
-            # Update the weights:
-            weight = np.ones_like(X_E_norm) / (np.abs(X_E_norm) + self.epsilon)
+            logger.info(f"Iteration {i} finished.")
+            if last_S is not None:
+                mad_flatfield = jnp.sum(jnp.abs(S - last_S)) / jnp.sum(np.abs(last_S))
+                if self.get_darkfield:
+                    mad_darkfield = jnp.sum(jnp.abs(D - last_D)) / max(
+                        jnp.sum(jnp.abs(last_D)), 1
+                    )  # assumes the amplitude of darkfield is more than 1
+                    self._reweight_score = max(mad_flatfield, mad_darkfield)
+                else:
+                    self._reweight_score = mad_flatfield
+                logger.info(f"reweighting score: {self._reweight_score}")
+                logger.info(f"elapsed time: {time.monotonic() - start_time} seconds")
 
-            # TODO: Included in the original code
-            # if segmentation is not None:
-            #     weight[segmentation] = 0
+                if self._reweight_score <= self.reweighting_tol:
+                    logger.info("Reweighting converged.")
+                    break
+            if i == self.max_reweight_iterations - 1:
+                logger.warning("Reweighting did not converge.")
+            last_S = S
+            last_D = D
 
-            weight = weight * weight.size / np.sum(weight)
+        assert S is not None
+        assert D is not None
+        assert B is not None
 
-            temp = np.mean(X_A, axis=2) - X_A_offset
-            flatfield_current = temp / np.mean(temp)
-            darkfield_current = X_A_offset
-            mad_flatfield = np.sum(np.abs(flatfield_current - flatfield_last)) / np.sum(
-                np.abs(flatfield_last)
-            )
-            temp_diff = np.sum(np.abs(darkfield_current - darkfield_last))
-            if temp_diff < 1e-7:
-                mad_darkfield = 0
-            else:
-                mad_darkfield = temp_diff / np.maximum(
-                    np.sum(np.abs(darkfield_last)), 1e-6
+        if self.sort_intensity:
+            for i in range(self.max_reweight_iterations_baseline):
+                B = jnp.ones(Im.shape[0], dtype=jnp.float32)
+                if self.fitting_mode == FittingMode.approximate:
+                    B = jnp.mean(Im, axis=(1, 2))
+                I_R = jnp.zeros(Im.shape, dtype=jnp.float32)
+                logger.info(f"reweighting iteration for baseline {i}")
+                I_R, B, norm_ratio, converged = fitting_step.fit_baseline(
+                    Im,
+                    W,
+                    S,
+                    D,
+                    B,
+                    I_R,
                 )
-            flatfield_last = flatfield_current
-            darkfield_last = darkfield_current
-            self._reweight_score = np.maximum(mad_flatfield, mad_darkfield)
-            self._logger.info(f"Iteration {reweighting_iter} finished.")
-            self._logger.info(f"reweighting score: {self._reweight_score}")
-            self._logger.info(f"elapsed time: {time.monotonic() - start_time} seconds")
-            if self._reweight_score <= self.reweighting_tol:
-                self._logger.info("Reweighting converged.")
-                break
-            if reweighting_iter == self.max_reweight_iterations - 1:
-                self._logger.warning("Reweighting did not converge.")
 
-        shading = np.mean(X_A, 2) - X_A_offset
-        self.flatfield = shading / shading.mean()
+                I_B = B[:, newax, newax] * S[newax, ...] + D[newax, ...]
+                W = fitting_step.calc_weights_baseline(I_B, I_R) * Ws
+                self._weight = W
+                self._residual = I_R
+                logger.info(f"Iteration {i} finished.")
 
-        if self.get_darkfield:
-            self.darkfield = X_A_offset
-
-        self._darkfield = self.darkfield
-        self._flatfield = self.flatfield
-        self._logger.info(
+        self.flatfield = S
+        self.darkfield = D
+        self.baseline = B
+        logger.info(
             f"=== BaSiC fit finished in {time.monotonic()-start_time} seconds ==="
         )
 
@@ -316,31 +412,34 @@ class BaSiC(BaseModel):
             ...     imsave(f"image_{i}.tif")
         """
 
-        self._logger.info("=== BaSiC transform started ===")
+        logger.info("=== BaSiC transform started ===")
         start_time = time.monotonic()
 
         # Convert to the correct format
-        im_float = images.astype(np.float64)
+        im_float = images.astype(np.float32)
 
-        # Check the image size
-        if not all(i == d for i, d in zip(self._flatfield.shape, images.shape)):
-            self._flatfield = resize(self.flatfield, images.shape[:2])
-            self._darkfield = resize(self.darkfield, images.shape[:2])
+        # Rescale the flatfield and darkfield
+        if not np.array_equal(self.flatfield.shape, im_float.shape[1:]):
+            self._flatfield = _resize(self.flatfield, images.shape[1:])
+            self._darkfield = _resize(self.darkfield, images.shape[1:])
+        else:
+            self._flatfield = self.flatfield
+            self._darkfield = self.darkfield
 
         # Initialize the output
-        output = np.zeros(images.shape, dtype=images.dtype)
+        output = np.empty(images.shape, dtype=images.dtype)
 
         if timelapse:
             # calculate timelapse from input series
             ...
 
         def unshade(ins, outs, i, dark, flat):
-            outs[..., i] = (ins[..., i] - dark) / flat
+            outs[i] = (ins[i] - dark) / flat
 
-        self._logger.info(f"unshading in {self.max_workers} threads")
+        logger.info(f"unshading in {self.max_workers} threads")
         # If one or fewer workers, don't user ThreadPool. Useful for debugging.
         if self.max_workers <= 1:
-            for i in range(images.shape[-1]):
+            for i in range(images.shape[0]):
                 unshade(im_float, output, i, self._darkfield, self._flatfield)
 
         else:
@@ -349,14 +448,14 @@ class BaSiC(BaseModel):
                     lambda x: unshade(
                         im_float, output, x, self._darkfield, self._flatfield
                     ),
-                    range(images.shape[-1]),
+                    range(images.shape[0]),
                 )
 
                 # Get the result of each thread, this should catch thread errors
                 for thread in threads:
                     assert thread is None
 
-        self._logger.info(
+        logger.info(
             f"=== BaSiC transform finished in {time.monotonic()-start_time} seconds ==="
         )
         return output.astype(images.dtype)
@@ -401,3 +500,46 @@ class BaSiC(BaseModel):
             current settings
         """
         return self.dict()
+
+    def save_model(self, model_dir: PathLike, overwrite: bool = False) -> None:
+        """Save current model to folder.
+
+        Args:
+            model_dir: path to model directory
+
+        Raises:
+            FileExistsError: if model directory already exists"""
+        path = Path(model_dir)
+
+        try:
+            path.mkdir()
+        except FileExistsError:
+            if not overwrite:
+                raise FileExistsError("Model folder already exists.")
+
+        # save settings
+        with open(path / self._settings_fname, "w") as fp:
+            # see pydantic docs for output options
+            fp.write(self.json())
+
+        # NOTE emit warning if profiles are all zeros? fit probably not run
+        # save profiles
+        profiles = np.dstack((self.flatfield, self.darkfield))
+        np.save(path / self._profiles_fname, profiles)
+
+    @classmethod
+    def load_model(cls, model_dir: PathLike) -> BaSiC:
+        """Create a new instance from a model folder."""
+        path = Path(model_dir)
+
+        if not path.exists():
+            raise FileNotFoundError("Model directory not found.")
+
+        with open(path / cls._settings_fname) as fp:
+            model = json.load(fp)
+
+        profiles = np.load(path / cls._profiles_fname)
+        model["flatfield"] = profiles[..., 0]
+        model["darkfield"] = profiles[..., 1]
+
+        return BaSiC(**model)

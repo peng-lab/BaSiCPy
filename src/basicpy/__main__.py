@@ -121,12 +121,9 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
-    # FIXME fix name after deciding on package directory name
-    logger = logging.getLogger("pybasic")
+    logger = logging.getLogger("basicpy")
     if args.verbose:
         logger.setLevel(logging.DEBUG)
-    else:
-        logger.setLevel(logging.INFO)
 
     logger.info("BaSiCPy Input Arguments")
     logger.info("-----------------------")
