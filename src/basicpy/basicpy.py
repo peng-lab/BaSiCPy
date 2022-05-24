@@ -185,9 +185,6 @@ class BaSiC(BaseModel):
             # TODO: sanity checks on device selection
             pass
 
-        # Initialize logger
-        self._logger = logging.getLogger(__name__ + f".BaSiC.{id(self)}")
-
     def __call__(
         self, images: np.ndarray, timelapse: bool = False
     ) -> Union[Tuple[np.ndarray, np.ndarray], np.ndarray]:
