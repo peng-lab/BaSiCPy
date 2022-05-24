@@ -143,10 +143,6 @@ class BaSiC(BaseModel):
         1e-2,
         description="Reweighting tolerance in mean absolute difference of images.",
     )
-    residual_weighting: bool = Field(
-        False,
-        description="Weighting by the residuals.",
-    )
     sort_intensity: bool = Field(
         False,
         description="Wheather or not to sort the intensities of the image.",
@@ -213,13 +209,18 @@ class BaSiC(BaseModel):
             Im = resize(Im, [Im.shape[0], *working_shape], self.resize_method)
         return Im
 
-    def fit(self, images: np.ndarray) -> None:
+    def fit(
+        self, images: np.ndarray, fitting_weight: Optional[np.ndarray] = None
+    ) -> None:
         """
         Generate illumination correction profiles from images.
 
         Args:
             images: Input images to fit shading model.
                     Must be 3-dimensional array with dimension of (T,Y,X).
+            fitting_weight: relative fitting weight for each pixel.
+                    Higher value means more contribution to fitting.
+                    Must has the same shape as images.
 
         Example:
             >>> from basicpy import BaSiC
@@ -231,26 +232,42 @@ class BaSiC(BaseModel):
         """
         logger.info("=== BaSiC fit started ===")
         start_time = time.monotonic()
+        if fitting_weight is not None and fitting_weight.shape != images.shape:
+            raise ValueError("fitting_weight must have the same shape as images.")
 
-        # TODO: sorted version and baseline calc.
         Im = device_put(images).astype(jnp.float32)
         Im = self._resize(Im)
-        if self.sort_intensity:
-            Im = jnp.sort(Im, axis=0)
 
-        mean_image = jnp.mean(Im, axis=2)
-        mean_image = mean_image / jnp.mean(Im)
+        if fitting_weight is not None:
+            Ws = device_put(fitting_weight).astype(jnp.float32)
+            Ws = self._resize(Ws)
+            # normalize relative weight to 0 to 1
+            Ws_min = jnp.min(Ws)
+            Ws_max = jnp.max(Ws)
+            Ws = (Ws - Ws_min) / (Ws_max - Ws_min)
+        else:
+            Ws = jnp.ones_like(Im)
+
+        # Im2 and Ws2 will possibly be sorted
+        if self.sort_intensity:
+            inds = jnp.argsort(Im, axis=0)
+            Im2 = jnp.take_along_axis(Im, inds, axis=0)
+            Ws2 = jnp.take_along_axis(Ws, inds, axis=0)
+        else:
+            Im2 = Im
+            Ws2 = Ws
+
+        mean_image = jnp.mean(Im2, axis=2)
+        mean_image = mean_image / jnp.mean(Im2)
         mean_image_dct = dct2d(mean_image.T)
         lambda_flatfield = jnp.sum(jnp.abs(mean_image_dct)) * self.lambda_flatfield_coef
 
         # spectral_norm = jnp.linalg.norm(Im.reshape((Im.shape[0], -1)), ord=2)
         if self.fitting_mode == FittingMode.ladmap:
-            spectral_norm = jnp.linalg.norm(Im.reshape((Im.shape[0], -1)), ord=2)
+            spectral_norm = jnp.linalg.norm(Im2.reshape((Im2.shape[0], -1)), ord=2)
         else:
-            _temp = jnp.linalg.svd(Im.reshape((Im.shape[0], -1)), full_matrices=False)[
-                1
-            ]
-            spectral_norm = _temp[0]
+            _temp = jnp.linalg.svd(Im2.reshape((Im2.shape[0], -1)), full_matrices=False)
+            spectral_norm = _temp[1][0]
 
         init_mu = self.mu_coef / spectral_norm
         fit_params = self.dict()
@@ -261,13 +278,13 @@ class BaSiC(BaseModel):
                 # matrix 2-norm (largest sing. value)
                 init_mu=init_mu,
                 max_mu=init_mu * self.max_mu_coef,
-                D_Z_max=jnp.min(Im),
-                image_norm=jnp.linalg.norm(Im.flatten(), ord=2),
+                D_Z_max=jnp.min(Im2),
+                image_norm=jnp.linalg.norm(Im2.flatten(), ord=2),
             )
         )
 
         # Initialize variables
-        W = jnp.ones_like(Im, dtype=jnp.float32)
+        W = jnp.ones_like(Im2, dtype=jnp.float32)
         last_S = None
         last_D = None
         S = None
@@ -281,15 +298,13 @@ class BaSiC(BaseModel):
 
         for i in range(self.max_reweight_iterations):
             logger.info(f"reweighting iteration {i}")
-            # TODO: loop jit
-            # TODO: reusing last values?
-            S = jnp.zeros(Im.shape[1:], dtype=jnp.float32)
-            D_R = jnp.zeros(Im.shape[1:], dtype=jnp.float32)
+            S = jnp.zeros(Im2.shape[1:], dtype=jnp.float32)
+            D_R = jnp.zeros(Im2.shape[1:], dtype=jnp.float32)
             D_Z = 0.0
-            B = jnp.ones(Im.shape[0], dtype=jnp.float32)
-            I_R = jnp.zeros(Im.shape, dtype=jnp.float32)
+            B = jnp.ones(Im2.shape[0], dtype=jnp.float32)
+            I_R = jnp.zeros(Im2.shape, dtype=jnp.float32)
             S, D_R, D_Z, I_R, B, norm_ratio, converged = fitting_step.fit(
-                Im,
+                Im2,
                 W,
                 S,
                 D_R,
@@ -310,7 +325,7 @@ class BaSiC(BaseModel):
             S = S / mean_S  # flatfields
             B = B * mean_S  # baseline
             I_B = B[:, newax, newax] * S[newax, ...] + D[newax, ...]
-            W = fitting_step.calc_weights(I_B, I_R)
+            W = fitting_step.calc_weights(I_B, I_R) * Ws2
 
             self._weight = W
             self._residual = I_R
@@ -341,8 +356,6 @@ class BaSiC(BaseModel):
         assert B is not None
 
         if self.sort_intensity:
-            Im = device_put(images).astype(jnp.float32)
-            Im = self._resize(Im)
             for i in range(self.max_reweight_iterations_baseline):
                 B = jnp.ones(Im.shape[0], dtype=jnp.float32)
                 if self.fitting_mode == FittingMode.approximate:
@@ -358,7 +371,7 @@ class BaSiC(BaseModel):
                     I_R,
                 )
                 I_B = B[:, newax, newax] * S[newax, ...] + D[newax, ...]
-                W = fitting_step.calc_weights_baseline(I_B, I_R)
+                W = fitting_step.calc_weights_baseline(I_B, I_R) * Ws
                 self._weight = W
                 self._residual = I_R
                 logger.info(f"Iteration {i} finished.")
