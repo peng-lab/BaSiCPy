@@ -76,12 +76,26 @@ def test_basic_fit_synthetic(synthesized_test_data):
 # Test BaSiC fitting function (with experimental data)
 def test_basic_fit_experimental(shared_datadir):
 
+    # not sure if it is a good practice
+    data_dir = Path(__file__).parent.parent / "data"
     fit_results = list((shared_datadir / "fit").glob("*.npz"))
     assert len(fit_results) > 0
 
+    # TODO parametrize?
+    for res in fit_results:
+        d = np.load(res, allow_pickle=True)
+        image_name = np.atleast_1d(d["image_name"])[0]
+        params = np.atleast_1d(d["params"])[0]
+        basic = BaSiC(**params)
+        images = np.load(data_dir / (image_name + ".npz"))["images"]
+        basic.fit(images)
+        assert np.all(np.isclose(basic.flatfield, d["flatfield"]))
+        assert np.all(np.isclose(basic.darkfield, d["darkfield"]))
+        assert np.all(np.isclose(basic.baseline, d["baseline"]))
+
 
 # Test BaSiC transform function
-def test_basic_transform(capsys, synthesized_test_data):
+def test_basic_transform(synthesized_test_data):
 
     basic = BaSiC(get_darkfield=False)
     gradient, images, truth = synthesized_test_data
@@ -104,7 +118,7 @@ def test_basic_transform(capsys, synthesized_test_data):
     corrected = basic(images)
 
 
-def test_basic_transform_resize(capsys, synthesized_test_data):
+def test_basic_transform_resize(synthesized_test_data):
 
     basic = BaSiC(get_darkfield=False)
     gradient, images, truth = synthesized_test_data
