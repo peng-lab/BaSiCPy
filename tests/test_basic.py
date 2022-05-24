@@ -9,6 +9,7 @@ from pathlib import Path
 
 # allowed max error for the synthetic test data prediction
 SYNTHETIC_TEST_DATA_MAX_ERROR = 0.35
+EXPERIMENTAL_TEST_DATA_COUNT = 10
 
 
 @pytest.fixture
@@ -80,9 +81,11 @@ def test_basic_fit_experimental(shared_datadir):
     data_dir = Path(__file__).parent.parent / "data"
     fit_results = list((shared_datadir / "fit").glob("*.npz"))
     assert len(fit_results) > 0
+    np.random.seed(42)  # answer to the meaning of life, should work here too
 
     # TODO parametrize?
-    for res in fit_results:
+
+    for res in np.random.shuffle(fit_results)[:EXPERIMENTAL_TEST_DATA_COUNT]:
         d = np.load(res, allow_pickle=True)
         image_name = np.atleast_1d(d["image_name"])[0]
         params = np.atleast_1d(d["params"])[0]
