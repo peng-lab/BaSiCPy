@@ -398,27 +398,30 @@ class BaSiC(BaseModel):
         start_time = time.monotonic()
 
         # Convert to the correct format
-        im_float = images.astype(np.float64)
+        im_float = images.astype(np.float32)
 
-        # Check the image size
-        if not all(i == d for i, d in zip(self._flatfield.shape, images.shape)):
-            self._flatfield = _resize(self.flatfield, images.shape[:2])
-            self._darkfield = _resize(self.darkfield, images.shape[:2])
+        # Rescale the flatfield and darkfield
+        if not np.array_equal(self.flatfield.shape, im_float.shape[1:]):
+            self._flatfield = _resize(self.flatfield, images.shape[1:])
+            self._darkfield = _resize(self.darkfield, images.shape[1:])
+        else:
+            self._flatfield = self.flatfield
+            self._darkfield = self.darkfield
 
         # Initialize the output
-        output = np.zeros(images.shape, dtype=images.dtype)
+        output = np.empty(images.shape, dtype=images.dtype)
 
         if timelapse:
             # calculate timelapse from input series
             ...
 
         def unshade(ins, outs, i, dark, flat):
-            outs[..., i] = (ins[..., i] - dark) / flat
+            outs[i] = (ins[i] - dark) / flat
 
         logger.info(f"unshading in {self.max_workers} threads")
         # If one or fewer workers, don't user ThreadPool. Useful for debugging.
         if self.max_workers <= 1:
-            for i in range(images.shape[-1]):
+            for i in range(images.shape[0]):
                 unshade(im_float, output, i, self._darkfield, self._flatfield)
 
         else:
@@ -427,7 +430,7 @@ class BaSiC(BaseModel):
                     lambda x: unshade(
                         im_float, output, x, self._darkfield, self._flatfield
                     ),
-                    range(images.shape[-1]),
+                    range(images.shape[0]),
                 )
 
                 # Get the result of each thread, this should catch thread errors

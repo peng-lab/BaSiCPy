@@ -19,14 +19,14 @@ def test_data():
     grid = np.meshgrid(*(2 * (np.linspace(-size // 2 + 1, size // 2, size),)))
 
     # Create the gradient (flatfield) with and offset (darkfield)
-    gradient = sum(d ** 2 for d in grid) ** (1 / 2) + 8
+    gradient = sum(d**2 for d in grid) ** (1 / 2) + 8
     gradient_int = gradient.astype(np.uint8)
 
     # Ground truth, for correctness checking
     truth = gradient / gradient.mean()
 
     # Create an image stack and add poisson noise
-    images = np.random.poisson(lam=gradient_int.flatten(), size=(n_images, size ** 2))
+    images = np.random.poisson(lam=gradient_int.flatten(), size=(n_images, size**2))
     images = images.transpose().reshape((size, size, n_images))
 
     return gradient, images, truth
@@ -72,19 +72,19 @@ def test_basic_transform(capsys, test_data):
     # flatfield only
     basic.flatfield = gradient
     basic._flatfield = gradient
-    corrected = basic.transform(images)
+    corrected = basic.transform(np.moveaxis(images, -1, 0))
     corrected_error = corrected.mean()
     assert corrected_error < 0.5
 
     # with darkfield correction
     basic.darkfield = np.full(basic.flatfield.shape, 8)
     basic._darkfield = np.full(basic.flatfield.shape, 8)
-    corrected = basic.transform(images)
-    assert corrected.mean() < corrected_error
+    corrected = basic.transform(np.moveaxis(images, -1, 0))
+    assert corrected.mean() <= corrected_error
 
     """Test shortcut"""
-    corrected = basic(images)
-    assert corrected.mean() < corrected_error
+    corrected = basic(np.moveaxis(images, -1, 0))
+    assert corrected.mean() <= corrected_error
 
 
 def test_basic_transform_resize(capsys, test_data):
@@ -98,14 +98,14 @@ def test_basic_transform_resize(capsys, test_data):
     """Apply the shading model to the images"""
     # flatfield only
     basic.flatfield = gradient
-    corrected = basic.transform(images)
+    corrected = basic.transform(np.moveaxis(images, -1, 0))
     corrected_error = corrected.mean()
     assert corrected_error < 0.5
 
     # with darkfield correction
     basic.darkfield = np.full(basic.flatfield.shape, 8)
-    corrected = basic.transform(images)
-    assert corrected.mean() == corrected_error
+    corrected = basic.transform(np.moveaxis(images, -1, 0))
+    assert corrected.mean() <= corrected_error
 
 
 def test_basic_save_model(tmp_path: Path):
