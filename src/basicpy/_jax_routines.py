@@ -34,15 +34,11 @@ class BaseFit(BaseModel):
     )
     lambda_darkfield: float = Field(
         0.0,
-        description="Darkfield cost for DCT sparsity.",
-    )
-    lambda_darkfield2: float = Field(
-        0.0,
-        description="Darkfield cost for sparsity.",
+        description="Darkfield offset for weight updates.",
     )
     lambda_flatfield: float = Field(
         0.0,
-        description="Flatfield cost DCT sparsity.",
+        description="Flatfield offset for weight updates.",
     )
     get_darkfield: bool = Field(
         False,
@@ -211,7 +207,7 @@ class LadmapFit(BaseFit):
                 Im - BS - D_R[newax, ...] - D_Z - I_R + Y / mu, axis=0
             )
             D_R = idct2d(_jshrinkage(dct2d(D_R), self.lambda_darkfield / eta_D / mu))
-            D_R = _jshrinkage(D_R, self.lambda_darkfield2 / eta_D / mu)
+            D_R = _jshrinkage(D_R, self.lambda_darkfield / eta_D / mu)
 
         I_B = BS + D_R[newax, ...] + D_Z
         fit_residual = R - I_B
