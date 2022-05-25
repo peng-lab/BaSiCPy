@@ -10,6 +10,7 @@ from pathlib import Path
 # allowed max error for the synthetic test data prediction
 SYNTHETIC_TEST_DATA_MAX_ERROR = 0.35
 EXPERIMENTAL_TEST_DATA_COUNT = 10
+DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 
 
 @pytest.fixture
@@ -75,22 +76,32 @@ def test_basic_fit_synthetic(synthesized_test_data):
 
 
 # Test BaSiC fitting function (with experimental data)
-def test_basic_fit_experimental(shared_datadir):
+@pytest.mark.datafiles(
+    DATA_DIR / "cell_culture.npz",
+    DATA_DIR / "timelapse_brightfield.npz",
+    DATA_DIR / "timelapse_nanog.npz",
+    DATA_DIR / "timelapse_pu1.npz",
+    DATA_DIR / "wsi_brain.npz",
+)
+def test_basic_fit_experimental(datadir, datafiles):
 
     # not sure if it is a good practice
-    data_dir = Path(__file__).parent.parent / "data"
-    fit_results = list((shared_datadir / "fit").glob("*.npz"))
+    fit_results = list(datadir.glob("*.npz"))
     assert len(fit_results) > 0
     np.random.seed(42)  # answer to the meaning of life, should work here too
-
+    np.random.shuffle(fit_results)
     # TODO parametrize?
 
-    for res in np.random.shuffle(fit_results)[:EXPERIMENTAL_TEST_DATA_COUNT]:
+    for res in fit_results[:EXPERIMENTAL_TEST_DATA_COUNT]:
         d = np.load(res, allow_pickle=True)
         image_name = np.atleast_1d(d["image_name"])[0]
         params = np.atleast_1d(d["params"])[0]
         basic = BaSiC(**params)
-        images = np.load(data_dir / (image_name + ".npz"))["images"]
+        images_path = [
+            f for f in datafiles.listdir() if f.basename == image_name + ".npz"
+        ]
+        assert len(images_path) == 1
+        images = np.load(str(images_path[0]))["images"]
         basic.fit(images)
         assert np.all(np.isclose(basic.flatfield, d["flatfield"]))
         assert np.all(np.isclose(basic.darkfield, d["darkfield"]))
