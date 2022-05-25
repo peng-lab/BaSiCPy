@@ -109,6 +109,9 @@ class BaSiC(BaseModel):
     lambda_darkfield_coef: float = Field(
         0.2, description="Relative weight of the darkfield term in the Lagrangian."
     )
+    lambda_darkfield_sparse_coef: float = Field(
+        0.2, description="Relative weight of the darkfield term in the Lagrangian."
+    )
     max_iterations: int = Field(
         500,
         description="Maximum number of iterations for single optimization.",
@@ -275,6 +278,7 @@ class BaSiC(BaseModel):
             dict(
                 lambda_flatfield=lambda_flatfield,
                 lambda_darkfield=lambda_flatfield * self.lambda_darkfield_coef,
+                lambda_darkfield2=lambda_flatfield * self.lambda_darkfield_sparse_coef,
                 # matrix 2-norm (largest sing. value)
                 init_mu=init_mu,
                 max_mu=init_mu * self.max_mu_coef,
