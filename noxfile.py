@@ -13,7 +13,12 @@ def tests(session: Session) -> None:
     """Run the test suite."""
     session.install(".")
     session.install(
-        "pytest", "pytest-benchmark", "pytest-datadir", "pytest-cov", "xdoctest"
+        "pytest",
+        "pytest-benchmark",
+        "pytest-datafiles",
+        "pytest-datadir",
+        "pytest-cov",
+        "xdoctest",
     )
     session.install("opencv-python")
     session.run("pytest")
