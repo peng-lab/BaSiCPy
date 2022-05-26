@@ -190,19 +190,19 @@ class LadmapFit(BaseFit):
         vals,
     ):
         k, S, D_R, D_Z, I_R, B, Y, mu, fit_residual = vals
-        I_B = S[newax, ...] * B[:, newax, newax] + D_R[newax, ...] + D_Z
+        I_B = S[newax, ...] * B[:, newax, newax, newax] + D_R[newax, ...] + D_Z
         eta = jnp.sum(B**2) * 1.02
         S = S + jnp.sum(B[:, newax, newax] * (Im - I_B - I_R + Y / mu), axis=0) / eta
         S = idct2d(_jshrinkage(dct2d(S), self.lambda_flatfield / (eta * mu)))
 
-        I_B = S[newax, ...] * B[:, newax, newax] + D_R[newax, ...] + D_Z
+        I_B = S[newax, ...] * B[:, newax, newax, newax] + D_R[newax, ...] + D_Z
         I_R = _jshrinkage(Im - I_B + Y / mu, weight / mu)
 
         R = Im - I_R
         B = jnp.sum(S[newax, ...] * (R + Y / mu), axis=(1, 2)) / jnp.sum(S**2)
         B = jnp.maximum(B, 0)
 
-        BS = S[newax, ...] * B[:, newax, newax]
+        BS = S[newax, ...] * B[:, newax, newax, newax]
         if self.get_darkfield:
             D_Z = jnp.mean(Im - BS - D_R[newax, ...] - I_R + Y / 2.0 / mu)
             D_Z = jnp.clip(D_Z, 0, self.D_Z_max)
@@ -223,14 +223,14 @@ class LadmapFit(BaseFit):
     @jit
     def _step_only_baseline(self, Im, weight, S, D, vals):
         k, I_R, B, Y, mu, fit_residual = vals
-        I_B = S[newax, ...] * B[:, newax, newax] + D[newax, ...]
+        I_B = S[newax, ...] * B[:, newax, newax, newax] + D[newax, ...]
         I_R = _jshrinkage(Im - I_B + Y / mu, weight / mu)
 
         R = Im - I_R
         B = jnp.sum(S[newax, ...] * (R + Y / mu), axis=(1, 2)) / jnp.sum(S**2)
         B = jnp.maximum(B, 0)
 
-        I_B = S[newax, ...] * B[:, newax, newax] + D[newax, ...]
+        I_B = S[newax, ...] * B[:, newax, newax, newax] + D[newax, ...]
         fit_residual = R - I_B
         Y = Y + mu * fit_residual
         mu = jnp.minimum(mu * self.rho, self.max_mu)

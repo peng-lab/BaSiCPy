@@ -235,11 +235,13 @@ class BaSiC(BaseModel):
 
         """
 
-        images = np.array(images)
         if images.ndim == 3:
-            pass
-        if images.ndim == 4:
-            pass
+            images = images[:, np.newaxis, ...]
+        elif images.ndim == 4:
+            if self.fitting_mode == FittingMode.approximate:
+                raise ValueError(
+                    "Only 3-dimensional images are accepted for the approximate mode."
+                )
         else:
             raise ValueError("images must be 3 or 4-dimensional array")
 
@@ -340,7 +342,7 @@ class BaSiC(BaseModel):
             mean_S = jnp.mean(S)
             S = S / mean_S  # flatfields
             B = B * mean_S  # baseline
-            I_B = B[:, newax, newax] * S[newax, ...] + D[newax, ...]
+            I_B = B[:, newax, newax, newax] * S[newax, ...] + D[newax, ...]
             W = fitting_step.calc_weights(I_B, I_R) * Ws2
 
             self._weight = W
@@ -387,7 +389,7 @@ class BaSiC(BaseModel):
                     I_R,
                 )
 
-                I_B = B[:, newax, newax] * S[newax, ...] + D[newax, ...]
+                I_B = B[:, newax, newax, newax] * S[newax, ...] + D[newax, ...]
                 W = fitting_step.calc_weights_baseline(I_B, I_R) * Ws
                 self._weight = W
                 self._residual = I_R
