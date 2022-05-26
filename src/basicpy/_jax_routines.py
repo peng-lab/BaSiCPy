@@ -34,11 +34,15 @@ class BaseFit(BaseModel):
     )
     lambda_darkfield: float = Field(
         0.0,
-        description="Darkfield offset for weight updates.",
+        description="Darkfield smoothness weight for sparse reguralization.",
+    )
+    lambda_darkfield_sparse: float = Field(
+        0.0,
+        description="Darkfield sparseness weight for sparse reguralization.",
     )
     lambda_flatfield: float = Field(
         0.0,
-        description="Flatfield offset for weight updates.",
+        description="Flatfield smoothness weight for sparse reguralization.",
     )
     get_darkfield: bool = Field(
         False,
@@ -207,7 +211,7 @@ class LadmapFit(BaseFit):
                 Im - BS - D_R[newax, ...] - D_Z - I_R + Y / mu, axis=0
             )
             D_R = idct2d(_jshrinkage(dct2d(D_R), self.lambda_darkfield / eta_D / mu))
-            D_R = _jshrinkage(D_R, self.lambda_darkfield / eta_D / mu)
+            D_R = _jshrinkage(D_R, self.lambda_darkfield_sparse / eta_D / mu)
 
         I_B = BS + D_R[newax, ...] + D_Z
         fit_residual = R - I_B
@@ -312,7 +316,7 @@ class ApproximateFit(BaseFit):
             D_R = dct2d(D_R)
             D_R = _jshrinkage(D_R, self.lambda_darkfield / (self._ent2 * mu))
             D_R = idct2d(D_R)
-            D_R = _jshrinkage(D_R, self.lambda_darkfield / (self._ent2 * mu))
+            D_R = _jshrinkage(D_R, self.lambda_darkfield_sparse / (self._ent2 * mu))
             D_R = D_R + Z
         fit_residual = R - I_B
         Y = Y + mu * fit_residual

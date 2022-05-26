@@ -109,6 +109,10 @@ class BaSiC(BaseModel):
     lambda_darkfield_coef: float = Field(
         0.2, description="Relative weight of the darkfield term in the Lagrangian."
     )
+    lambda_darkfield_sparse_coef: float = Field(
+        0.2,
+        description="Relative weight of the darkfield sparse term in the Lagrangian.",
+    )
     max_iterations: int = Field(
         500,
         description="Maximum number of iterations for single optimization.",
@@ -231,10 +235,19 @@ class BaSiC(BaseModel):
 
         """
 
-        logger.info("=== BaSiC fit started ===")
-        start_time = time.monotonic()
+        images = np.array(images)
+        if images.ndim == 3:
+            pass
+        if images.ndim == 4:
+            pass
+        else:
+            raise ValueError("images must be 3 or 4-dimensional array")
+
         if fitting_weight is not None and fitting_weight.shape != images.shape:
             raise ValueError("fitting_weight must have the same shape as images.")
+
+        logger.info("=== BaSiC fit started ===")
+        start_time = time.monotonic()
 
         Im = device_put(images).astype(jnp.float32)
         Im = self._resize(Im)
@@ -276,6 +289,8 @@ class BaSiC(BaseModel):
             dict(
                 lambda_flatfield=lambda_flatfield,
                 lambda_darkfield=lambda_flatfield * self.lambda_darkfield_coef,
+                lambda_darkfield_sparse=lambda_flatfield
+                * self.lambda_darkfield_sparse_coef,
                 # matrix 2-norm (largest sing. value)
                 init_mu=init_mu,
                 max_mu=init_mu * self.max_mu_coef,
