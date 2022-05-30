@@ -1,6 +1,6 @@
 """Utilities to support BaSiC."""
 
-from .dct2d_tools import dct2d, idct2d
+from .dct_tools import dct2d, idct2d
 from .image_tools import load_image, load_images, resize
 
 __all__ = [

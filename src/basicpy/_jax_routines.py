@@ -7,7 +7,7 @@ from jax import numpy as jnp
 from jax.tree_util import register_pytree_node_class
 from pydantic import BaseModel, Field, PrivateAttr
 
-from basicpy.tools.dct2d_tools import JaxDCT
+from basicpy.tools.dct_tools import JaxDCT
 
 idct2d, dct2d = JaxDCT.idct2d, JaxDCT.dct2d
 newax = jnp.newaxis

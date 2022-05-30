@@ -27,7 +27,7 @@ from pydantic import BaseModel, Field, PrivateAttr
 from skimage.transform import resize as _resize
 
 from basicpy._jax_routines import ApproximateFit, LadmapFit
-from basicpy.tools.dct2d_tools import JaxDCT
+from basicpy.tools.dct_tools import JaxDCT
 
 # Package modules
 from basicpy.types import ArrayLike, PathLike
