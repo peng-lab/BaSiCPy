@@ -192,8 +192,12 @@ class LadmapFit(BaseFit):
         k, S, D_R, D_Z, I_R, B, Y, mu, fit_residual = vals
         I_B = S[newax, ...] * B[:, newax, newax, newax] + D_R[newax, ...] + D_Z
         eta = jnp.sum(B**2) * 1.02
-        S = S + jnp.sum(B[:, newax, newax] * (Im - I_B - I_R + Y / mu), axis=0) / eta
-        S = idct2d(_jshrinkage(dct2d(S), self.lambda_flatfield / (eta * mu)))
+        S = (
+            S
+            + jnp.sum(B[:, newax, newax, newax] * (Im - I_B - I_R + Y / mu), axis=0)
+            / eta
+        )
+        S = idct2d(_jshrinkage(dct2d(S[0]), self.lambda_flatfield / (eta * mu)))[newax]
 
         I_B = S[newax, ...] * B[:, newax, newax, newax] + D_R[newax, ...] + D_Z
         I_R = _jshrinkage(Im - I_B + Y / mu, weight / mu)
@@ -210,7 +214,9 @@ class LadmapFit(BaseFit):
             D_R = D_R + 1.0 / eta_D * jnp.sum(
                 Im - BS - D_R[newax, ...] - D_Z - I_R + Y / mu, axis=0
             )
-            D_R = idct2d(_jshrinkage(dct2d(D_R), self.lambda_darkfield / eta_D / mu))
+            D_R = idct2d(
+                _jshrinkage(dct2d(D_R[0]), self.lambda_darkfield / eta_D / mu)
+            )[newax]
             D_R = _jshrinkage(D_R, self.lambda_darkfield_sparse / eta_D / mu)
 
         I_B = BS + D_R[newax, ...] + D_Z
@@ -262,6 +268,16 @@ class ApproximateFit(BaseFit):
         vals,
     ):
         k, S, D_R, D_Z, I_R, B, Y, mu, fit_residual = vals
+
+        # approximate fitting only accepts two-dimensional images.
+        # XXX better coding?
+        Im = Im[:, 0, ...]
+        weight = weight[:, 0, ...]
+        S = S[0]
+        D_R = D_R[0]
+        I_R = I_R[:, 0, ...]
+        Y = Y[:, 0, ...]
+
         S_hat = dct2d(S)
         I_B = S[newax, ...] * B[:, newax, newax] + D_R[newax, ...] + D_Z
         temp_W = (Im - I_B - I_R + Y / mu) / self._ent1
@@ -322,11 +338,24 @@ class ApproximateFit(BaseFit):
         Y = Y + mu * fit_residual
         mu = jnp.minimum(mu * self.rho, self.max_mu)
 
+        # put the variables back to 4-dim input array
+        S = S[newax, ...]
+        D_R = D_R[newax, ...]
+        I_R = I_R[:, newax, ...]
+        Y = Y[:, newax, ...]
+        fit_residual = fit_residual[:, newax, ...]
         return (k + 1, S, D_R, D_Z, I_R, B, Y, mu, fit_residual)
 
     @jit
     def _step_only_baseline(self, Im, weight, S, D, vals):
         k, I_R, B, Y, mu, fit_residual = vals
+        Im = Im[:, 0, ...]
+        weight = weight[:, 0, ...]
+        S = S[0]
+        D = D[0]
+        I_R = I_R[:, 0, ...]
+        Y = Y[:, 0, ...]
+
         I_B = S[newax, ...] * B[:, newax, newax] + D[newax, ...]
 
         # update I_R using approximated l0 norm
@@ -343,18 +372,28 @@ class ApproximateFit(BaseFit):
         # Y1 = Y1 + mu*Z1;
         Y = Y + mu * fit_residual
         mu = jnp.minimum(mu * self.rho, self.max_mu)
+
+        I_R = I_R[:, newax, ...]
+        Y = Y[:, newax, ...]
+        fit_residual = fit_residual[:, newax, ...]
         return (k + 1, I_R, B, Y, mu, fit_residual)
 
     def calc_weights(self, I_B, I_R):
+        I_B = I_B[:, 0, ...]
+        I_R = I_R[:, 0, ...]
         XE_norm = I_R / (jnp.mean(I_B, axis=(1, 2))[:, newax, newax] + 1e-6)
         weight = jnp.ones_like(I_R) / (jnp.abs(XE_norm) + self.epsilon)
-        return weight / jnp.mean(weight)
+        weight = weight / jnp.mean(weight)
+        return weight[:, newax, ...]
 
     def calc_weights_baseline(self, I_B, I_R):
+        I_B = I_B[:, 0, ...]
+        I_R = I_R[:, 0, ...]
         mean_vec = jnp.mean(I_B, axis=(1, 2))
         XE_norm = mean_vec[:, newax, newax] / (I_R + 1e-6)
         weight = 1.0 / (jnp.abs(XE_norm) + self.epsilon)
-        return weight / jnp.mean(weight)
+        weight = weight / jnp.mean(weight)
+        return weight[:, newax, ...]
 
     def calc_darkfield(_self, S, D_R, D_Z):
         return D_R + D_Z * (1 + S)

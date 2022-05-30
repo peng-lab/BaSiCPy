@@ -202,15 +202,15 @@ class BaSiC(BaseModel):
         """
         if self.working_size is not None:
             if np.isscalar(self.working_size):
-                working_shape = [self.working_size] * (Im.ndim - 1)
+                working_shape = [self.working_size] * (Im.ndim - 2)
             else:
-                if not Im.ndim - 1 == len(self.working_size):
+                if not Im.ndim - 2 == len(self.working_size):
                     raise ValueError(
                         "working_size must be a scalar or match the image dimensions"
                     )
                 else:
                     working_shape = self.working_size
-            Im = resize(Im, [Im.shape[0], *working_shape], self.resize_method)
+            Im = resize(Im, [*Im.shape[:2], *working_shape], self.resize_method)
         return Im
 
     def fit(
@@ -377,7 +377,7 @@ class BaSiC(BaseModel):
             for i in range(self.max_reweight_iterations_baseline):
                 B = jnp.ones(Im.shape[0], dtype=jnp.float32)
                 if self.fitting_mode == FittingMode.approximate:
-                    B = jnp.mean(Im, axis=(1, 2))
+                    B = jnp.mean(Im, axis=(1, 2, 3))
                 I_R = jnp.zeros(Im.shape, dtype=jnp.float32)
                 logger.info(f"reweighting iteration for baseline {i}")
                 I_R, B, norm_ratio, converged = fitting_step.fit_baseline(

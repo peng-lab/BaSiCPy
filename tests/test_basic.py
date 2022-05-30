@@ -7,6 +7,8 @@ from skimage.io import imread
 from skimage.transform import resize
 from pathlib import Path
 
+from basicpy.basicpy import FittingMode
+
 # allowed max error for the synthetic test data prediction
 SYNTHETIC_TEST_DATA_MAX_ERROR = 0.35
 EXPERIMENTAL_TEST_DATA_COUNT = 10
@@ -97,6 +99,8 @@ def test_basic_fit_experimental(datadir, datafiles):
         image_name = np.atleast_1d(d["image_name"])[0]
         params = np.atleast_1d(d["params"])[0]
         basic = BaSiC(**params)
+        if params["fitting_mode"] == FittingMode.ladmap:
+            continue
         images_path = [
             f for f in datafiles.listdir() if f.basename == image_name + ".npz"
         ]
