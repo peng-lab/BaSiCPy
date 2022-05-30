@@ -233,7 +233,7 @@ class LadmapFit(BaseFit):
         I_R = _jshrinkage(Im - I_B + Y / mu, weight / mu)
 
         R = Im - I_R
-        B = jnp.sum(S[newax, ...] * (R + Y / mu), axis=(1, 2)) / jnp.sum(S**2)
+        B = jnp.sum(S[newax, ...] * (R + Y / mu), axis=(1, 2, 3)) / jnp.sum(S**2)
         B = jnp.maximum(B, 0)
 
         I_B = S[newax, ...] * B[:, newax, newax, newax] + D[newax, ...]

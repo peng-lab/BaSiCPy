@@ -105,9 +105,16 @@ def test_basic_fit_experimental(datadir, datafiles):
         assert len(images_path) == 1
         images = np.load(str(images_path[0]))["images"]
         basic.fit(images)
-        assert np.all(np.isclose(basic.flatfield, d["flatfield"], atol=0.01, rtol=0.01))
-        assert np.all(np.isclose(basic.darkfield, d["darkfield"], atol=0.01, rtol=0.01))
-        assert np.all(np.isclose(basic.baseline, d["baseline"], atol=0.01, rtol=0.01))
+        assert np.all(np.isclose(basic.flatfield, d["flatfield"], atol=0.05, rtol=0.05))
+        assert np.all(
+            np.isclose(
+                basic.darkfield,
+                d["darkfield"],
+                atol=np.max(d["darkfield"]) * 0.1,
+                rtol=0.05,
+            )
+        )
+        assert np.all(np.isclose(basic.baseline, d["baseline"], atol=0.05, rtol=0.05))
 
 
 # Test BaSiC transform function
