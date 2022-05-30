@@ -99,8 +99,6 @@ def test_basic_fit_experimental(datadir, datafiles):
         image_name = np.atleast_1d(d["image_name"])[0]
         params = np.atleast_1d(d["params"])[0]
         basic = BaSiC(**params)
-        if params["fitting_mode"] == FittingMode.ladmap:
-            continue
         images_path = [
             f for f in datafiles.listdir() if f.basename == image_name + ".npz"
         ]
