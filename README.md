@@ -1,6 +1,6 @@
 # BaSiCPy
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
-[![All Contributors](https://img.shields.io/badge/all_contributors-2-orange.svg?style=flat-square)](#contributors-)
+[![All Contributors](https://img.shields.io/badge/all_contributors-3-orange.svg?style=flat-square)](#contributors-)
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
 
 A python package for background and shading correction of optical microscopy images
@@ -71,7 +71,8 @@ pip install -e '.[dev]'
 <table>
   <tr>
     <td align="center"><a href="https://github.com/yfukai"><img src="https://avatars.githubusercontent.com/u/5919272?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Yohsuke T. Fukai</b></sub></a><br /><a href="https://github.com/Tingying Peng/BaSiCPy/commits?author=yfukai" title="Code">💻</a> <a href="#research-yfukai" title="Research">🔬</a> <a href="#question-yfukai" title="Answering Questions">💬</a> <a href="https://github.com/Tingying Peng/BaSiCPy/commits?author=yfukai" title="Tests">⚠️</a> <a href="#ideas-yfukai" title="Ideas, Planning, & Feedback">🤔</a></td>
-    <td align="center"><a href="https://github.com/tying84"><img src="https://avatars.githubusercontent.com/u/11461947?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Tingying Peng</b></sub></a><br /><a href="#data-tying84" title="Data">🔣</a> <a href="#mentoring-tying84" title="Mentoring">🧑‍🏫</a> <a href="#financial-tying84" title="Financial">💵</a></td>
+    <td align="center"><a href="https://github.com/tying84"><img src="https://avatars.githubusercontent.com/u/11461947?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Tingying Peng</b></sub></a><br /><a href="#data-tying84" title="Data">🔣</a> <a href="#financial-tying84" title="Financial">💵</a></td>
+    <td align="center"><a href="https://github.com/tdmorello"><img src="https://avatars.githubusercontent.com/u/34800427?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Tim Morello</b></sub></a><br /><a href="https://github.com/Tingying Peng/BaSiCPy/pulls?q=is%3Apr+reviewed-by%3Atdmorello" title="Reviewed Pull Requests">👀</a></td>
   </tr>
 </table>
 
