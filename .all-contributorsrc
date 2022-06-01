@@ -1,0 +1,24 @@
+{
+  "projectName": "BaSiCPy",
+  "projectOwner": "Tingying Peng",
+  "repoType": "github",
+  "repoHost": "https://github.com",
+  "files": [
+    "README.md"
+  ],
+  "imageSize": 100,
+  "commit": true,
+  "commitConvention": "gitmoji",
+  "contributors": [
+    {
+      "login": "yfukai",
+      "name": "Yohsuke T. Fukai",
+      "avatar_url": "https://avatars.githubusercontent.com/u/5919272?v=4",
+      "profile": "https://github.com/yfukai",
+      "contributions": [
+        "code"
+      ]
+    }
+  ],
+  "contributorsPerLine": 7
+}
