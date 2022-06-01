@@ -1,13 +1,11 @@
 # BaSiCPy
-<!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
-[![All Contributors](https://img.shields.io/badge/all_contributors-4-orange.svg?style=flat-square)](#contributors-)
-<!-- ALL-CONTRIBUTORS-BADGE:END -->
-
 A python package for background and shading correction of optical microscopy images
-
 [![License](https://img.shields.io/pypi/l/python-basic.svg)](https://github.com/napari/napari/raw/main/LICENSE)
 [![Python Version](https://img.shields.io/pypi/pyversions/python-basic.svg)](https://python.org)
 [![PyPI](https://img.shields.io/pypi/v/python-basic.svg)](https://pypi.org/project/python-basic)
+<!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
+[![All Contributors](https://img.shields.io/badge/all_contributors-4-orange.svg?style=flat-square)](#contributors-)
+<!-- ALL-CONTRIBUTORS-BADGE:END -->
 
 BaSiCPy is a python package for background and shading correction of optical microscopy images. It is developed based on the Matlab version of [BaSiC](https://github.com/marrlab/BaSiC) tool.
 
