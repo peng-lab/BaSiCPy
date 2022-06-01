@@ -106,18 +106,18 @@ def test_basic_fit_experimental(datadir, datafiles):
         images = np.load(str(images_path[0]))["images"]
         basic.fit(images)
         assert np.all(np.isclose(basic.flatfield, d["flatfield"], atol=0.05, rtol=0.05))
-        assert np.all(
-            np.isclose(
-                basic.darkfield,
-                d["darkfield"],
-                atol=np.max(d["darkfield"]) * 0.1,
-                rtol=0.05,
-            )
-        )
         if basic.fitting_mode == FittingMode.approximate:
             tol = 0.2
         else:
             tol = 0.05
+        assert np.all(
+            np.isclose(
+                basic.darkfield,
+                d["darkfield"],
+                atol=np.max(d["darkfield"]) * tol,
+                rtol=tol,
+            )
+        )
         assert np.all(np.isclose(basic.baseline, d["baseline"], atol=tol, rtol=tol))
 
 
