@@ -82,11 +82,25 @@ pip install -e '.[dev]'
 
 <!-- ALL-CONTRIBUTORS-LIST:END -->
 - Nicholas Schaub (@Nicholas-Schaub)
+    - General mentoring, technology selection and project management
+    - Designing and implementing core structure of the package
+    - Code review and advising
+    - Providing tests
 - Tim Morello (@tdmorello)
+    - Designing and implementing core structure of the package
+    - Providing tests
+    - Code review
 - Tingying Peng (@tying84)
+    - General comments and financial support
+    - Reviewing theoretical calculation
+    - Providing a JAX implementation for the approximate fitting routine
+    - Providing test data and commenting on expected output
 - Yohsuke T. Fukai (@yfukai)
+    - Theoretical calculation for the optimization problem
+    - Implementation of the main fitting routine
+    - Providing tests
+    - Code review
 
-
-### Old version (f3fcf19), used as the reference implementation to check the approximate algorithm
+### Old version (`f3fcf19`), used as the reference implementation to check the approximate algorithm
 - Lorenz Lamm (@LorenzLamm)
 - Mohammad Mirkazemi (@Mirkazemi)
