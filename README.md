@@ -58,3 +58,15 @@ python -m venv venv
 source venv/bin/activate
 pip install -e '.[dev]'
 ```
+
+## Contributors
+
+### Current version
+- Nicholas Schaub (@Nicholas-Schaub)
+- Tim Morello (@tdmorello)
+- Tingying Peng (@tying84)
+- Yohsuke T. Fukai (@yfukai)
+
+### Old version (), used as the reference implementation to check the approximate algorithm
+- Lorenz Lamm (@LorenzLamm)
+- Mohammad Mirkazemi (@Mirkazemi)
