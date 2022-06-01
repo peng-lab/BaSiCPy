@@ -109,7 +109,7 @@ def test_basic_fit_experimental(datadir, datafiles):
         if basic.fitting_mode == FittingMode.approximate:
             tol = 0.2
         else:
-            tol = 0.05
+            tol = 0.1
         assert np.all(
             np.isclose(
                 basic.darkfield,
