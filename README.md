@@ -67,6 +67,7 @@ pip install -e '.[dev]'
 - Tingying Peng (@tying84)
 - Yohsuke T. Fukai (@yfukai)
 
-### Old version (), used as the reference implementation to check the approximate algorithm
+
+### Old version (f3fcf19), used as the reference implementation to check the approximate algorithm
 - Lorenz Lamm (@LorenzLamm)
 - Mohammad Mirkazemi (@Mirkazemi)
