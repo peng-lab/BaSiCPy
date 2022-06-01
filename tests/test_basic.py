@@ -114,7 +114,11 @@ def test_basic_fit_experimental(datadir, datafiles):
                 rtol=0.05,
             )
         )
-        assert np.all(np.isclose(basic.baseline, d["baseline"], atol=0.05, rtol=0.05))
+        if basic.fitting_mode == FittingMode.approximate:
+            tol = 0.2
+        else:
+            tol = 0.05
+        assert np.all(np.isclose(basic.baseline, d["baseline"], atol=tol, rtol=tol))
 
 
 # Test BaSiC transform function
