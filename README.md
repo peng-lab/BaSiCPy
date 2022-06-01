@@ -71,7 +71,7 @@ pip install -e '.[dev]'
 <table>
   <tr>
     <td align="center"><a href="https://github.com/yfukai"><img src="https://avatars.githubusercontent.com/u/5919272?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Yohsuke T. Fukai</b></sub></a><br /><a href="https://github.com/Tingying Peng/BaSiCPy/commits?author=yfukai" title="Code">💻</a> <a href="#research-yfukai" title="Research">🔬</a> <a href="#question-yfukai" title="Answering Questions">💬</a> <a href="https://github.com/Tingying Peng/BaSiCPy/commits?author=yfukai" title="Tests">⚠️</a> <a href="#ideas-yfukai" title="Ideas, Planning, & Feedback">🤔</a></td>
-    <td align="center"><a href="https://github.com/tying84"><img src="https://avatars.githubusercontent.com/u/11461947?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Tingying Peng</b></sub></a><br /><a href="#data-tying84" title="Data">🔣</a></td>
+    <td align="center"><a href="https://github.com/tying84"><img src="https://avatars.githubusercontent.com/u/11461947?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Tingying Peng</b></sub></a><br /><a href="#data-tying84" title="Data">🔣</a> <a href="#mentoring-tying84" title="Mentoring">🧑‍🏫</a></td>
   </tr>
 </table>
 
