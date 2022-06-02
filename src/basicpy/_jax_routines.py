@@ -187,7 +187,7 @@ class LadmapFit(BaseFit):
     ):
         k, S, D_R, D_Z, I_R, B, Y, mu, fit_residual = vals
         I_B = S[newax, ...] * B[:, newax, newax] + D_R[newax, ...] + D_Z
-        eta = jnp.sum(B**2) * 1.02
+        eta = jnp.sum(B**2) * 1.02 + 0.01
         S = S + jnp.sum(B[:, newax, newax] * (Im - I_B - I_R + Y / mu), axis=0) / eta
         S = idct2d(_jshrinkage(dct2d(S), self.lambda_flatfield / (eta * mu)))
 
