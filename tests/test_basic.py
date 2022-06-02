@@ -22,6 +22,7 @@ def synthesized_test_data():
     grid = np.meshgrid(*(2 * (np.linspace(-size // 2 + 1, size // 2, size),)))
 
     # Create the parabolic gradient (flatfield) with and offset (darkfield)
+    gradient = sum(d**2 for d in grid)
     gradient = 0.01 * (np.max(gradient) - gradient) + 10
     gradient_int = gradient.astype(np.uint8)
 
@@ -49,14 +50,20 @@ def test_basic_verify_init():
 # Test BaSiC fitting function
 def test_basic_fit_synthesized(synthesized_test_data):
 
-    basic = BaSiC(get_darkfield=False)
+    basic = BaSiC(get_darkfield=False, lambda_flatfield_coef=0.1)
     gradient, images, truth = synthesized_test_data
 
     """Fit with BaSiC"""
-    basic.fit(images)
+    basic.fit(np.moveaxis(images, -1, 0))
 
-    assert np.max(basic.flatfield / truth) < 1 + SYNTHESIZED_TEST_DATA_MAX_ERROR
-    assert np.min(basic.flatfield / truth) > 1 - SYNTHESIZED_TEST_DATA_MAX_ERROR
+    assert (
+        np.quantile(basic.flatfield / truth, 0.999)
+        < 1 + SYNTHESIZED_TEST_DATA_MAX_ERROR
+    )
+    assert (
+        np.quantile(basic.flatfield / truth, 0.001)
+        > 1 - SYNTHESIZED_TEST_DATA_MAX_ERROR
+    )
 
     """
     code for debug plotting :
