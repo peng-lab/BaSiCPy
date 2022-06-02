@@ -73,10 +73,11 @@ class BaseFit(BaseModel):
     ):
         # initialize values
         Y = jnp.zeros_like(Im, dtype=jnp.float32)
+        Y_S = 0
         mu = self.init_mu
         fit_residual = jnp.ones(Im.shape, dtype=jnp.float32) * jnp.inf
 
-        vals = (0, S, D_R, D_Z, I_R, B, Y, mu, fit_residual)
+        vals = (0, S, D_R, D_Z, I_R, B, Y, Y_S, mu, fit_residual)
         step = partial(
             self._step,
             Im,
@@ -85,7 +86,7 @@ class BaseFit(BaseModel):
         #        while self._cond(vals):
         #            vals = step(vals)
         vals = lax.while_loop(self._cond, step, vals)
-        k, S, D_R, D_Z, I_R, B, Y, mu, fit_residual = vals
+        k, S, D_R, D_Z, I_R, B, Y, Y_S, mu, fit_residual = vals
         norm_ratio = jnp.linalg.norm(fit_residual.flatten(), ord=2) / self.image_norm
         return S, D_R, D_Z, I_R, B, norm_ratio, k < self.max_iterations
 
@@ -185,10 +186,12 @@ class LadmapFit(BaseFit):
         weight,
         vals,
     ):
-        k, S, D_R, D_Z, I_R, B, Y, mu, fit_residual = vals
+        k, S, D_R, D_Z, I_R, B, Y, Y_S, mu, fit_residual = vals
         I_B = S[newax, ...] * B[:, newax, newax] + D_R[newax, ...] + D_Z
-        eta = jnp.sum(B**2) * 1.02 + 0.01
-        S = S + jnp.sum(B[:, newax, newax] * (Im - I_B - I_R + Y / mu), axis=0) / eta
+        eta = (jnp.sum(B**2) + 1) * 1.02
+        S_incl1 = jnp.sum(B[:, newax, newax] * (Im - I_B - I_R + Y / mu), axis=0)
+        S_incl2 = (jnp.mean(S) - 1 + Y_S / mu) / jnp.product(jnp.array(S.shape))
+        S = S + (S_incl1 + S_incl2) / eta
         S = idct2d(_jshrinkage(dct2d(S), self.lambda_flatfield / (eta * mu)))
 
         I_B = S[newax, ...] * B[:, newax, newax] + D_R[newax, ...] + D_Z
@@ -212,9 +215,10 @@ class LadmapFit(BaseFit):
         I_B = BS + D_R[newax, ...] + D_Z
         fit_residual = R - I_B
         Y = Y + mu * fit_residual
+        Y_S = Y_S + mu * (jnp.mean(S) - 1)
         mu = jnp.minimum(mu * self.rho, self.max_mu)
 
-        return (k + 1, S, D_R, D_Z, I_R, B, Y, mu, fit_residual)
+        return (k + 1, S, D_R, D_Z, I_R, B, Y, Y_S, mu, fit_residual)
 
     @jit
     def _step_only_baseline(self, Im, weight, S, D, vals):
@@ -257,7 +261,7 @@ class ApproximateFit(BaseFit):
         weight,
         vals,
     ):
-        k, S, D_R, D_Z, I_R, B, Y, mu, fit_residual = vals
+        k, S, D_R, D_Z, I_R, B, Y, Y_S, mu, fit_residual = vals
         S_hat = dct2d(S)
         I_B = S[newax, ...] * B[:, newax, newax] + D_R[newax, ...] + D_Z
         temp_W = (Im - I_B - I_R + Y / mu) / self._ent1
@@ -318,7 +322,7 @@ class ApproximateFit(BaseFit):
         Y = Y + mu * fit_residual
         mu = jnp.minimum(mu * self.rho, self.max_mu)
 
-        return (k + 1, S, D_R, D_Z, I_R, B, Y, mu, fit_residual)
+        return (k + 1, S, D_R, D_Z, I_R, B, Y, Y_S, mu, fit_residual)
 
     @jit
     def _step_only_baseline(self, Im, weight, S, D, vals):
