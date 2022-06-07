@@ -190,6 +190,9 @@ class LadmapFit(BaseFit):
         eta = jnp.sum(B**2) * 1.02
         S = S + jnp.sum(B[:, newax, newax] * (Im - I_B - I_R + Y / mu), axis=0) / eta
         S = idct2d(_jshrinkage(dct2d(S), self.lambda_flatfield / (eta * mu)))
+        mean_S = jnp.mean(S)
+        S = jnp.where(mean_S > 0, S / mean_S, S)
+        B = jnp.where(mean_S > 0, B * mean_S, B)
 
         I_B = S[newax, ...] * B[:, newax, newax] + D_R[newax, ...] + D_Z
         I_R = _jshrinkage(Im - I_B + Y / mu, weight / mu)

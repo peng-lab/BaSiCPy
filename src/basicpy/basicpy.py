@@ -298,10 +298,10 @@ class BaSiC(BaseModel):
 
         for i in range(self.max_reweight_iterations):
             logger.info(f"reweighting iteration {i}")
-            S = jnp.zeros(Im2.shape[1:], dtype=jnp.float32)
+            S = jnp.ones(Im2.shape[1:], dtype=jnp.float32)
             D_R = jnp.zeros(Im2.shape[1:], dtype=jnp.float32)
             D_Z = 0.0
-            B = jnp.ones(Im2.shape[0], dtype=jnp.float32)
+            B = jnp.mean(Im2, axis=(1, 2))
             I_R = jnp.zeros(Im2.shape, dtype=jnp.float32)
             S, D_R, D_Z, I_R, B, norm_ratio, converged = fitting_step.fit(
                 Im2,
@@ -313,6 +313,7 @@ class BaSiC(BaseModel):
                 I_R,
             )
             logger.info(f"single-step optimization score: {norm_ratio}.")
+            logger.info(f"mean of S: {float(jnp.mean(S))}.")
             self._score = norm_ratio
             if not converged:
                 logger.warning("single-step optimization did not converge.")
