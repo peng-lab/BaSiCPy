@@ -61,11 +61,18 @@ class BaseFit(BaseModel):
         fit_residual = vals[-2]
         value_diff = vals[-1]
         norm_ratio = jnp.linalg.norm(fit_residual.flatten(), ord=2) / self.image_norm
-        return jnp.all(
+        conv = jnp.any(
             jnp.array(
                 [
                     norm_ratio > self.optimization_tol,
                     value_diff > self.optimization_tol_diff,
+                ]
+            )
+        )
+        return jnp.all(
+            jnp.array(
+                [
+                    conv,
                     k < self.max_iterations,
                 ]
             )
