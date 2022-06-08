@@ -135,6 +135,10 @@ class BaSiC(BaseModel):
         1e-6,
         description="Optimization tolerance.",
     )
+    optimization_tol_diff: float = Field(
+        1e-6,
+        description="Optimization tolerance for update diff.",
+    )
     resize_method: ResizeMethod = Field(
         ResizeMethod.CUBIC,
         description="Resize method to use when downsampling images.",
