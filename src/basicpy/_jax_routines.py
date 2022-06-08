@@ -304,7 +304,7 @@ class LadmapFit(BaseFit):
 
         mu = jnp.minimum(mu * self.rho, self.max_mu)
 
-        return (k + 1, I_R, B, Y, mu, fit_residual, 0.0)
+        return (k + 1, I_R, B, Y, mu, fit_residual, value_diff)
 
     def calc_weights(self, I_B, I_R):
         return jnp.ones_like(I_R, dtype=jnp.float32) / (
