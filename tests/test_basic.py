@@ -117,7 +117,7 @@ def test_basic_fit_experimental(datadir, datafiles):
             np.isclose(
                 basic.darkfield,
                 d["darkfield"],
-                atol=np.max(d["darkfield"]) * tol,
+                atol=np.max(np.abs(d["darkfield"])) * tol,
                 rtol=tol,
             )
         )
