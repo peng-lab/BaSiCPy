@@ -57,6 +57,7 @@ def test_basic_verify_init():
 def test_basic_fit_synthetic(synthesized_test_data):
 
     basic = BaSiC(get_darkfield=False)
+
     gradient, images, truth = synthesized_test_data
 
     """Fit with BaSiC"""
@@ -91,13 +92,15 @@ def test_basic_fit_experimental(datadir, datafiles):
     fit_results = list(datadir.glob("*.npz"))
     assert len(fit_results) > 0
     np.random.seed(42)  # answer to the meaning of life, should work here too
-    np.random.shuffle(fit_results)
     # TODO parametrize?
+    fit_results = np.concatenate(
+        [np.load(f, allow_pickle=True)["results"] for f in fit_results]
+    )
+    np.random.shuffle(fit_results)
 
-    for res in fit_results[:EXPERIMENTAL_TEST_DATA_COUNT]:
-        d = np.load(res, allow_pickle=True)
-        image_name = np.atleast_1d(d["image_name"])[0]
-        params = np.atleast_1d(d["params"])[0]
+    for d in fit_results[:EXPERIMENTAL_TEST_DATA_COUNT]:
+        image_name = d["image_name"]
+        params = d["params"]
         basic = BaSiC(**params)
         images_path = [
             f for f in datafiles.listdir() if f.basename == image_name + ".npz"

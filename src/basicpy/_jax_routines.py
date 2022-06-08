@@ -32,6 +32,10 @@ class BaseFit(BaseModel):
         1e-6,
         description="Optimization tolerance.",
     )
+    optimization_tol_diff: float = Field(
+        1e-6,
+        description="Optimization tolerance for update diff.",
+    )
     lambda_darkfield: float = Field(
         0.0,
         description="Darkfield smoothness weight for sparse reguralization.",
@@ -58,10 +62,24 @@ class BaseFit(BaseModel):
 
     def _cond(self, vals):
         k = vals[0]
-        fit_residual = vals[-1]
-        norm_ratio = jnp.linalg.norm(fit_residual.flatten(), ord=2) / self.image_norm
+        fit_residual = vals[-2]
+        value_diff = vals[-1]
+        norm_ratio = jnp.linalg.norm(fit_residual.ravel(), ord=2) / self.image_norm
+        conv = jnp.any(
+            jnp.array(
+                [
+                    norm_ratio > self.optimization_tol,
+                    value_diff > self.optimization_tol_diff,
+                ]
+            )
+        )
         return jnp.all(
-            jnp.array([norm_ratio > self.optimization_tol, k < self.max_iterations])
+            jnp.array(
+                [
+                    conv,
+                    k < self.max_iterations,
+                ]
+            )
         )
 
     @jit
@@ -79,8 +97,9 @@ class BaseFit(BaseModel):
         Y = jnp.zeros_like(Im, dtype=jnp.float32)
         mu = self.init_mu
         fit_residual = jnp.ones(Im.shape, dtype=jnp.float32) * jnp.inf
+        value_diff = jnp.inf
 
-        vals = (0, S, D_R, D_Z, I_R, B, Y, mu, fit_residual)
+        vals = (0, S, D_R, D_Z, I_R, B, Y, mu, fit_residual, value_diff)
         step = partial(
             self._step,
             Im,
@@ -89,8 +108,8 @@ class BaseFit(BaseModel):
         #        while self._cond(vals):
         #            vals = step(vals)
         vals = lax.while_loop(self._cond, step, vals)
-        k, S, D_R, D_Z, I_R, B, Y, mu, fit_residual = vals
-        norm_ratio = jnp.linalg.norm(fit_residual.flatten(), ord=2) / self.image_norm
+        k, S, D_R, D_Z, I_R, B, Y, mu, fit_residual, value_diff = vals
+        norm_ratio = jnp.linalg.norm(fit_residual.ravel(), ord=2) / self.image_norm
         return S, D_R, D_Z, I_R, B, norm_ratio, k < self.max_iterations
 
     @jit
@@ -107,8 +126,9 @@ class BaseFit(BaseModel):
         Y = jnp.zeros_like(Im, dtype=jnp.float32)
         mu = self.init_mu
         fit_residual = jnp.ones(Im.shape, dtype=jnp.float32) * jnp.inf
+        value_diff = jnp.inf
 
-        vals = (0, I_R, B, Y, mu, fit_residual)
+        vals = (0, I_R, B, Y, mu, fit_residual, value_diff)
         step = partial(
             self._step_only_baseline,
             Im,
@@ -120,8 +140,8 @@ class BaseFit(BaseModel):
         #        while self._cond(vals):
         #            vals = step(vals)
         vals = lax.while_loop(self._cond, step, vals)
-        k, I_R, B, Y, mu, fit_residual = vals
-        norm_ratio = jnp.linalg.norm(fit_residual.flatten(), ord=2) / self.image_norm
+        k, I_R, B, Y, mu, fit_residual, value_diff = vals
+        norm_ratio = jnp.linalg.norm(fit_residual.ravel(), ord=2) / self.image_norm
         return I_R, B, norm_ratio, k < self.max_iterations
 
     def fit(
@@ -189,61 +209,117 @@ class LadmapFit(BaseFit):
         weight,
         vals,
     ):
-        k, S, D_R, D_Z, I_R, B, Y, mu, fit_residual = vals
+        k, S, D_R, D_Z, I_R, B, Y, mu, fit_residual, value_diff = vals
         I_B = S[newax, ...] * B[:, newax, newax, newax] + D_R[newax, ...] + D_Z
-        eta = jnp.sum(B**2) * 1.02
-        S = (
+        eta_S = jnp.sum(B**2) * 1.02
+        S_new = (
             S
             + jnp.sum(B[:, newax, newax, newax] * (Im - I_B - I_R + Y / mu), axis=0)
-            / eta
+            / eta_S
         )
-        S = idct3d(_jshrinkage(dct3d(S), self.lambda_flatfield / (eta * mu)))
+        S_new = idct3d(_jshrinkage(dct3d(S_new), self.lambda_flatfield / (eta_S * mu)))
+        mean_S = jnp.mean(S_new)
+        S_new = jnp.where(mean_S > 0, S_new / mean_S, S_new)
+        B = jnp.where(mean_S > 0, B * mean_S, B)
+        dS = S_new - S
+        S = S_new
 
         I_B = S[newax, ...] * B[:, newax, newax, newax] + D_R[newax, ...] + D_Z
-        I_R = _jshrinkage(Im - I_B + Y / mu, weight / mu)
+        I_R_new = _jshrinkage(Im - I_B + Y / mu, weight / mu)
+        dI_R = I_R_new - I_R
+        I_R = I_R_new
 
         R = Im - I_R
-        B = jnp.sum(S[newax, ...] * (R + Y / mu), axis=(1, 2, 3)) / jnp.sum(S**2)
-        B = jnp.maximum(B, 0)
+        B_new = jnp.sum(S[newax, ...] * (R + Y / mu), axis=(1, 2, 3)) / jnp.sum(S**2)
+        B_new = jnp.maximum(B_new, 0)
+        dB = B_new - B
+        B = B_new
 
         BS = S[newax, ...] * B[:, newax, newax, newax]
         if self.get_darkfield:
-            D_Z = jnp.mean(Im - BS - D_R[newax, ...] - I_R + Y / 2.0 / mu)
-            D_Z = jnp.clip(D_Z, 0, self.D_Z_max)
+            D_Z_new = jnp.mean(Im - BS - D_R[newax, ...] - I_R + Y / 2.0 / mu)
+            D_Z_new = jnp.clip(D_Z_new, 0, self.D_Z_max)
+            dD_Z = D_Z_new - D_Z
+            D_Z = D_Z_new
+
             eta_D = Im.shape[0] * 1.02
-            D_R = D_R + 1.0 / eta_D * jnp.sum(
+            D_R_new = D_R + 1.0 / eta_D * jnp.sum(
                 Im - BS - D_R[newax, ...] - D_Z - I_R + Y / mu, axis=0
             )
-            D_R = idct3d(_jshrinkage(dct3d(D_R), self.lambda_darkfield / eta_D / mu))
-            D_R = _jshrinkage(D_R, self.lambda_darkfield_sparse / eta_D / mu)
+            D_R_new = idct3d(
+                _jshrinkage(dct3d(D_R_new), self.lambda_darkfield / eta_D / mu)
+            )
+            D_R_new = _jshrinkage(D_R_new, self.lambda_darkfield_sparse / eta_D / mu)
+            dD_R = D_R_new - D_R
+            D_R = D_R_new
 
         I_B = BS + D_R[newax, ...] + D_Z
         fit_residual = R - I_B
         Y = Y + mu * fit_residual
+
+        value_diff = jnp.max(
+            jnp.array(
+                [
+                    jnp.linalg.norm(dS.ravel(), ord=2) * jnp.sqrt(eta_S),
+                    jnp.linalg.norm(dI_R.ravel(), ord=2) * jnp.sqrt(1.0),
+                    # TODO find better form with theoretical evidence
+                    jnp.linalg.norm(dB.ravel(), ord=2),
+                ]
+            )
+        )
+
+        if self.get_darkfield:
+            value_diff = jnp.max(
+                jnp.array(
+                    [
+                        value_diff,
+                        jnp.linalg.norm(dD_R.ravel(), ord=2) * jnp.sqrt(eta_D),
+                        # TODO find better form with theoretical evidence
+                        dD_Z**2,
+                    ]
+                )
+            )
+        value_diff = value_diff / self.image_norm
         mu = jnp.minimum(mu * self.rho, self.max_mu)
 
-        return (k + 1, S, D_R, D_Z, I_R, B, Y, mu, fit_residual)
+        return (k + 1, S, D_R, D_Z, I_R, B, Y, mu, fit_residual, value_diff)
 
     @jit
     def _step_only_baseline(self, Im, weight, S, D, vals):
-        k, I_R, B, Y, mu, fit_residual = vals
+        k, I_R, B, Y, mu, fit_residual, value_diff = vals
         I_B = S[newax, ...] * B[:, newax, newax, newax] + D[newax, ...]
-        I_R = _jshrinkage(Im - I_B + Y / mu, weight / mu)
+        I_R_new = _jshrinkage(Im - I_B + Y / mu, weight / mu)
+        dI_R = I_R_new - I_R
+        I_R = I_R_new
 
         R = Im - I_R
-        B = jnp.sum(S[newax, ...] * (R + Y / mu), axis=(1, 2, 3)) / jnp.sum(S**2)
-        B = jnp.maximum(B, 0)
+        B_new = jnp.sum(S[newax, ...] * (R + Y / mu), axis=(1, 2, 3)) / jnp.sum(S**2)
+        B_new = jnp.maximum(B_new, 0)
+        dB = B_new - B
+        B = B_new
 
         I_B = S[newax, ...] * B[:, newax, newax, newax] + D[newax, ...]
         fit_residual = R - I_B
         Y = Y + mu * fit_residual
+
+        value_diff = jnp.max(
+            jnp.array(
+                [
+                    jnp.linalg.norm(dI_R.ravel(), ord=2) * jnp.sqrt(1.0),
+                    # TODO find better form with theoretical evidence
+                    jnp.linalg.norm(dB.ravel(), ord=2),
+                ]
+            )
+        )
+        value_diff = value_diff / self.image_norm
+
         mu = jnp.minimum(mu * self.rho, self.max_mu)
 
-        return (k + 1, I_R, B, Y, mu, fit_residual)
+        return (k + 1, I_R, B, Y, mu, fit_residual, value_diff)
 
     def calc_weights(self, I_B, I_R):
         return jnp.ones_like(I_R, dtype=jnp.float32) / (
-            jnp.abs(I_R / I_B) + self.epsilon
+            jnp.abs(I_R / (I_B + self.epsilon)) + self.epsilon
         )
 
     def calc_weights_baseline(self, I_B, I_R):
@@ -265,7 +341,7 @@ class ApproximateFit(BaseFit):
         weight,
         vals,
     ):
-        k, S, D_R, D_Z, I_R, B, Y, mu, fit_residual = vals
+        k, S, D_R, D_Z, I_R, B, Y, mu, fit_residual, value_diff = vals
 
         # approximate fitting only accepts two-dimensional images.
         # XXX better coding?
@@ -342,11 +418,11 @@ class ApproximateFit(BaseFit):
         I_R = I_R[:, newax, ...]
         Y = Y[:, newax, ...]
         fit_residual = fit_residual[:, newax, ...]
-        return (k + 1, S, D_R, D_Z, I_R, B, Y, mu, fit_residual)
+        return (k + 1, S, D_R, D_Z, I_R, B, Y, mu, fit_residual, 0.0)
 
     @jit
     def _step_only_baseline(self, Im, weight, S, D, vals):
-        k, I_R, B, Y, mu, fit_residual = vals
+        k, I_R, B, Y, mu, fit_residual, value_diff = vals
         Im = Im[:, 0, ...]
         weight = weight[:, 0, ...]
         S = S[0]
@@ -374,7 +450,7 @@ class ApproximateFit(BaseFit):
         I_R = I_R[:, newax, ...]
         Y = Y[:, newax, ...]
         fit_residual = fit_residual[:, newax, ...]
-        return (k + 1, I_R, B, Y, mu, fit_residual)
+        return (k + 1, I_R, B, Y, mu, fit_residual, 0.0)
 
     def calc_weights(self, I_B, I_R):
         I_B = I_B[:, 0, ...]
