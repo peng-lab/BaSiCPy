@@ -230,7 +230,9 @@ class LadmapFit(BaseFit):
         I_R = I_R_new
 
         R = Im - I_R
-        B_new = jnp.sum(S[newax, ...] * (R + Y / mu), axis=(1, 2, 3)) / jnp.sum(S**2)
+        S_sq = jnp.sum(S**2)
+        B_new = jnp.sum(S[newax, ...] * (R + Y / mu), axis=(1, 2, 3)) / S_sq
+        B_new = jnp.where(S_sq > 0, B_new, B)
         B_new = jnp.maximum(B_new, 0)
         dB = B_new - B
         B = B_new
