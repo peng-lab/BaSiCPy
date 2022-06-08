@@ -227,14 +227,14 @@ class LadmapFit(BaseFit):
         R = Im - I_R
         B_new = jnp.sum(S[newax, ...] * (R + Y / mu), axis=(1, 2)) / jnp.sum(S**2)
         B_new = jnp.maximum(B_new, 0)
-        # dB = B_new - B
+        dB = B_new - B
         B = B_new
 
         BS = S[newax, ...] * B[:, newax, newax]
         if self.get_darkfield:
             D_Z_new = jnp.mean(Im - BS - D_R[newax, ...] - I_R + Y / 2.0 / mu)
             D_Z_new = jnp.clip(D_Z_new, 0, self.D_Z_max)
-            # dD_Z = D_Z_new - D_Z
+            dD_Z = D_Z_new - D_Z
             D_Z = D_Z_new
 
             eta_D = Im.shape[0] * 1.02
@@ -257,6 +257,8 @@ class LadmapFit(BaseFit):
                 [
                     jnp.linalg.norm(dS.ravel(), ord=2) * jnp.sqrt(eta_S),
                     jnp.linalg.norm(dI_R.ravel(), ord=2) * jnp.sqrt(1.0),
+                    # TODO find better form with theoretical evidence
+                    jnp.linalg.norm(dB.ravel(), ord=2),
                 ]
             )
         )
@@ -267,6 +269,8 @@ class LadmapFit(BaseFit):
                     [
                         value_diff,
                         jnp.linalg.norm(dD_R.ravel(), ord=2) * jnp.sqrt(eta_D),
+                        # TODO find better form with theoretical evidence
+                        dD_Z**2,
                     ]
                 )
             )
@@ -286,7 +290,7 @@ class LadmapFit(BaseFit):
         R = Im - I_R
         B_new = jnp.sum(S[newax, ...] * (R + Y / mu), axis=(1, 2)) / jnp.sum(S**2)
         B_new = jnp.maximum(B_new, 0)
-        # dB = B_new - B
+        dB = B_new - B
         B = B_new
 
         I_B = S[newax, ...] * B[:, newax, newax] + D[newax, ...]
@@ -297,6 +301,8 @@ class LadmapFit(BaseFit):
             jnp.array(
                 [
                     jnp.linalg.norm(dI_R.ravel(), ord=2) * jnp.sqrt(1.0),
+                    # TODO find better form with theoretical evidence
+                    jnp.linalg.norm(dB.ravel(), ord=2),
                 ]
             )
         )

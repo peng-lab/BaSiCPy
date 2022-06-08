@@ -302,10 +302,16 @@ class BaSiC(BaseModel):
 
         for i in range(self.max_reweight_iterations):
             logger.info(f"reweighting iteration {i}")
-            S = jnp.ones(Im2.shape[1:], dtype=jnp.float32)
+            if self.fitting_mode == FittingMode.approximate:
+                S = jnp.zeros(Im2.shape[1:], dtype=jnp.float32)
+            else:
+                S = jnp.ones(Im2.shape[1:], dtype=jnp.float32)
             D_R = jnp.zeros(Im2.shape[1:], dtype=jnp.float32)
             D_Z = 0.0
-            B = jnp.mean(Im2, axis=(1, 2))
+            if self.fitting_mode == FittingMode.approximate:
+                B = jnp.ones(Im2.shape[0], dtype=jnp.float32)
+            else:
+                B = jnp.mean(Im2, axis=(1, 2))
             I_R = jnp.zeros(Im2.shape, dtype=jnp.float32)
             S, D_R, D_Z, I_R, B, norm_ratio, converged = fitting_step.fit(
                 Im2,
