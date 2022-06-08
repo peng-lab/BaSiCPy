@@ -14,7 +14,7 @@ DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 
 
 @pytest.fixture
-def synthesized_test_data():
+def test_data():
 
     np.random.seed(42)  # answer to the meaning of life, should work here too
 
@@ -55,7 +55,8 @@ def test_basic_verify_init():
 def test_basic_fit_synthetic(synthesized_test_data):
 
     basic = BaSiC(get_darkfield=False)
-    gradient, images, truth = synthesized_test_data
+
+    gradient, images, truth = test_data
 
     """Fit with BaSiC"""
     basic.fit(images)
@@ -112,7 +113,7 @@ def test_basic_fit_experimental(datadir, datafiles):
 def test_basic_transform(synthesized_test_data):
 
     basic = BaSiC(get_darkfield=False)
-    gradient, images, truth = synthesized_test_data
+    gradient, images, truth = test_data
 
     """Apply the shading model to the images"""
     # flatfield only
@@ -135,7 +136,7 @@ def test_basic_transform(synthesized_test_data):
 def test_basic_transform_resize(synthesized_test_data):
 
     basic = BaSiC(get_darkfield=False)
-    gradient, images, truth = synthesized_test_data
+    gradient, images, truth = test_data
 
     images = resize(images, tuple(d * 2 for d in images.shape[:2]))
     truth = resize(truth, tuple(d * 2 for d in truth.shape[:2]))
