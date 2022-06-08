@@ -136,7 +136,7 @@ class BaSiC(BaseModel):
         description="Optimization tolerance.",
     )
     optimization_tol_diff: float = Field(
-        1e-6,
+        1e-3,
         description="Optimization tolerance for update diff.",
     )
     resize_method: ResizeMethod = Field(
