@@ -1,12 +1,22 @@
 from basicpy import BaSiC
+from os import path
+import glob
 import numpy as np
 import pytest
+from skimage.io import imread
 from skimage.transform import resize
 from pathlib import Path
 
+from basicpy.basicpy import FittingMode
+
+# allowed max error for the synthetic test data prediction
+SYNTHETIC_TEST_DATA_MAX_ERROR = 0.35
+EXPERIMENTAL_TEST_DATA_COUNT = 10
+DATA_DIR = Path(__file__).resolve().parent.parent / "data"
+
 
 @pytest.fixture
-def test_data():
+def synthesized_test_data():
 
     np.random.seed(42)  # answer to the meaning of life, should work here too
 
@@ -18,16 +28,16 @@ def test_data():
     size = basic.working_size
     grid = np.meshgrid(*(2 * (np.linspace(-size // 2 + 1, size // 2, size),)))
 
-    # Create the gradient (flatfield) with and offset (darkfield)
-    gradient = sum(d ** 2 for d in grid) ** (1 / 2) + 8
+    # Create the parabolic gradient (flatfield) with and offset (darkfield)
+    gradient = sum(d**2 for d in grid)
+    gradient = 0.01 * (np.max(gradient) - gradient) + 10
     gradient_int = gradient.astype(np.uint8)
 
     # Ground truth, for correctness checking
     truth = gradient / gradient.mean()
 
     # Create an image stack and add poisson noise
-    images = np.random.poisson(lam=gradient_int.flatten(), size=(n_images, size ** 2))
-    images = images.transpose().reshape((size, size, n_images))
+    images = np.random.poisson(lam=gradient_int, size=(n_images, size, size))
 
     return gradient, images, truth
 
@@ -43,30 +53,82 @@ def test_basic_verify_init():
     return
 
 
-# Test BaSiC fitting function
-def test_basic_fit(capsys, test_data):
+# Test BaSiC fitting function (with synthetic data)
+def test_basic_fit_synthetic(synthesized_test_data):
 
     basic = BaSiC(get_darkfield=False)
 
-    gradient, images, truth = test_data
+    gradient, images, truth = synthesized_test_data
 
     """Fit with BaSiC"""
     basic.fit(images)
 
-    # TODO: Implement correctness checks
+    assert np.max(basic.flatfield / truth) < 1 + SYNTHETIC_TEST_DATA_MAX_ERROR
+    assert np.min(basic.flatfield / truth) > 1 - SYNTHETIC_TEST_DATA_MAX_ERROR
+    """
+    code for debug plotting :
+    plt.figure(figsize=(15,5)) ;
+    plt.subplot(131) ; plt.imshow(truth) ;plt.title("truth") ;
+    plt.colorbar() ;
+    plt.subplot(132) ; plt.imshow(basic.flatfield) ;plt.title("estimated") ;
+    plt.colorbar() ;
+    plt.subplot(133) ; plt.imshow(basic.flatfield / truth) ;plt.title("ratio") ;
+    plt.colorbar() ;
+    plt.show()
+    """
 
-    # for human error checking
-    # with capsys.disabled():
-    #     print()
-    #     print(truth[60:70, 60:70])
-    #     print(basic.flatfield[60:70, 60:70])
+
+# Test BaSiC fitting function (with experimental data)
+@pytest.mark.datafiles(
+    DATA_DIR / "cell_culture.npz",
+    DATA_DIR / "timelapse_brightfield.npz",
+    DATA_DIR / "timelapse_nanog.npz",
+    DATA_DIR / "timelapse_pu1.npz",
+    DATA_DIR / "wsi_brain.npz",
+)
+def test_basic_fit_experimental(datadir, datafiles):
+
+    # not sure if it is a good practice
+    fit_results = list(datadir.glob("*.npz"))
+    assert len(fit_results) > 0
+    np.random.seed(42)  # answer to the meaning of life, should work here too
+    # TODO parametrize?
+    fit_results = np.concatenate(
+        [np.load(f, allow_pickle=True)["results"] for f in fit_results]
+    )
+    np.random.shuffle(fit_results)
+
+    for d in fit_results[:EXPERIMENTAL_TEST_DATA_COUNT]:
+        image_name = d["image_name"]
+        params = d["params"]
+        basic = BaSiC(**params)
+        images_path = [
+            f for f in datafiles.listdir() if f.basename == image_name + ".npz"
+        ]
+        assert len(images_path) == 1
+        images = np.load(str(images_path[0]))["images"]
+        basic.fit(images)
+        assert np.all(np.isclose(basic.flatfield, d["flatfield"], atol=0.05, rtol=0.05))
+        if basic.fitting_mode == FittingMode.approximate:
+            tol = 0.2
+        else:
+            tol = 0.1
+        assert np.all(
+            np.isclose(
+                basic.darkfield,
+                d["darkfield"],
+                atol=np.max(np.abs(d["darkfield"])) * tol,
+                rtol=tol,
+            )
+        )
+        assert np.all(np.isclose(basic.baseline, d["baseline"], atol=tol, rtol=tol))
 
 
 # Test BaSiC transform function
-def test_basic_transform(capsys, test_data):
+def test_basic_transform(synthesized_test_data):
 
     basic = BaSiC(get_darkfield=False)
-    gradient, images, truth = test_data
+    gradient, images, truth = synthesized_test_data
 
     """Apply the shading model to the images"""
     # flatfield only
@@ -80,17 +142,16 @@ def test_basic_transform(capsys, test_data):
     basic.darkfield = np.full(basic.flatfield.shape, 8)
     basic._darkfield = np.full(basic.flatfield.shape, 8)
     corrected = basic.transform(images)
-    assert corrected.mean() < corrected_error
+    assert corrected.mean() <= corrected_error
 
     """Test shortcut"""
     corrected = basic(images)
-    assert corrected.mean() < corrected_error
 
 
-def test_basic_transform_resize(capsys, test_data):
+def test_basic_transform_resize(synthesized_test_data):
 
     basic = BaSiC(get_darkfield=False)
-    gradient, images, truth = test_data
+    gradient, images, truth = synthesized_test_data
 
     images = resize(images, tuple(d * 2 for d in images.shape[:2]))
     truth = resize(truth, tuple(d * 2 for d in truth.shape[:2]))
@@ -105,7 +166,7 @@ def test_basic_transform_resize(capsys, test_data):
     # with darkfield correction
     basic.darkfield = np.full(basic.flatfield.shape, 8)
     corrected = basic.transform(images)
-    assert corrected.mean() == corrected_error
+    assert corrected.mean() <= corrected_error
 
 
 def test_basic_save_model(tmp_path: Path):
