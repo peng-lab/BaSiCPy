@@ -239,6 +239,7 @@ class BaSiC(BaseModel):
 
         """
 
+        ndim = images.ndim
         if images.ndim == 3:
             images = images[:, np.newaxis, ...]
         elif images.ndim == 4:
@@ -406,8 +407,12 @@ class BaSiC(BaseModel):
                 self._residual = I_R
                 logger.info(f"Iteration {i} finished.")
 
-        self.flatfield = S
-        self.darkfield = D
+        if ndim == 3:
+            self.flatfield = S[0]
+            self.darkfield = D[0]
+        else:
+            self.flatfield = S
+            self.darkfield = D
         self.baseline = B
         logger.info(
             f"=== BaSiC fit finished in {time.monotonic()-start_time} seconds ==="
