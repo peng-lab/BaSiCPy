@@ -16,6 +16,33 @@ DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 
 
 @pytest.fixture
+def synthesized_test_data_3d():
+
+    np.random.seed(42)  # answer to the meaning of life, should work here too
+
+    n_images = 8
+    basic = BaSiC(get_darkfield=False)
+
+    """Generate a parabolic gradient to simulate uneven illumination"""
+    # Create a gradient
+    size = basic.working_size
+    grid = np.meshgrid(*(3 * (np.linspace(-size // 2 + 1, size // 2, size),)))
+
+    # Create the parabolic gradient (flatfield) with and offset (darkfield)
+    gradient = sum(d**2 for d in grid)
+    gradient = 0.01 * (np.max(gradient) - gradient) + 10
+    gradient_int = gradient.astype(np.uint8)
+
+    # Ground truth, for correctness checking
+    truth = gradient / gradient.mean()
+
+    # Create an image stack and add poisson noise
+    images = np.random.poisson(lam=gradient_int, size=(n_images, size, size, size))
+
+    return gradient, images, truth
+
+
+@pytest.fixture
 def synthesized_test_data():
 
     np.random.seed(42)  # answer to the meaning of life, should work here too
@@ -56,15 +83,14 @@ def test_basic_verify_init():
 # Test BaSiC fitting function (with synthetic data)
 def test_basic_fit_synthetic(synthesized_test_data):
 
-    basic = BaSiC(get_darkfield=False)
+    basic = BaSiC(get_darkfield=False, lambda_flatfield_coef=10)
 
     gradient, images, truth = synthesized_test_data
 
     """Fit with BaSiC"""
     basic.fit(images)
 
-    assert np.max(basic.flatfield / truth) < 1 + SYNTHETIC_TEST_DATA_MAX_ERROR
-    assert np.min(basic.flatfield / truth) > 1 - SYNTHETIC_TEST_DATA_MAX_ERROR
+    assert np.max(np.abs(basic.flatfield - truth)) < SYNTHETIC_TEST_DATA_MAX_ERROR
     """
     code for debug plotting :
     plt.figure(figsize=(15,5)) ;
@@ -76,6 +102,19 @@ def test_basic_fit_synthetic(synthesized_test_data):
     plt.colorbar() ;
     plt.show()
     """
+
+
+# Test BaSiC fitting function (with synthetic data)
+def test_basic_fit_synthetic_3d(synthesized_test_data_3d):
+
+    basic = BaSiC(get_darkfield=False, lambda_flatfield_coef=10)
+
+    gradient, images, truth = synthesized_test_data_3d
+
+    """Fit with BaSiC"""
+    basic.fit(images)
+
+    assert np.max(np.abs(basic.flatfield - truth)) < SYNTHETIC_TEST_DATA_MAX_ERROR
 
 
 # Test BaSiC fitting function (with experimental data)
