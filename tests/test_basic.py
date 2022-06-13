@@ -50,12 +50,11 @@ def test_basic_verify_init():
 
     return
 
-
+  
 # Test BaSiC fitting function (with synthetic data)
 def test_basic_fit_synthetic(synthesized_test_data):
 
     basic = BaSiC(get_darkfield=False)
-
     gradient, images, truth = synthesized_test_data
 
     """Fit with BaSiC"""
