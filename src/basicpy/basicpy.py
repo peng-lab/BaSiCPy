@@ -18,6 +18,7 @@ from multiprocessing import cpu_count
 from typing import Dict, Iterable, Optional, Tuple, Union
 
 import jax.numpy as jnp
+from jaxlib.xla_extension import XlaRuntimeError
 
 # 3rd party modules
 import numpy as np
@@ -285,7 +286,12 @@ class BaSiC(BaseModel):
 
         # spectral_norm = jnp.linalg.norm(Im.reshape((Im.shape[0], -1)), ord=2)
         if self.fitting_mode == FittingMode.ladmap:
-            spectral_norm = jnp.linalg.norm(Im2.reshape((Im2.shape[0], -1)), ord=2)
+            try:
+                spectral_norm = jnp.linalg.norm(Im2.reshape((Im2.shape[0], -1)), ord=2)
+            except XlaRuntimeError:  # pragma: no cover
+                # RESOURCE_EXHAUSTED: Out of memory case
+                spectral_norm = np.linalg.norm(Im2.reshape((Im2.shape[0], -1)), ord=2)
+
         else:
             _temp = jnp.linalg.svd(Im2.reshape((Im2.shape[0], -1)), full_matrices=False)
             spectral_norm = _temp[1][0]
