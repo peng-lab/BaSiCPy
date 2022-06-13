@@ -4,9 +4,12 @@ import pytest
 from skimage.transform import resize
 from pathlib import Path
 
+# allowed max error for the synthetic test data prediction
+SYNTHESIZED_TEST_DATA_MAX_ERROR = 0.2
+
 
 @pytest.fixture
-def test_data():
+def synthesized_test_data():
 
     np.random.seed(42)  # answer to the meaning of life, should work here too
 
@@ -44,29 +47,35 @@ def test_basic_verify_init():
 
 
 # Test BaSiC fitting function
-def test_basic_fit(capsys, test_data):
+def test_basic_fit_synthesized(synthesized_test_data):
 
     basic = BaSiC(get_darkfield=False)
-
-    gradient, images, truth = test_data
+    gradient, images, truth = synthesized_test_data
 
     """Fit with BaSiC"""
     basic.fit(images)
 
-    # TODO: Implement correctness checks
+    assert np.max(basic.flatfield / truth) < 1 + SYNTHESIZED_TEST_DATA_MAX_ERROR
+    assert np.min(basic.flatfield / truth) > 1 - SYNTHESIZED_TEST_DATA_MAX_ERROR
 
-    # for human error checking
-    # with capsys.disabled():
-    #     print()
-    #     print(truth[60:70, 60:70])
-    #     print(basic.flatfield[60:70, 60:70])
+    """
+    code for debug plotting :
+    plt.figure(figsize=(15,5)) ;
+    plt.subplot(131) ; plt.imshow(truth) ;plt.title("truth") ;
+    plt.colorbar() ;
+    plt.subplot(132) ; plt.imshow(basic.flatfield) ;plt.title("estimated") ;
+    plt.colorbar() ;
+    plt.subplot(133) ; plt.imshow(basic.flatfield / truth) ;plt.title("ratio") ;
+    plt.colorbar() ;
+    plt.show()
+    """
 
 
 # Test BaSiC transform function
-def test_basic_transform(capsys, test_data):
+def test_basic_transform(capsys, synthesized_test_data):
 
     basic = BaSiC(get_darkfield=False)
-    gradient, images, truth = test_data
+    gradient, images, truth = synthesized_test_data
 
     """Apply the shading model to the images"""
     # flatfield only
@@ -87,10 +96,10 @@ def test_basic_transform(capsys, test_data):
     assert corrected.mean() <= corrected_error
 
 
-def test_basic_transform_resize(capsys, test_data):
+def test_basic_transform_resize(capsys, synthesized_test_data):
 
     basic = BaSiC(get_darkfield=False)
-    gradient, images, truth = test_data
+    gradient, images, truth = synthesized_test_data
 
     images = resize(images, tuple(d * 2 for d in images.shape[:2]))
     truth = resize(truth, tuple(d * 2 for d in truth.shape[:2]))
