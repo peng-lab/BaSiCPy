@@ -15,21 +15,31 @@ EXPERIMENTAL_TEST_DATA_COUNT = 10
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 
 
-@pytest.fixture
-def synthesized_test_data_3d():
+@pytest.fixture(params=[2, 3])  # param is dimension
+def synthesized_test_data(request):
 
     np.random.seed(42)  # answer to the meaning of life, should work here too
+    dim = request.param
 
     n_images = 8
     basic = BaSiC(get_darkfield=False)
 
     """Generate a parabolic gradient to simulate uneven illumination"""
     # Create a gradient
-    size = basic.working_size
-    grid = np.meshgrid(*(3 * (np.linspace(-size // 2 + 1, size // 2, size),)))
+    if dim == 2:
+        sizes = (basic.working_size, basic.working_size)
+    else:
+        sizes = tuple(([10] * (dim - 2)) + [basic.working_size, basic.working_size])
+
+    grid = np.array(
+        np.meshgrid(
+            *[np.linspace(-size // 2 + 1, size // 2, size) for size in sizes],
+            indexing="ij"
+        )
+    )
 
     # Create the parabolic gradient (flatfield) with and offset (darkfield)
-    gradient = sum(d**2 for d in grid)
+    gradient = np.sum(grid**2, axis=0)
     gradient = 0.01 * (np.max(gradient) - gradient) + 10
     gradient_int = gradient.astype(np.uint8)
 
@@ -37,34 +47,7 @@ def synthesized_test_data_3d():
     truth = gradient / gradient.mean()
 
     # Create an image stack and add poisson noise
-    images = np.random.poisson(lam=gradient_int, size=(n_images, size, size, size))
-
-    return gradient, images, truth
-
-
-@pytest.fixture
-def synthesized_test_data():
-
-    np.random.seed(42)  # answer to the meaning of life, should work here too
-
-    n_images = 8
-    basic = BaSiC(get_darkfield=False)
-
-    """Generate a parabolic gradient to simulate uneven illumination"""
-    # Create a gradient
-    size = basic.working_size
-    grid = np.meshgrid(*(2 * (np.linspace(-size // 2 + 1, size // 2, size),)))
-
-    # Create the parabolic gradient (flatfield) with and offset (darkfield)
-    gradient = sum(d**2 for d in grid)
-    gradient = 0.01 * (np.max(gradient) - gradient) + 10
-    gradient_int = gradient.astype(np.uint8)
-
-    # Ground truth, for correctness checking
-    truth = gradient / gradient.mean()
-
-    # Create an image stack and add poisson noise
-    images = np.random.poisson(lam=gradient_int, size=(n_images, size, size))
+    images = np.random.poisson(lam=gradient_int, size=[n_images] + list(sizes))
 
     return gradient, images, truth
 
@@ -102,19 +85,6 @@ def test_basic_fit_synthetic(synthesized_test_data):
     plt.colorbar() ;
     plt.show()
     """
-
-
-# Test BaSiC fitting function (with synthetic data)
-def test_basic_fit_synthetic_3d(synthesized_test_data_3d):
-
-    basic = BaSiC(get_darkfield=False, lambda_flatfield_coef=10)
-
-    gradient, images, truth = synthesized_test_data_3d
-
-    """Fit with BaSiC"""
-    basic.fit(images)
-
-    assert np.max(np.abs(basic.flatfield - truth)) < SYNTHETIC_TEST_DATA_MAX_ERROR
 
 
 # Test BaSiC fitting function (with experimental data)
