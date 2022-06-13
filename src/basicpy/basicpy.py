@@ -62,7 +62,7 @@ class Device(Enum):
     tpu: str = "tpu"
 
 
-class FittingMode(Enum):
+class FittingMode(str, Enum):
 
     ladmap: str = "ladmap"
     approximate: str = "approximate"
