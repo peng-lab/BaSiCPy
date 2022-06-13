@@ -12,7 +12,14 @@ python_versions = ["3.10", "3.9", "3.8", "3.7"]
 def tests(session: Session) -> None:
     """Run the test suite."""
     session.install(".")
-    session.install("pytest", "pytest-benchmark", "pytest-cov", "xdoctest")
+    session.install(
+        "pytest",
+        "pytest-benchmark",
+        "pytest-datafiles",
+        "pytest-datadir",
+        "pytest-cov",
+        "xdoctest",
+    )
     session.install("opencv-python")
     session.run("pytest", "--runslow")
 
