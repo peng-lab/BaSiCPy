@@ -1,0 +1,65 @@
+{
+  "projectName": "BaSiCPy",
+  "projectOwner": "peng-lab",
+  "repoType": "github",
+  "repoHost": "https://github.com",
+  "files": [
+    "README.md"
+  ],
+  "imageSize": 100,
+  "commit": true,
+  "commitConvention": "gitmoji",
+  "contributors": [
+    {
+      "login": "Nicholas-Schaub",
+      "name": "Nicholas-Schaub",
+      "avatar_url": "https://avatars.githubusercontent.com/u/15925882?v=4",
+      "profile": "https://github.com/Nicholas-Schaub",
+      "contributions": [
+        "code",
+        "test",
+        "review",
+        "ideas",
+        "projectManagement"
+      ]
+    },
+    {
+      "login": "tdmorello",
+      "name": "Tim Morello",
+      "avatar_url": "https://avatars.githubusercontent.com/u/34800427?v=4",
+      "profile": "https://github.com/tdmorello",
+      "contributions": [
+        "review",
+        "test",
+        "ideas",
+        "code"
+      ]
+    },
+    {
+      "login": "tying84",
+      "name": "Tingying Peng",
+      "avatar_url": "https://avatars.githubusercontent.com/u/11461947?v=4",
+      "profile": "https://github.com/tying84",
+      "contributions": [
+        "code",
+        "data",
+        "financial",
+        "talk"
+      ]
+    },
+    {
+      "login": "yfukai",
+      "name": "Yohsuke T. Fukai",
+      "avatar_url": "https://avatars.githubusercontent.com/u/5919272?v=4",
+      "profile": "https://github.com/yfukai",
+      "contributions": [
+        "code",
+        "research",
+        "question",
+        "test",
+        "ideas"
+      ]
+    }
+  ],
+  "contributorsPerLine": 7
+}
