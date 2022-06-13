@@ -29,7 +29,7 @@ def synthesized_test_data(request):
     if dim == 2:
         sizes = (basic.working_size, basic.working_size)
     else:
-        sizes = tuple(([10] * (dim - 2)) + [basic.working_size, basic.working_size])
+        sizes = tuple(([5] * (dim - 2)) + [basic.working_size, basic.working_size])
 
     grid = np.array(
         np.meshgrid(
@@ -118,19 +118,14 @@ def test_basic_fit_experimental(datadir, datafiles):
         images = np.load(str(images_path[0]))["images"]
         basic.fit(images)
         assert np.all(np.isclose(basic.flatfield, d["flatfield"], atol=0.05, rtol=0.05))
-        if basic.fitting_mode == FittingMode.approximate:
-            tol = 0.2
-        else:
-            tol = 0.1
-        assert np.all(
-            np.isclose(
-                basic.darkfield,
-                d["darkfield"],
-                atol=np.max(np.abs(d["darkfield"])) * tol,
-                rtol=tol,
-            )
+        tol = 0.2
+        assert np.allclose(
+            basic.darkfield,
+            d["darkfield"],
+            atol=np.max(np.abs(d["darkfield"])) * tol,
+            rtol=tol,
         )
-        assert np.all(np.isclose(basic.baseline, d["baseline"], atol=tol, rtol=tol))
+        assert np.allclose(basic.baseline, d["baseline"], atol=tol, rtol=tol)
 
 
 # Test BaSiC transform function
@@ -162,8 +157,10 @@ def test_basic_transform_resize(synthesized_test_data):
     basic = BaSiC(get_darkfield=False)
     gradient, images, truth = synthesized_test_data
 
-    images = resize(images, tuple(d * 2 for d in images.shape[:2]))
-    truth = resize(truth, tuple(d * 2 for d in truth.shape[:2]))
+    images = np.moveaxis(images, 0, -1)
+    images = resize(images, tuple(d * 2 for d in images.shape[:-1]))
+    images = np.moveaxis(images, -1, 0)
+    truth = resize(truth, tuple(d * 2 for d in truth.shape))
 
     """Apply the shading model to the images"""
     # flatfield only
