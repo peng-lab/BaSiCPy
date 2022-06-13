@@ -29,7 +29,7 @@ def synthesized_test_data(request):
     if dim == 2:
         sizes = (basic.working_size, basic.working_size)
     else:
-        sizes = tuple(([5] * (dim - 2)) + [basic.working_size, basic.working_size])
+        sizes = tuple(([3] * (dim - 2)) + [basic.working_size, basic.working_size])
 
     grid = np.array(
         np.meshgrid(
