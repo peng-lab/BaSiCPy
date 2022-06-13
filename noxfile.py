@@ -21,7 +21,7 @@ def tests(session: Session) -> None:
         "xdoctest",
     )
     session.install("opencv-python")
-    session.run("pytest")
+    session.run("pytest", "--runslow")
 
 
 @session(python=python_versions[0])
