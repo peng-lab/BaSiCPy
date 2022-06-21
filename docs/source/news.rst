@@ -1,0 +1,3 @@
+News
+====
+.. role:: small
