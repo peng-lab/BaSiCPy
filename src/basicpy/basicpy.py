@@ -23,6 +23,9 @@ import jax.numpy as jnp
 import numpy as np
 from jax import device_put
 from jax.image import ResizeMethod, resize
+
+# FIXME change this to jax.xla.XlaRuntimeError
+# when https://github.com/google/jax/pull/10676 gets merged
 from jaxlib.xla_extension import XlaRuntimeError
 from pydantic import BaseModel, Field, PrivateAttr
 from skimage.transform import resize as _resize
