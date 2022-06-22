@@ -33,7 +33,6 @@ from basicpy.tools.dct_tools import JaxDCT
 # Package modules
 from basicpy.types import ArrayLike, PathLike
 
-idct2d, dct2d = JaxDCT.idct2d, JaxDCT.dct2d
 newax = jnp.newaxis
 
 # from basicpy.tools.dct2d_tools import dct2d, idct2d
@@ -279,9 +278,9 @@ class BaSiC(BaseModel):
             Im2 = Im
             Ws2 = Ws
 
-        mean_image = jnp.mean(Im2, axis=2)
+        mean_image = jnp.mean(Im2, axis=0)
         mean_image = mean_image / jnp.mean(Im2)
-        mean_image_dct = dct2d(mean_image.T)
+        mean_image_dct = JaxDCT.dct3d(mean_image.T)
         lambda_flatfield = jnp.sum(jnp.abs(mean_image_dct)) * self.lambda_flatfield_coef
 
         # spectral_norm = jnp.linalg.norm(Im.reshape((Im.shape[0], -1)), ord=2)
