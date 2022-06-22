@@ -18,7 +18,7 @@ class TimeSuite:
     """
 
     def setup(self):
-        self.matrix = numpy.random.rand(1024 ** 2).reshape(1024, 1024)
+        self.matrix = numpy.random.rand(1024**2).reshape(1024, 1024)
 
     def time_dct2(self):
         for _ in range(REPLICATES):
@@ -31,7 +31,7 @@ class TimeSuite:
 
 class PeakMemSuite:
     def setup(self):
-        self.matrix = numpy.random.rand(1024 ** 2).reshape(1024, 1024)
+        self.matrix = numpy.random.rand(1024**2).reshape(1024, 1024)
 
     def peakmem_dct2(self):
         return dct2d(self.matrix)
