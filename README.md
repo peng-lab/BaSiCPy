@@ -69,7 +69,7 @@ This repository uses bump2version to manage dependencies. New releases are pushe
 The development flow should use the following process:
 1. New features and bug fixes should be pushed to `dev`
 2. When tests have passed a new development version is ready to be release, use `bump2version major|minor|patch`. This will commit and create a new version tag with the `-dev` suffix.
-3. Additional fixes/features can be added to the current development release by using `bump2version release`.
+3. Additional fixes/features can be added to the current development release by using `bump2version build`.
 4. Once the new bugs/features have been tested and a main release is ready, use `bump2version release` to remove the `-dev` suffix.
 
 After creating a new tagged version, push to Github and the version will be built and pushed to PyPi.
