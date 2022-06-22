@@ -25,7 +25,7 @@ jobs:
       - name: Publish to PyPi
         env:
           TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ pypi.PYPI_API_TOKEN }}
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
         run: |
           python -m build --sdist --wheel
-          twine upload dist/*
+          twine upload dist/* -u ${TWINE_USERNAME} -p ${TWINE_PASSWORD}
