@@ -108,6 +108,7 @@ After creating a new tagged version, push to Github and the version will be buil
     - Providing tests
     - Code review
 - Tingying Peng (@tying84)
+    - Organizing meetings and presentations
     - General comments and financial support
     - Reviewing theoretical calculation
     - Providing a JAX implementation for the approximate fitting routine
