@@ -563,7 +563,7 @@ class BaSiC(BaseModel):
 
         # NOTE emit warning if profiles are all zeros? fit probably not run
         # save profiles
-        profiles = np.dstack((self.flatfield, self.darkfield))
+        profiles = np.array((self.flatfield, self.darkfield))
         np.save(path / self._profiles_fname, profiles)
 
     @classmethod
@@ -578,7 +578,7 @@ class BaSiC(BaseModel):
             model = json.load(fp)
 
         profiles = np.load(path / cls._profiles_fname)
-        model["flatfield"] = profiles[..., 0]
-        model["darkfield"] = profiles[..., 1]
+        model["flatfield"] = profiles[0]
+        model["darkfield"] = profiles[1]
 
         return BaSiC(**model)
