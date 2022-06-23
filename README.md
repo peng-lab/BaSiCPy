@@ -117,6 +117,9 @@ After creating a new tagged version, push to Github and the version will be buil
     - Implementation of the main fitting routine
     - Providing tests
     - Code review
+- Yu Liu (@YuLiu-web)
+    - Documentation of the package
+
 
 ### Old version (`f3fcf19`), used as the reference implementation to check the approximate algorithm
 - Lorenz Lamm (@LorenzLamm)
