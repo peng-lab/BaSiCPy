@@ -6,6 +6,7 @@ repos:
         exclude: experimental_code/
       - id: end-of-file-fixer
       - id: trailing-whitespace
+        exclude: .bumpversion.cfg
   - repo: https://github.com/psf/black
     rev: 22.3.0
     hooks:

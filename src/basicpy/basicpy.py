@@ -18,6 +18,9 @@ from multiprocessing import cpu_count
 from typing import Dict, Iterable, Optional, Tuple, Union
 
 import jax.numpy as jnp
+
+# FIXME change this to jax.xla.XlaRuntimeError
+# when https://github.com/google/jax/pull/10676 gets merged
 from jaxlib.xla_extension import XlaRuntimeError
 
 # 3rd party modules
