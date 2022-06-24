@@ -16,12 +16,12 @@
       "avatar_url": "https://avatars.githubusercontent.com/u/15925882?v=4",
       "profile": "https://github.com/Nicholas-Schaub",
       "contributions": [
-        "code",
-        "test",
-        "review",
-        "ideas",
         "projectManagement",
-        "infra"
+        "review",
+        "infra",
+        "test",
+        "code",
+        "ideas"
       ]
     },
     {
@@ -30,12 +30,12 @@
       "avatar_url": "https://avatars.githubusercontent.com/u/34800427?v=4",
       "profile": "https://github.com/tdmorello",
       "contributions": [
+        "code",
+        "doc",
         "review",
         "test",
         "ideas",
-        "code",
-        "infra",
-        "doc"
+        "infra"
       ]
     },
     {
@@ -44,11 +44,11 @@
       "avatar_url": "https://avatars.githubusercontent.com/u/11461947?v=4",
       "profile": "https://github.com/tying84",
       "contributions": [
-        "code",
         "data",
         "financial",
+        "projectManagement",
         "talk",
-        "projectManagement"
+        "code"
       ]
     },
     {
@@ -57,11 +57,12 @@
       "avatar_url": "https://avatars.githubusercontent.com/u/5919272?v=4",
       "profile": "https://github.com/yfukai",
       "contributions": [
-        "code",
         "research",
-        "question",
+        "code",
+        "ideas",
+        "review",
         "test",
-        "ideas"
+        "question"
       ]
     },
     {
