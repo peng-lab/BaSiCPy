@@ -10,9 +10,11 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
-# import os
-# import sys
-# sys.path.insert(0, os.path.abspath('.'))
+import os
+import sys
+from pathlib import Path
+
+sys.path.insert(0, os.path.abspath("."))
 
 
 # -- Project information -----------------------------------------------------
@@ -22,7 +24,8 @@ copyright = "2022, -"
 author = "-"
 
 # The full version, including alpha/beta/rc tags
-release = "0.0.1"
+
+release = "0.0.2"
 
 
 # -- General configuration ---------------------------------------------------
@@ -32,16 +35,18 @@ release = "0.0.1"
 # ones.
 extensions = [
     "sphinx.ext.autodoc",
+    "sphinx_gallery.load_style",
+    "sphinx_autodoc_typehints",
     "sphinx.ext.coverage",
     "sphinx.ext.napoleon",
-    "sphinx_autodoc_typehints",
     "sphinx.ext.todo",
     "sphinxarg.ext",
     "sphinxcontrib.autodoc_pydantic",
+    "nbsphinx",
 ]
 
 autodoc_member_order = "bysource"
-todo_include_todos = True
+todo_include_todos = False
 typehints_defaults = "comma"
 autodoc_pydantic_model_show_json = True
 autodoc_pydantic_settings_show_json = True
@@ -61,6 +66,10 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 # a list of builtin themes.
 #
 html_theme = "sphinx_rtd_theme"
+# html_theme = "scanpydoc"
+html_logo = "_static/img/BaSiC.png"
+html_theme_options = {"navigation_depth": 4, "logo_only": True}
+html_show_sphinx = False
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,

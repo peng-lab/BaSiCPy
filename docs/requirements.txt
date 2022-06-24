@@ -1,4 +1,12 @@
 autodoc_pydantic
+nbsphinx
+scanpydoc
+Sphinx
 sphinx-argparse
+sphinx-autobuild
 sphinx-autodoc-typehints
+sphinx-gallery
 sphinx-rtd-theme
+
+ipykernel
+matplotlib
