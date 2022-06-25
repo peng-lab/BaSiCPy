@@ -287,8 +287,8 @@ class BaSiC(BaseModel):
         mean_image = mean_image / jnp.mean(Im2)
         mean_image_dct = JaxDCT.dct3d(mean_image.T)
         lambda_flatfield = jnp.sum(jnp.abs(mean_image_dct)) * self.lambda_flatfield_coef
-        #        if self.fitting_mode == FittingMode.approximate:
-        #            lambda_flatfield = lambda_flatfield / 80000
+        if self.fitting_mode == FittingMode.approximate:
+            lambda_flatfield = lambda_flatfield / 80000
 
         # spectral_norm = jnp.linalg.norm(Im.reshape((Im.shape[0], -1)), ord=2)
         if self.fitting_mode == FittingMode.ladmap:
