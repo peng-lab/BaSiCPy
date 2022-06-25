@@ -112,11 +112,14 @@ class BaSiC(BaseModel):
         + "When fitting_mode='approximate', multiplied by 1 / 80000",
     )
     lambda_darkfield_coef: float = Field(
-        0.2, description="Relative weight of the darkfield term in the Lagrangian."
+        0.01,
+        description="Relative weight of the darkfield term in the Lagrangian."
+        + "When fitting_mode='approximate', multiplied by 20",
     )
     lambda_darkfield_sparse_coef: float = Field(
-        0.2,
-        description="Relative weight of the darkfield sparse term in the Lagrangian.",
+        0.0001,
+        description="Relative weight of the darkfield sparse term in the Lagrangian."
+        + "When fitting_mode='approximate', multiplied by 2000",
     )
     max_iterations: int = Field(
         500,
@@ -289,6 +292,11 @@ class BaSiC(BaseModel):
         lambda_flatfield = jnp.sum(jnp.abs(mean_image_dct)) * self.lambda_flatfield_coef
         if self.fitting_mode == FittingMode.approximate:
             lambda_flatfield = lambda_flatfield / 80000
+        lambda_darkfield = lambda_flatfield * self.lambda_darkfield_coef
+        lambda_darkfield_sparse = lambda_flatfield * self.lambda_darkfield_sparse_coef
+        if self.fitting_mode == FittingMode.approximate:
+            lambda_darkfield = lambda_darkfield * 20
+            lambda_darkfield_sparse = lambda_darkfield_sparse * 2000
 
         # spectral_norm = jnp.linalg.norm(Im.reshape((Im.shape[0], -1)), ord=2)
         if self.fitting_mode == FittingMode.ladmap:
@@ -307,9 +315,8 @@ class BaSiC(BaseModel):
         fit_params.update(
             dict(
                 lambda_flatfield=lambda_flatfield,
-                lambda_darkfield=lambda_flatfield * self.lambda_darkfield_coef,
-                lambda_darkfield_sparse=lambda_flatfield
-                * self.lambda_darkfield_sparse_coef,
+                lambda_darkfield=lambda_darkfield,
+                lambda_darkfield_sparse=lambda_darkfield_sparse,
                 # matrix 2-norm (largest sing. value)
                 init_mu=init_mu,
                 max_mu=init_mu * self.max_mu_coef,
