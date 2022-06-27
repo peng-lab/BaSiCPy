@@ -138,6 +138,7 @@ def test_basic_transform(synthesized_test_data):
     # flatfield only
     basic.flatfield = gradient
     basic._flatfield = gradient
+    basic.baseline = np.ones((8.0,))
     corrected = basic.transform(images)
     corrected_error = corrected.mean()
     assert corrected_error < 0.5
@@ -165,6 +166,7 @@ def test_basic_transform_resize(synthesized_test_data):
     """Apply the shading model to the images"""
     # flatfield only
     basic.flatfield = gradient
+    basic.baseline = np.ones((8.0,))
     corrected = basic.transform(images)
     corrected_error = corrected.mean()
     assert corrected_error < 0.5
