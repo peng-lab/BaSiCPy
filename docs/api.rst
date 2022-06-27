@@ -2,12 +2,12 @@ Usage
 =====
 
 
-Command Line
-------------
+.. Command Line
+.. ------------
 
-.. code-block:: bash
+.. .. code-block:: bash
 
-    basic images/*.tif flatfield.tif
+..     basic images/*.tif flatfield.tif
 
 .. .. argparse::
 ..    :ref: basicpy.__main__.get_parser

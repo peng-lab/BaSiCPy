@@ -10,15 +10,17 @@ BaSiCPy
 
 **Background and Shading Correction for Optical Microscopy.**
 
-**BaSiCPy** is a microscopy image correction package in python (Matlab version can be
-found `here <https://github.com/marrlab/BaSiC>`_). It achieves high-accuracy with
+:mod:`BaSiCPy` is a microscopy image correction package in python (`MATLAB
+<https://github.com/marrlab/BaSiC>`_ and `FIJI/ImageJ versions
+<http://sites.imagej.net/BaSiC/>`_  are also available). It achieves high-accuracy with
 significantly fewer input images, and works for diverse imaging conditions with no
-manual parameters required. Moreover, PyBaSiC can correct temporal drift in time-lapse
-microscopy data and thus improve continuous single-cell quantification. You can also
-find PyBaSiC as a `Fiji/ImageJ plugin <http://sites.imagej.net/BaSiC/>`_.
+manual parameters required. Moreover, :mod:`BaSiCPy` can correct temporal drift in
+time-lapse microscopy data and thus improve continuous single-cell quantification.
 
-.. image:: https://raw.githubusercontent.com/peng-lab/PyBaSiC/main/figures/outline.png
-    :alt: PyBaSiC title figure
+.. Statement on updated algorith, GPU acceleration when available
+
+.. image:: https://raw.githubusercontent.com/peng-lab/BaSiCPy/main/figures/outline.png
+    :alt: BaSiCPy title figure
     :width: 900px
     :align: center
     :target: https://www.nature.com/articles/ncomms14836
@@ -34,8 +36,7 @@ Communications* to learn more.
 Contributing to BaSiCPy
 -----------------------
 
-We are happy about any contributions! Before you start, check out our
-`contributing guide <https://github.com/peng-lab/PyBaSiC/blob/main/CONTRIBUTING.rst>`_.
+We are happy about any contributions! Before you start, check out our :doc:`contributing guide <contributing>`.
 
 .. toctree::
    :caption: General
@@ -46,6 +47,7 @@ We are happy about any contributions! Before you start, check out our
    api
    release_notes
    contributors
+   contributing
 
 .. toctree::
    :caption: Gallery
