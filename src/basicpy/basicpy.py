@@ -179,6 +179,9 @@ class BaSiC(BaseModel):
     _B: float = PrivateAttr(None)
     _D_R: float = PrivateAttr(None)
     _D_Z: float = PrivateAttr(None)
+    _lambda_flatfield: float = PrivateAttr(None)
+    _lambda_darkfield: float = PrivateAttr(None)
+    _lambda_darkfield_sparse: float = PrivateAttr(None)
 
     _settings_fname = "settings.json"
     _profiles_fname = "profiles.npy"
@@ -289,14 +292,18 @@ class BaSiC(BaseModel):
         mean_image = jnp.mean(Im2, axis=0)
         mean_image = mean_image / jnp.mean(Im2)
         mean_image_dct = JaxDCT.dct3d(mean_image.T)
-        lambda_flatfield = jnp.sum(jnp.abs(mean_image_dct)) * self.lambda_flatfield_coef
+        self._lambda_flatfield = (
+            jnp.sum(jnp.abs(mean_image_dct)) * self.lambda_flatfield_coef
+        )
         if self.fitting_mode == FittingMode.approximate:
-            lambda_flatfield = lambda_flatfield / 80000
-        lambda_darkfield = lambda_flatfield * self.lambda_darkfield_coef
-        lambda_darkfield_sparse = lambda_flatfield * self.lambda_darkfield_sparse_coef
+            self._lambda_flatfield = self._lambda_flatfield / 80000
+        self._lambda_darkfield = self._lambda_flatfield * self.lambda_darkfield_coef
+        self._lambda_darkfield_sparse = (
+            self._lambda_flatfield * self.lambda_darkfield_sparse_coef
+        )
         if self.fitting_mode == FittingMode.approximate:
-            lambda_darkfield = lambda_darkfield * 20
-            lambda_darkfield_sparse = lambda_darkfield_sparse * 2000
+            self._lambda_darkfield = self._lambda_darkfield * 20
+            self._lambda_darkfield_sparse = self._lambda_darkfield_sparse * 2000
 
         # spectral_norm = jnp.linalg.norm(Im.reshape((Im.shape[0], -1)), ord=2)
         if self.fitting_mode == FittingMode.ladmap:
@@ -314,9 +321,9 @@ class BaSiC(BaseModel):
         fit_params = self.dict()
         fit_params.update(
             dict(
-                lambda_flatfield=lambda_flatfield,
-                lambda_darkfield=lambda_darkfield,
-                lambda_darkfield_sparse=lambda_darkfield_sparse,
+                lambda_flatfield=self._lambda_flatfield,
+                lambda_darkfield=self._lambda_darkfield,
+                lambda_darkfield_sparse=self._lambda_darkfield_sparse,
                 # matrix 2-norm (largest sing. value)
                 init_mu=init_mu,
                 max_mu=init_mu * self.max_mu_coef,
