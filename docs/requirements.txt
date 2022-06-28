@@ -1,4 +1,5 @@
 autodoc_pydantic
+enum-tools[sphinx]
 nbsphinx
 scanpydoc
 Sphinx

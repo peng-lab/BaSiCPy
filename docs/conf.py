@@ -43,6 +43,7 @@ extensions = [
     "sphinxarg.ext",
     "sphinxcontrib.autodoc_pydantic",
     "nbsphinx",
+    "enum_tools.autoenum",
 ]
 
 autodoc_member_order = "bysource"
