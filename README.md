@@ -87,7 +87,7 @@ yarn all-contributors add username contribution
 yarn all-contributors generate # to reflect the changes to README.md
 ```
 
-For possible contribution, see the [All Contributors documentation](https://allcontributors.org/docs/en/emoji-key).
+For the possible contribution types, see the [All Contributors documentation](https://allcontributors.org/docs/en/emoji-key).
 
 ## Contributors
 
