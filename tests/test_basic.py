@@ -1,13 +1,10 @@
-from basicpy import BaSiC
-from os import path
-import glob
-import numpy as np
-import pytest
-from skimage.io import imread
-from skimage.transform import resize
 from pathlib import Path
 
-from basicpy.basicpy import FittingMode
+import numpy as np
+import pytest
+from skimage.transform import resize
+
+from basicpy import BaSiC
 
 # allowed max error for the synthetic test data prediction
 SYNTHETIC_TEST_DATA_MAX_ERROR = 0.35

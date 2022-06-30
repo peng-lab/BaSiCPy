@@ -1,7 +1,7 @@
 """CLI entry point for BaSiCPy."""
-from pathlib import Path
 import argparse
 import logging
+from pathlib import Path
 from typing import Optional
 
 from basicpy import BaSiC

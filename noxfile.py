@@ -20,7 +20,6 @@ def tests(session: Session) -> None:
         "pytest-cov",
         "xdoctest",
     )
-    session.install("opencv-python")
     session.run("pytest", "--runslow")
 
 
