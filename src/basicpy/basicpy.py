@@ -12,7 +12,6 @@ import json
 import os
 import time
 from pathlib import Path
-from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
 from multiprocessing import cpu_count
 from typing import Dict, Iterable, Optional, Tuple, Union
@@ -75,7 +74,7 @@ class FittingMode(str, Enum):
 class BaSiC(BaseModel):
     """A class for fitting and applying BaSiC illumination correction profiles."""
 
-    baseline: Optional[np.ndarray] = Field(
+    baseline: np.ndarray = Field(
         None,
         description="Holds the baseline for the shading model.",
         exclude=True,  # Don't dump to output json/yaml
@@ -229,15 +228,17 @@ class BaSiC(BaseModel):
 
         Args:
             images: Input images to fit shading model.
-                    Must be 3-dimensional array with dimension of (T,Y,X).
+                    Must be 3-dimensional or 4-dimensional array
+                    with dimension of (T,Y,X) or (T,Z,Y,X).
+                    T can be either of time or mosaic position.
             fitting_weight: relative fitting weight for each pixel.
                     Higher value means more contribution to fitting.
                     Must has the same shape as images.
 
         Example:
             >>> from basicpy import BaSiC
-            >>> from basicpy.tools import load_images
-            >>> images = load_images('./images')
+            >>> from basicpy import data as bdata
+            >>> images = bdata.wsi_brain()
             >>> basic = BaSiC()  # use default settings
             >>> basic.fit(images)
 
@@ -432,24 +433,20 @@ class BaSiC(BaseModel):
     ) -> Union[Tuple[np.ndarray, np.ndarray], np.ndarray]:
         """Apply profile to images.
 
-        Todo:
-            Add in baseline/timelapse correction.
-
         Args:
-            images: input images to correct
-            timelapse: calculate timelapse/photobleaching offsets. Currently
-                does nothing.
+            images: input images to fit and correct. See `fit`.
+            timelapse: If `True`, corrects the timelapse/photobleaching offsets.
 
         Returns:
-            An array of the same size as images. If timelapse is True, returns
-                a flat array of baseline corrections used in the calculations.
+            corrected images
 
         Example:
             >>> basic.fit(images)
             >>> corrected = basic.transform(images)
-            >>> for i, im in enumerate(corrected):
-            ...     imsave(f"image_{i}.tif")
         """
+
+        if self.baseline is None:
+            raise RuntimeError("BaSiC object is not initialized")
 
         logger.info("=== BaSiC transform started ===")
         start_time = time.monotonic()
@@ -465,35 +462,16 @@ class BaSiC(BaseModel):
             self._flatfield = self.flatfield
             self._darkfield = self.darkfield
 
-        # Initialize the output
-        output = np.empty(images.shape, dtype=images.dtype)
-
         if timelapse:
-            # calculate timelapse from input series
-            ...
-
-        def unshade(ins, outs, i, dark, flat):
-            outs[i] = (ins[i] - dark) / flat
-
-        logger.info(f"unshading in {self.max_workers} threads")
-        # If one or fewer workers, don't user ThreadPool. Useful for debugging.
-        if self.max_workers <= 1:
-            for i in range(images.shape[0]):
-                unshade(im_float, output, i, self._darkfield, self._flatfield)
-
+            baseline_inds = tuple([slice(None)] + ([np.newaxis] * (im_float.ndim - 1)))
+            baseline_flatfield = (
+                self._flatfield[np.newaxis] * self.baseline[baseline_inds]
+            )
+            output = (im_float - self._darkfield[np.newaxis]) / baseline_flatfield
         else:
-            with ThreadPoolExecutor(self.max_workers) as executor:
-                threads = executor.map(
-                    lambda x: unshade(
-                        im_float, output, x, self._darkfield, self._flatfield
-                    ),
-                    range(images.shape[0]),
-                )
-
-                # Get the result of each thread, this should catch thread errors
-                for thread in threads:
-                    assert thread is None
-
+            output = (im_float - self._darkfield[np.newaxis]) / self._flatfield[
+                np.newaxis
+            ]
         logger.info(
             f"=== BaSiC transform finished in {time.monotonic()-start_time} seconds ==="
         )
@@ -507,13 +485,13 @@ class BaSiC(BaseModel):
         """Fit and transform on data.
 
         Args:
-            images: input images to fit and correct
+            images: input images to fit and correct. See `fit`.
 
         Returns:
-            profiles and corrected images
+            corrected images
 
         Example:
-            >>> profiles, corrected = basic.fit_transform(images)
+            >>> corrected = basic.fit_transform(images)
         """
         self.fit(images)
         corrected = self.transform(images, timelapse)
