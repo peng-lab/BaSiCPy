@@ -172,17 +172,21 @@ def test_basic_transform_resize(synthesized_test_data):
     assert corrected.mean() <= corrected_error
 
 
-def test_basic_save_model(tmp_path: Path):
+@pytest.fixture(params=[2, 3])  # param is dimension
+def basic_object(request):
+    dim = request.param
+    basic = BaSiC()
+    # set profiles
+    basic.flatfield = np.full((128,) * dim, 1, dtype=np.float64)
+    basic.darkfield = np.full((128,) * dim, 2, dtype=np.float64)
+    return basic
+
+
+def test_basic_save_model(tmp_path: Path, basic_object):
     model_dir = tmp_path / "test_model"
 
-    basic = BaSiC()
-
-    # set profiles
-    basic.flatfield = np.full((128, 128), 1, dtype=np.float64)
-    basic.darkfield = np.full((128, 128), 2, dtype=np.float64)
-
     # save the model
-    basic.save_model(model_dir)
+    basic_object.save_model(model_dir)
 
     # check that the files exists
     assert (model_dir / "settings.json").exists()
@@ -190,7 +194,7 @@ def test_basic_save_model(tmp_path: Path):
 
     # load files and check for expected content
     saved_profiles = np.load(model_dir / "profiles.npy")
-    profiles = np.dstack((basic.flatfield, basic.darkfield))
+    profiles = np.array((basic_object.flatfield, basic_object.darkfield))
     assert np.array_equal(saved_profiles, profiles)
 
     # TODO check settings contents
@@ -203,21 +207,35 @@ def test_basic_save_model(tmp_path: Path):
 
     # an error raises when the model folder exists
     with pytest.raises(FileExistsError):
-        basic.save_model(model_dir)
+        basic_object.save_model(model_dir)
 
     # overwrites if specified
-    basic.save_model(model_dir, overwrite=True)
+    basic_object.save_model(model_dir, overwrite=True)
     assert (model_dir / "settings.json").exists()
     assert (model_dir / "profiles.npy").exists()
+
+
+def test_basic_save_load_model(tmp_path: Path, basic_object):
+    model_dir = tmp_path / "test_model"
+    flatfield = basic_object.flatfield.copy()
+    darkfield = basic_object.darkfield.copy()
+
+    # save the model
+    basic_object.save_model(model_dir)
+    basic2 = BaSiC.load_model(model_dir)
+
+    assert np.allclose(basic2.flatfield, flatfield)
+    assert np.allclose(basic2.darkfield, darkfield)
+    assert basic_object.dict() == basic2.dict()
 
 
 @pytest.fixture
 def profiles():
     # create and write mock profiles to file
-    profiles = np.zeros((128, 128, 2), dtype=np.float64)
+    profiles = np.zeros((2, 128, 128), dtype=np.float64)
     # unique profiles to check that they are in proper place
-    profiles[..., 0] = 1
-    profiles[..., 1] = 2
+    profiles[0] = 1
+    profiles[1] = 2
     return profiles
 
 
@@ -248,8 +266,8 @@ def test_basic_load_model(model_path: str, raises_error: bool, profiles: np.ndar
         assert isinstance(basic, BaSiC)
 
         # check that the profiles are in the right places
-        assert np.array_equal(basic.flatfield, profiles[..., 0])
-        assert np.array_equal(basic.darkfield, profiles[..., 1])
+        assert np.array_equal(basic.flatfield, profiles[0])
+        assert np.array_equal(basic.darkfield, profiles[1])
 
         # check that settings are not default
         assert basic.epsilon != BaSiC.__fields__["epsilon"].default
