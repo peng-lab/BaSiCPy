@@ -1,4 +1,13 @@
 autodoc_pydantic
+enum-tools[sphinx]
+nbsphinx
+scanpydoc
+Sphinx
 sphinx-argparse
+sphinx-autobuild
 sphinx-autodoc-typehints
+sphinx-gallery
 sphinx-rtd-theme
+
+ipykernel
+matplotlib
