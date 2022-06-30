@@ -7,7 +7,10 @@ A python package for background and shading correction of optical microscopy ima
 [![All Contributors](https://img.shields.io/badge/all_contributors-4-orange.svg?style=flat-square)](#contributors-)
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
 
-BaSiCPy is a python package for background and shading correction of optical microscopy images. It is developed based on the Matlab version of [BaSiC](https://github.com/marrlab/BaSiC) tool.
+BaSiCPy is a python package for background and shading correction of optical microscopy images.
+It is developed based on the Matlab version of [BaSiC](https://github.com/marrlab/BaSiC) tool with major improvements in the algorithm.
+
+BaSiCPy: A robust and scalable shadow correction tool for optical microscopy images (tentative)
 
 Reference: A BaSiC Tool for Background and Shading Correction of Optical Microscopy Images
 
@@ -30,7 +33,7 @@ You can also find examples of running the package at [folder Notebooks](https://
 Download from PyPI
 
 ```console
-pip install 'PACKAGE-NAME'
+pip install basicpy
 ```
 
 or install latest development version
@@ -64,7 +67,7 @@ pip install -e '.[dev]'
 
 ### bump2version
 
-This repository uses bump2version to manage dependencies. New releases are pushed to PyPi in the CI pipeline when a new version is committed with a version tag and pushed to the repo.
+This repository uses [bump2version](https://github.com/c4urself/bump2version) to manage dependencies. New releases are pushed to PyPi in the CI pipeline when a new version is committed with a version tag and pushed to the repo.
 
 The development flow should use the following process:
 1. New features and bug fixes should be pushed to `dev`
@@ -73,6 +76,18 @@ The development flow should use the following process:
 4. Once the new bugs/features have been tested and a main release is ready, use `bump2version release` to remove the `-dev` suffix.
 
 After creating a new tagged version, push to Github and the version will be built and pushed to PyPi.
+
+### All-contributors
+
+This repository uses [All Contributors](https://allcontributors.org/) to manage the contributor list. Please execute the following to add/update contributors.
+
+```bash
+yarn
+yarn all-contributors add username contribution
+yarn all-contributors generate # to reflect the changes to README.md
+```
+
+For possible contribution, see the [All Contributors documentation](https://allcontributors.org/docs/en/emoji-key).
 
 ## Contributors
 
