@@ -71,6 +71,8 @@ def test_basic_fit_synthetic(synthesized_test_data):
     basic.fit(images)
 
     assert np.max(np.abs(basic.flatfield - truth)) < SYNTHETIC_TEST_DATA_MAX_ERROR
+    assert np.array_equal(basic.flatfield.shape, images.shape[1:])
+
     """
     code for debug plotting :
     plt.figure(figsize=(15,5)) ;
@@ -134,14 +136,12 @@ def test_basic_transform(synthesized_test_data):
     """Apply the shading model to the images"""
     # flatfield only
     basic.flatfield = gradient
-    basic._flatfield = gradient
     corrected = basic.transform(images)
     corrected_error = corrected.mean()
     assert corrected_error < 0.5
 
     # with darkfield correction
     basic.darkfield = np.full(basic.flatfield.shape, 8)
-    basic._darkfield = np.full(basic.flatfield.shape, 8)
     corrected = basic.transform(images)
     assert corrected.mean() <= corrected_error
 
@@ -243,7 +243,7 @@ def profiles():
 def model_path(tmp_path, profiles):
     settings_json = """\
     {"epsilon": 0.2, "estimation_mode": "l0", "get_darkfield": false,
-    "lambda_darkfield": 0.0, "lambda_flatfield": 0.0, "max_iterations": 500,
+    "lambda_darkfield": 0.0, "lambda_flatfield": 0.01, "max_iterations": 500,
     "max_reweight_iterations": 10, "optimization_tol": 1e-06, "reweighting_tol": 0.001,
     "varying_coeff": true, "working_size": 128}
     """

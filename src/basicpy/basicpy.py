@@ -166,8 +166,6 @@ class BaSiC(BaseModel):
     # Private attributes for internal processing
     _score: float = PrivateAttr(None)
     _reweight_score: float = PrivateAttr(None)
-    _flatfield: np.ndarray = PrivateAttr(None)
-    _darkfield: np.ndarray = PrivateAttr(None)
     _weight: float = PrivateAttr(None)
     _residual: float = PrivateAttr(None)
     _S: float = PrivateAttr(None)
@@ -415,12 +413,11 @@ class BaSiC(BaseModel):
                 self._residual = I_R
                 logger.info(f"Iteration {i} finished.")
 
+        self.flatfield = _resize(S, images.shape[1:])
+        self.darkfield = _resize(D, images.shape[1:])
         if ndim == 3:
-            self.flatfield = S[0]
-            self.darkfield = D[0]
-        else:
-            self.flatfield = S
-            self.darkfield = D
+            self.flatfield = self.flatfield[0]
+            self.darkfield = self.darkfield[0]
         self.baseline = B
         logger.info(
             f"=== BaSiC fit finished in {time.monotonic()-start_time} seconds ==="
@@ -456,15 +453,6 @@ class BaSiC(BaseModel):
         # Convert to the correct format
         im_float = images.astype(np.float32)
 
-        # Rescale the flatfield and darkfield
-        if not np.array_equal(self.flatfield.shape, im_float.shape[1:]):
-            self._flatfield = _resize(self.flatfield, images.shape[1:])
-            self._darkfield = _resize(self.darkfield, images.shape[1:])
-        else:
-            self._flatfield = self.flatfield
-            self._darkfield = self.darkfield
-
-        # Initialize the output
         output = np.empty(images.shape, dtype=images.dtype)
 
         if timelapse:
