@@ -2,7 +2,6 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-from skimage.transform import resize
 
 from basicpy import BaSiC
 
@@ -147,22 +146,6 @@ def test_basic_transform(synthesized_test_data):
 
     """Test shortcut"""
     corrected = basic(images)
-
-
-def test_basic_transform_resize(synthesized_test_data):
-
-    basic = BaSiC(get_darkfield=False)
-    gradient, images, truth = synthesized_test_data
-
-    images = np.moveaxis(images, 0, -1)
-    images = resize(images, tuple(d * 2 for d in images.shape[:-1]))
-    images = np.moveaxis(images, -1, 0)
-    truth = resize(truth, tuple(d * 2 for d in truth.shape))
-
-    """Apply the shading model to the images"""
-    # flatfield only
-    basic.flatfield = gradient
-    basic.transform(images)
 
 
 @pytest.fixture(params=[2, 3])  # param is dimension
