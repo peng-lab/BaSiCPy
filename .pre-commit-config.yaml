@@ -3,7 +3,6 @@ repos:
     rev: v4.1.0
     hooks:
       - id: check-docstring-first
-        exclude: experimental_code/
       - id: end-of-file-fixer
       - id: trailing-whitespace
         exclude: .bumpversion.cfg
@@ -12,21 +11,21 @@ repos:
     hooks:
       - id: black
         exclude: experimental_code/
+      - id: black-jupyter
   - repo: https://github.com/PyCQA/flake8
     rev: 4.0.1
     hooks:
       - id: flake8
         additional_dependencies: [flake8-typing-imports==1.7.0] # (only for <Python3.7)
-        exclude: experimental_code/
-  # - repo: https://github.com/myint/autoflake
-  #   rev: v1.4
-  #   hooks:
-  #     - id: autoflake
-  #       args: ["--in-place", "--remove-all-unused-imports"]
-  # - repo: https://github.com/PyCQA/isort # isort is currently strugginly with relative imports
-  #   rev: 5.10.1
-  #   hooks:
-  #     - id: isort
+  - repo: https://github.com/myint/autoflake
+    rev: v1.4
+    hooks:
+      - id: autoflake
+        args: ["--in-place", "--remove-all-unused-imports"]
+  - repo: https://github.com/PyCQA/isort
+    rev: 5.10.1
+    hooks:
+      - id: isort
   - repo: https://github.com/asottile/pyupgrade
     rev: v2.31.0
     hooks:
@@ -40,4 +39,3 @@ repos:
     rev: v0.931
     hooks:
       - id: mypy
-        exclude: experimental_code/

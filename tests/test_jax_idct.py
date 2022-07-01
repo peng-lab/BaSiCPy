@@ -1,6 +1,6 @@
+import jax._src.scipy.fft
 import jax.numpy as jnp
 import scipy.fft
-import jax._src.scipy.fft
 
 from basicpy.tools import _jax_idct
 

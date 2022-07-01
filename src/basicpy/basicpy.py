@@ -7,26 +7,26 @@ Todo:
 # Core modules
 from __future__ import annotations
 
-import logging
 import json
+import logging
 import os
 import time
-from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
 from multiprocessing import cpu_count
+from pathlib import Path
 from typing import Dict, Iterable, Optional, Tuple, Union
 
 import jax.numpy as jnp
-
-# FIXME change this to jax.xla.XlaRuntimeError
-# when https://github.com/google/jax/pull/10676 gets merged
-from jaxlib.xla_extension import XlaRuntimeError
 
 # 3rd party modules
 import numpy as np
 from jax import device_put
 from jax.image import ResizeMethod, resize
+
+# FIXME change this to jax.xla.XlaRuntimeError
+# when https://github.com/google/jax/pull/10676 gets merged
+from jaxlib.xla_extension import XlaRuntimeError
 from pydantic import BaseModel, Field, PrivateAttr
 from skimage.transform import resize as _resize
 

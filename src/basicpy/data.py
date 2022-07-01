@@ -1,7 +1,8 @@
-import pooch
-from os import path
 import glob
+from os import path
+
 import numpy as np
+import pooch
 from skimage.io import imread
 
 ORIGINAL_TEST_DATA_PROPS = {
