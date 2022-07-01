@@ -466,13 +466,13 @@ class BaSiC(BaseModel):
         # If one or fewer workers, don't user ThreadPool. Useful for debugging.
         if self.max_workers <= 1:
             for i in range(images.shape[0]):
-                unshade(im_float, output, i, self._darkfield, self._flatfield)
+                unshade(im_float, output, i, self.darkfield, self.flatfield)
 
         else:
             with ThreadPoolExecutor(self.max_workers) as executor:
                 threads = executor.map(
                     lambda x: unshade(
-                        im_float, output, x, self._darkfield, self._flatfield
+                        im_float, output, x, self.darkfield, self.flatfield
                     ),
                     range(images.shape[0]),
                 )
