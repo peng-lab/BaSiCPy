@@ -7,25 +7,25 @@ Todo:
 # Core modules
 from __future__ import annotations
 
-import logging
 import json
+import logging
 import os
 import time
-from pathlib import Path
 from enum import Enum
 from multiprocessing import cpu_count
+from pathlib import Path
 from typing import Dict, Iterable, Optional, Tuple, Union
 
 import jax.numpy as jnp
-
-# FIXME change this to jax.xla.XlaRuntimeError
-# when https://github.com/google/jax/pull/10676 gets merged
-from jaxlib.xla_extension import XlaRuntimeError
 
 # 3rd party modules
 import numpy as np
 from jax import device_put
 from jax.image import ResizeMethod, resize
+
+# FIXME change this to jax.xla.XlaRuntimeError
+# when https://github.com/google/jax/pull/10676 gets merged
+from jaxlib.xla_extension import XlaRuntimeError
 from pydantic import BaseModel, Field, PrivateAttr
 from skimage.transform import resize as _resize
 
@@ -35,7 +35,6 @@ from basicpy.tools.dct_tools import JaxDCT
 # Package modules
 from basicpy.types import ArrayLike, PathLike
 
-idct2d, dct2d = JaxDCT.idct2d, JaxDCT.dct2d
 newax = jnp.newaxis
 
 # from basicpy.tools.dct2d_tools import dct2d, idct2d
@@ -283,9 +282,9 @@ class BaSiC(BaseModel):
             Im2 = Im
             Ws2 = Ws
 
-        mean_image = jnp.mean(Im2, axis=2)
+        mean_image = jnp.mean(Im2, axis=0)
         mean_image = mean_image / jnp.mean(Im2)
-        mean_image_dct = dct2d(mean_image.T)
+        mean_image_dct = JaxDCT.dct3d(mean_image.T)
         lambda_flatfield = jnp.sum(jnp.abs(mean_image_dct)) * self.lambda_flatfield_coef
 
         # spectral_norm = jnp.linalg.norm(Im.reshape((Im.shape[0], -1)), ord=2)
@@ -541,7 +540,7 @@ class BaSiC(BaseModel):
 
         # NOTE emit warning if profiles are all zeros? fit probably not run
         # save profiles
-        profiles = np.dstack((self.flatfield, self.darkfield))
+        profiles = np.array((self.flatfield, self.darkfield))
         np.save(path / self._profiles_fname, profiles)
 
     @classmethod
@@ -556,7 +555,7 @@ class BaSiC(BaseModel):
             model = json.load(fp)
 
         profiles = np.load(path / cls._profiles_fname)
-        model["flatfield"] = profiles[..., 0]
-        model["darkfield"] = profiles[..., 1]
+        model["flatfield"] = profiles[0]
+        model["darkfield"] = profiles[1]
 
         return BaSiC(**model)
