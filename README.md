@@ -48,7 +48,7 @@ pip install .
 ### For windows users
 
 BaSiCPy requires [`jax`](https://github.com/google/jax/) which does not support Windows officially.
-However, thanks to [cloudhan/jax-windows-builder], we can install BaSiCPy as follows:
+However, thanks to [cloudhan/jax-windows-builder](https://github.com/cloudhan/jax-windows-builder), we can install BaSiCPy as follows:
 ```
 pip install "jax[cpu]===0.3.14" -f https://whls.blob.core.windows.net/unstable/index.html --use-deprecated legacy-resolver
 pip install basicpy
