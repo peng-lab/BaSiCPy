@@ -30,6 +30,8 @@ You can also find examples of running the package at [folder Notebooks](https://
 
 ## Installation
 
+### For Mac, Linux or WSL2 users
+
 Download from PyPI
 
 ```console
@@ -44,14 +46,15 @@ cd BaSiCPy
 pip install .
 ```
 
-### Recommended: use virtual environment
+### For windows users
 
-```console
-$ cd BaSiCPy
-$ python -m venv venv
-$ source venv/bin/activate
-(venv) $ pip install -e .
+BaSiCPy requires [`jax`](https://github.com/google/jax/) which does not support Windows officially.
+However, thanks to [cloudhan/jax-windows-builder], we can install BaSiCPy as follows:
 ```
+pip install "jax[cpu]===0.3.14" -f https://whls.blob.core.windows.net/unstable/index.html --use-deprecated legacy-resolver
+pip install basicpy
+```
+For details and latest updates, see [this issue](https://github.com/google/jax/issues/438).
 
 ### Install with dev dependencies
 
