@@ -1,12 +1,13 @@
 """Tests the 2D dct tools."""
 
 # from basicpy.tools import dct2d_tools
-from basicpy.tools.dct_tools import DCT_BACKENDS
+import importlib
 
+import numpy as np
 import pytest
 import scipy.fft
-import numpy as np
-import importlib
+
+from basicpy.tools.dct_tools import DCT_BACKENDS
 
 np.random.seed(1234)
 arr_input_2d = np.random.random((4, 4))

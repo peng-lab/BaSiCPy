@@ -4,7 +4,7 @@ A python package for background and shading correction of optical microscopy ima
 [![Python Version](https://img.shields.io/pypi/pyversions/python-basic.svg)](https://python.org)
 [![PyPI](https://img.shields.io/pypi/v/python-basic.svg)](https://pypi.org/project/python-basic)
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
-[![All Contributors](https://img.shields.io/badge/all_contributors-4-orange.svg?style=flat-square)](#contributors-)
+[![All Contributors](https://img.shields.io/badge/all_contributors-5-orange.svg?style=flat-square)](#contributors-)
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
 
 BaSiCPy is a python package for background and shading correction of optical microscopy images.
@@ -97,10 +97,11 @@ For the possible contribution types, see the [All Contributors documentation](ht
 <!-- markdownlint-disable -->
 <table>
   <tr>
-    <td align="center"><a href="https://github.com/Nicholas-Schaub"><img src="https://avatars.githubusercontent.com/u/15925882?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Nicholas-Schaub</b></sub></a><br /><a href="https://github.com/peng-lab/BaSiCPy/commits?author=Nicholas-Schaub" title="Code">💻</a> <a href="https://github.com/peng-lab/BaSiCPy/commits?author=Nicholas-Schaub" title="Tests">⚠️</a> <a href="https://github.com/peng-lab/BaSiCPy/pulls?q=is%3Apr+reviewed-by%3ANicholas-Schaub" title="Reviewed Pull Requests">👀</a> <a href="#ideas-Nicholas-Schaub" title="Ideas, Planning, & Feedback">🤔</a> <a href="#projectManagement-Nicholas-Schaub" title="Project Management">📆</a></td>
-    <td align="center"><a href="https://github.com/tdmorello"><img src="https://avatars.githubusercontent.com/u/34800427?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Tim Morello</b></sub></a><br /><a href="https://github.com/peng-lab/BaSiCPy/pulls?q=is%3Apr+reviewed-by%3Atdmorello" title="Reviewed Pull Requests">👀</a> <a href="https://github.com/peng-lab/BaSiCPy/commits?author=tdmorello" title="Tests">⚠️</a> <a href="#ideas-tdmorello" title="Ideas, Planning, & Feedback">🤔</a> <a href="https://github.com/peng-lab/BaSiCPy/commits?author=tdmorello" title="Code">💻</a></td>
-    <td align="center"><a href="https://github.com/tying84"><img src="https://avatars.githubusercontent.com/u/11461947?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Tingying Peng</b></sub></a><br /><a href="https://github.com/peng-lab/BaSiCPy/commits?author=tying84" title="Code">💻</a> <a href="#data-tying84" title="Data">🔣</a> <a href="#financial-tying84" title="Financial">💵</a> <a href="#talk-tying84" title="Talks">📢</a></td>
-    <td align="center"><a href="https://github.com/yfukai"><img src="https://avatars.githubusercontent.com/u/5919272?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Yohsuke T. Fukai</b></sub></a><br /><a href="https://github.com/peng-lab/BaSiCPy/commits?author=yfukai" title="Code">💻</a> <a href="#research-yfukai" title="Research">🔬</a> <a href="#question-yfukai" title="Answering Questions">💬</a> <a href="https://github.com/peng-lab/BaSiCPy/commits?author=yfukai" title="Tests">⚠️</a> <a href="#ideas-yfukai" title="Ideas, Planning, & Feedback">🤔</a></td>
+    <td align="center"><a href="https://github.com/Nicholas-Schaub"><img src="https://avatars.githubusercontent.com/u/15925882?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Nicholas-Schaub</b></sub></a><br /><a href="#projectManagement-Nicholas-Schaub" title="Project Management">📆</a> <a href="https://github.com/peng-lab/BaSiCPy/pulls?q=is%3Apr+reviewed-by%3ANicholas-Schaub" title="Reviewed Pull Requests">👀</a> <a href="#infra-Nicholas-Schaub" title="Infrastructure (Hosting, Build-Tools, etc)">🚇</a> <a href="https://github.com/peng-lab/BaSiCPy/commits?author=Nicholas-Schaub" title="Tests">⚠️</a> <a href="https://github.com/peng-lab/BaSiCPy/commits?author=Nicholas-Schaub" title="Code">💻</a> <a href="#ideas-Nicholas-Schaub" title="Ideas, Planning, & Feedback">🤔</a></td>
+    <td align="center"><a href="https://github.com/tdmorello"><img src="https://avatars.githubusercontent.com/u/34800427?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Tim Morello</b></sub></a><br /><a href="https://github.com/peng-lab/BaSiCPy/commits?author=tdmorello" title="Code">💻</a> <a href="https://github.com/peng-lab/BaSiCPy/commits?author=tdmorello" title="Documentation">📖</a> <a href="https://github.com/peng-lab/BaSiCPy/pulls?q=is%3Apr+reviewed-by%3Atdmorello" title="Reviewed Pull Requests">👀</a> <a href="https://github.com/peng-lab/BaSiCPy/commits?author=tdmorello" title="Tests">⚠️</a> <a href="#ideas-tdmorello" title="Ideas, Planning, & Feedback">🤔</a> <a href="#infra-tdmorello" title="Infrastructure (Hosting, Build-Tools, etc)">🚇</a></td>
+    <td align="center"><a href="https://github.com/tying84"><img src="https://avatars.githubusercontent.com/u/11461947?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Tingying Peng</b></sub></a><br /><a href="#data-tying84" title="Data">🔣</a> <a href="#financial-tying84" title="Financial">💵</a> <a href="#projectManagement-tying84" title="Project Management">📆</a> <a href="#talk-tying84" title="Talks">📢</a> <a href="https://github.com/peng-lab/BaSiCPy/commits?author=tying84" title="Code">💻</a></td>
+    <td align="center"><a href="https://github.com/yfukai"><img src="https://avatars.githubusercontent.com/u/5919272?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Yohsuke T. Fukai</b></sub></a><br /><a href="#research-yfukai" title="Research">🔬</a> <a href="https://github.com/peng-lab/BaSiCPy/commits?author=yfukai" title="Code">💻</a> <a href="#ideas-yfukai" title="Ideas, Planning, & Feedback">🤔</a> <a href="https://github.com/peng-lab/BaSiCPy/pulls?q=is%3Apr+reviewed-by%3Ayfukai" title="Reviewed Pull Requests">👀</a> <a href="https://github.com/peng-lab/BaSiCPy/commits?author=yfukai" title="Tests">⚠️</a> <a href="#question-yfukai" title="Answering Questions">💬</a></td>
+    <td align="center"><a href="https://github.com/YuLiu-web"><img src="https://avatars.githubusercontent.com/u/70626217?v=4?s=100" width="100px;" alt=""/><br /><sub><b>YuLiu-web</b></sub></a><br /><a href="https://github.com/peng-lab/BaSiCPy/commits?author=YuLiu-web" title="Documentation">📖</a></td>
   </tr>
 </table>
 
@@ -109,24 +110,34 @@ For the possible contribution types, see the [All Contributors documentation](ht
 
 <!-- ALL-CONTRIBUTORS-LIST:END -->
 - Nicholas Schaub (@Nicholas-Schaub)
-    - General mentoring, technology selection and project management
-    - Designing and implementing core structure of the package
+    - General mentoring, technology selection, and project management
+    - Designing and implementing the core structure of the package
+    - CI by GitHub Actions
     - Code review and advising
     - Providing tests
 - Tim Morello (@tdmorello)
-    - Designing and implementing core structure of the package
+    - Designing and implementing the core structure of the package
+    - Implementing type-III discrete cosine transform in JAX
+    - Providing documentation of the package
     - Providing tests
     - Code review
+    - CI by GitHub Actions
 - Tingying Peng (@tying84)
+    - Organizing meetings and presentations
     - General comments and financial support
     - Reviewing theoretical calculation
     - Providing a JAX implementation for the approximate fitting routine
-    - Providing test data and commenting on expected output
+    - Finding suitable test data, communicating with experimentalists, and commenting on expected output
 - Yohsuke T. Fukai (@yfukai)
-    - Theoretical calculation for the optimization problem
+    - The theoretical calculation for the optimization problem
     - Implementation of the main fitting routine
+    - Extending the algorithm to 3D and with additional fitting weights
+    - Providing sample data reading functions in the package
     - Providing tests
     - Code review
+- Yu Liu (@YuLiu-web)
+    - Providing documentation of the package
+
 
 ### Old version (`f3fcf19`), used as the reference implementation to check the approximate algorithm
 - Lorenz Lamm (@LorenzLamm)

@@ -1,14 +1,14 @@
 """2D and 3D discrete cosine transform tools."""
 
 import importlib.util
-import os
 import logging
+import os
 from abc import ABC, abstractmethod, abstractproperty
+from functools import partial
 
 import numpy as np
 import scipy.fft
 from jax import jit
-from functools import partial
 
 __all__ = [
     "dct2d",
