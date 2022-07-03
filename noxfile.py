@@ -1,5 +1,6 @@
 """Nox automation file."""
 
+import platform
 import shutil
 from pathlib import Path
 
@@ -11,6 +12,14 @@ python_versions = ["3.10", "3.9", "3.8", "3.7"]
 @session(python=python_versions)
 def tests(session: Session) -> None:
     """Run the test suite."""
+    if platform.system() == "Windows":
+        session.install(
+            "jax[cpu]===0.3.14",
+            "-f",
+            "https://whls.blob.core.windows.net/unstable/index.html",
+            "--use-deprecated",
+            "legacy-resolver",
+        )
     session.install(".")
     session.install(
         "pytest",
