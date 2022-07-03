@@ -3,6 +3,9 @@ A python package for background and shading correction of optical microscopy ima
 [![License](https://img.shields.io/pypi/l/basicpy)](https://github.com/peng-lab/basicpy/LICENSE)
 [![Python Version](https://img.shields.io/pypi/pyversions/python-basic.svg)](https://python.org)
 [![PyPI](https://img.shields.io/pypi/v/python-basic.svg)](https://pypi.org/project/python-basic)
+[!|pre-commit|(https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://github.com/pre-commit/pre-commit)
+[!|Black|(https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[!|Read the Docs|(https://img.shields.io/readthedocs/basicpy/latest.svg?label=Read%20the%20Docs)](https://basicpy.readthedocs.io/)
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
 [![All Contributors](https://img.shields.io/badge/all_contributors-5-orange.svg?style=flat-square)](#contributors-)
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
@@ -111,34 +114,8 @@ For the possible contribution types, see the [All Contributors documentation](ht
 <!-- prettier-ignore-end -->
 
 <!-- ALL-CONTRIBUTORS-LIST:END -->
-- Nicholas Schaub (@Nicholas-Schaub)
-    - General mentoring, technology selection, and project management
-    - Designing and implementing the core structure of the package
-    - CI by GitHub Actions
-    - Code review and advising
-    - Providing tests
-- Tim Morello (@tdmorello)
-    - Designing and implementing the core structure of the package
-    - Implementing type-III discrete cosine transform in JAX
-    - Providing documentation of the package
-    - Providing tests
-    - Code review
-    - CI by GitHub Actions
-- Tingying Peng (@tying84)
-    - Organizing meetings and presentations
-    - General comments and financial support
-    - Reviewing theoretical calculation
-    - Providing a JAX implementation for the approximate fitting routine
-    - Finding suitable test data, communicating with experimentalists, and commenting on expected output
-- Yohsuke T. Fukai (@yfukai)
-    - The theoretical calculation for the optimization problem
-    - Implementation of the main fitting routine
-    - Extending the algorithm to 3D and with additional fitting weights
-    - Providing sample data reading functions in the package
-    - Providing tests
-    - Code review
-- Yu Liu (@YuLiu-web)
-    - Providing documentation of the package
+
+For details on the contribution roles, see the [documentation](https://basicpy.readthedocs.io/en/latest/contributors.html).
 
 
 ### Old version (`f3fcf19`), used as the reference implementation to check the approximate algorithm
