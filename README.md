@@ -1,37 +1,13 @@
 # BaSiCPy
 A python package for background and shading correction of optical microscopy images
-
-|PyPI| |Status| |Python Version| |License|
-
-|Read the Docs| |Tests|
-
-|pre-commit| |Black|
-
-.. |PyPI| image:: https://img.shields.io/pypi/v/basicpy.svg
-   :target: https://pypi.org/project/basicpy/
-   :alt: PyPI
-.. |Status| image:: https://img.shields.io/pypi/status/basicpy.svg
-   :target: https://pypi.org/project/basicpy/
-   :alt: Status
-.. |Python Version| image:: https://img.shields.io/pypi/pyversions/basicpy
-   :target: https://pypi.org/project/basicpy
-   :alt: Python Version
-.. |License| image:: https://img.shields.io/pypi/l/basicpy
-   :target: https://github.com/peng-lab/basicpy/LICENSE
-   :alt: License
-.. |Read the Docs| image:: https://img.shields.io/readthedocs/basicpy/latest.svg?label=Read%20the%20Docs
-   :target: https://basicpy.readthedocs.io/
-   :alt: Read the documentation at https://basicpy.readthedocs.io/
-.. |Tests| image:: https://github.com/peng-lab/basicpy/workflows/Tests/badge.svg
-   :target: https://github.com/peng-lab/basicpy/actions?workflow=Tests
-   :alt: Tests
-.. |pre-commit| image:: https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white
-   :target: https://github.com/pre-commit/pre-commit
-   :alt: pre-commit
-.. |Black| image:: https://img.shields.io/badge/code%20style-black-000000.svg
-   :target: https://github.com/psf/black
-   :alt: Black
-
+[![PyPI](https://img.shields.io/pypi/v/basicpy.svg)](https://pypi.org/project/basicpy)
+[![Status](https://img.shields.io/pypi/status/basicpy.svg)](https://pypi.org/project/basicpy/)
+[![Python Version](https://img.shields.io/pypi/pyversions/basicpy.svg)](https://python.org)
+[![License](https://img.shields.io/pypi/l/basicpy)](https://github.com/peng-lab/BaSiCPy/blob/main/LICENSE)
+[![Tests](https://github.com/peng-lab/basicpy/workflows/CI/badge.svg)](https://github.com/peng-lab/basicpy/actions?workflow=CI)
+[![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://github.com/pre-commit/pre-commit)
+[![Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Read the Docs](https://img.shields.io/readthedocs/basicpy/latest.svg?label=Read%20the%20Docs)](https://basicpy.readthedocs.io/)
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
 [![All Contributors](https://img.shields.io/badge/all_contributors-5-orange.svg?style=flat-square)](#contributors-)
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
