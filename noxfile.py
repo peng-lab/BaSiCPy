@@ -13,6 +13,7 @@ def tests(session: Session) -> None:
     """Run the test suite."""
     session.install(".")
     session.install(
+        "dask",
         "pytest",
         "pytest-benchmark",
         "pytest-datafiles",

@@ -2,6 +2,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+from dask import array as da
 
 from basicpy import BaSiC
 
@@ -143,6 +144,28 @@ def test_basic_transform(synthesized_test_data):
     # with darkfield correction
     basic.darkfield = np.full(basic.flatfield.shape, 8)
     corrected = basic.transform(images)
+    assert corrected.mean() <= corrected_error
+
+    """Test shortcut"""
+    corrected = basic(images)
+
+
+def test_basic_transform_dask(synthesized_test_data):
+
+    basic = BaSiC(get_darkfield=False)
+    gradient, images, truth = synthesized_test_data
+
+    """Apply the shading model to the images"""
+    # flatfield only
+    basic.flatfield = gradient
+    basic.baseline = np.ones((8,))
+    corrected = basic.transform(da.array(images)).compute()
+    corrected_error = corrected.mean()
+    assert corrected_error < 0.5
+
+    # with darkfield correction
+    basic.darkfield = np.full(basic.flatfield.shape, 8)
+    corrected = basic.transform(da.array(images)).compute()
     assert corrected.mean() <= corrected_error
 
     """Test shortcut"""
