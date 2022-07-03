@@ -16,7 +16,7 @@ BaSiCPy is a python package for background and shading correction of optical mic
 It is developed based on the Matlab version of [BaSiC](https://github.com/marrlab/BaSiC) tool with major improvements in the algorithm.
 
 Reference:
-- BaSiCPy: A robust and scalable shadow correction tool for optical microscopy images (tentative)
+- BaSiCPy: A robust and scalable shadow correction tool for optical microscopy images (in prep.)
 - A BaSiC Tool for Background and Shading Correction of Optical Microscopy Images
   by Tingying Peng, Kurt Thorn, Timm Schroeder, Lichao Wang, Fabian J Theis, Carsten Marr\*, Nassir Navab\*, Nature Communication 8:14836 (2017). [doi: 10.1038/ncomms14836](http://www.nature.com/articles/ncomms14836).
 
