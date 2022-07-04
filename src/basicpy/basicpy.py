@@ -107,14 +107,19 @@ class BaSiC(BaseModel):
         description="When True, will estimate the darkfield shading component.",
     )
     lambda_flatfield_coef: float = Field(
-        1.0 / 400 * 0.5, description="Weight of the flatfield term in the Lagrangian."
+        100,
+        description="Weight of the flatfield term in the Lagrangian."
+        + "When fitting_mode='approximate', multiplied by 1 / 80000",
     )
     lambda_darkfield_coef: float = Field(
-        0.2, description="Relative weight of the darkfield term in the Lagrangian."
+        0.01,
+        description="Relative weight of the darkfield term in the Lagrangian."
+        + "When fitting_mode='approximate', multiplied by 20",
     )
     lambda_darkfield_sparse_coef: float = Field(
-        0.2,
-        description="Relative weight of the darkfield sparse term in the Lagrangian.",
+        0.0001,
+        description="Relative weight of the darkfield sparse term in the Lagrangian."
+        + "When fitting_mode='approximate', multiplied by 2000",
     )
     max_iterations: int = Field(
         500,
@@ -147,7 +152,7 @@ class BaSiC(BaseModel):
         description="Optimization tolerance for update diff.",
     )
     resize_method: ResizeMethod = Field(
-        ResizeMethod.CUBIC,
+        ResizeMethod.LINEAR,
         description="Resize method to use when downsampling images.",
     )
     reweighting_tol: float = Field(
@@ -156,7 +161,7 @@ class BaSiC(BaseModel):
     )
     sort_intensity: bool = Field(
         False,
-        description="Wheather or not to sort the intensities of the image.",
+        description="Whether or not to sort the intensities of the image.",
     )
     working_size: Optional[Union[int, Iterable[int]]] = Field(
         128,
@@ -174,6 +179,9 @@ class BaSiC(BaseModel):
     _B: float = PrivateAttr(None)
     _D_R: float = PrivateAttr(None)
     _D_Z: float = PrivateAttr(None)
+    _lambda_flatfield: float = PrivateAttr(None)
+    _lambda_darkfield: float = PrivateAttr(None)
+    _lambda_darkfield_sparse: float = PrivateAttr(None)
 
     _settings_fname = "settings.json"
     _profiles_fname = "profiles.npy"
@@ -284,7 +292,18 @@ class BaSiC(BaseModel):
         mean_image = jnp.mean(Im2, axis=0)
         mean_image = mean_image / jnp.mean(Im2)
         mean_image_dct = JaxDCT.dct3d(mean_image.T)
-        lambda_flatfield = jnp.sum(jnp.abs(mean_image_dct)) * self.lambda_flatfield_coef
+        self._lambda_flatfield = (
+            jnp.sum(jnp.abs(mean_image_dct)) * self.lambda_flatfield_coef
+        )
+        if self.fitting_mode == FittingMode.approximate:
+            self._lambda_flatfield = self._lambda_flatfield / 80000
+        self._lambda_darkfield = self._lambda_flatfield * self.lambda_darkfield_coef
+        self._lambda_darkfield_sparse = (
+            self._lambda_flatfield * self.lambda_darkfield_sparse_coef
+        )
+        if self.fitting_mode == FittingMode.approximate:
+            self._lambda_darkfield = self._lambda_darkfield * 20
+            self._lambda_darkfield_sparse = self._lambda_darkfield_sparse * 2000
 
         # spectral_norm = jnp.linalg.norm(Im.reshape((Im.shape[0], -1)), ord=2)
         if self.fitting_mode == FittingMode.ladmap:
@@ -302,10 +321,9 @@ class BaSiC(BaseModel):
         fit_params = self.dict()
         fit_params.update(
             dict(
-                lambda_flatfield=lambda_flatfield,
-                lambda_darkfield=lambda_flatfield * self.lambda_darkfield_coef,
-                lambda_darkfield_sparse=lambda_flatfield
-                * self.lambda_darkfield_sparse_coef,
+                lambda_flatfield=self._lambda_flatfield,
+                lambda_darkfield=self._lambda_darkfield,
+                lambda_darkfield_sparse=self._lambda_darkfield_sparse,
                 # matrix 2-norm (largest sing. value)
                 init_mu=init_mu,
                 max_mu=init_mu * self.max_mu_coef,
