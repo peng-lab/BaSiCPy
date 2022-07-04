@@ -1,5 +1,6 @@
 # BaSiCPy
 A python package for background and shading correction of optical microscopy images
+
 [![License](https://img.shields.io/pypi/l/basicpy)](https://github.com/peng-lab/basicpy/LICENSE)
 [![Python Version](https://img.shields.io/pypi/pyversions/python-basic.svg)](https://python.org)
 [![PyPI](https://img.shields.io/pypi/v/python-basic.svg)](https://pypi.org/project/python-basic)
@@ -13,6 +14,7 @@ Reference: A BaSiC Tool for Background and Shading Correction of Optical Microsc
 
 by Tingying Peng, Kurt Thorn, Timm Schroeder, Lichao Wang, Fabian J Theis, Carsten Marr\*, Nassir Navab\*, Nature Communication 8:14836 (2017). [doi: 10.1038/ncomms14836](http://www.nature.com/articles/ncomms14836).
 
+
 ## Simple examples
 
 |Notebook|Description|Colab Link|
@@ -24,6 +26,9 @@ by Tingying Peng, Kurt Thorn, Timm Schroeder, Lichao Wang, Fabian J Theis, Carst
 You can also find examples of running the package at [folder Notebooks](https://github.com/peng-lab/BaSiCPy/tree/dev/example_notebooks). Data used in the examples and a description can be downloaded from [Zenodo](https://doi.org/10.5281/zenodo.6334809).
 
 ---
+## Usage
+
+See [Read the Docs](https://basicpy.readthedocs.io/en/latest/) for the detailed usage.
 
 ## Installation
 
