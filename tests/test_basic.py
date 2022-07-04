@@ -1,13 +1,10 @@
-from basicpy import BaSiC
-from os import path
-import glob
-import numpy as np
-import pytest
-from skimage.io import imread
-from skimage.transform import resize
 from pathlib import Path
 
-from basicpy.basicpy import FittingMode
+import numpy as np
+import pytest
+from dask import array as da
+
+from basicpy import BaSiC
 
 # allowed max error for the synthetic test data prediction
 SYNTHETIC_TEST_DATA_MAX_ERROR = 0.35
@@ -74,6 +71,8 @@ def test_basic_fit_synthetic(synthesized_test_data):
     basic.fit(images)
 
     assert np.max(np.abs(basic.flatfield - truth)) < SYNTHETIC_TEST_DATA_MAX_ERROR
+    assert np.array_equal(basic.flatfield.shape, images.shape[1:])
+
     """
     code for debug plotting :
     plt.figure(figsize=(15,5)) ;
@@ -137,7 +136,6 @@ def test_basic_transform(synthesized_test_data):
     """Apply the shading model to the images"""
     # flatfield only
     basic.flatfield = gradient
-    basic._flatfield = gradient
     basic.baseline = np.ones((8,))
     corrected = basic.transform(images)
     corrected_error = corrected.mean()
@@ -145,7 +143,6 @@ def test_basic_transform(synthesized_test_data):
 
     # with darkfield correction
     basic.darkfield = np.full(basic.flatfield.shape, 8)
-    basic._darkfield = np.full(basic.flatfield.shape, 8)
     corrected = basic.transform(images)
     assert corrected.mean() <= corrected_error
 
@@ -153,28 +150,26 @@ def test_basic_transform(synthesized_test_data):
     corrected = basic(images)
 
 
-def test_basic_transform_resize(synthesized_test_data):
+def test_basic_transform_dask(synthesized_test_data):
 
     basic = BaSiC(get_darkfield=False)
     gradient, images, truth = synthesized_test_data
-
-    images = np.moveaxis(images, 0, -1)
-    images = resize(images, tuple(d * 2 for d in images.shape[:-1]))
-    images = np.moveaxis(images, -1, 0)
-    truth = resize(truth, tuple(d * 2 for d in truth.shape))
 
     """Apply the shading model to the images"""
     # flatfield only
     basic.flatfield = gradient
     basic.baseline = np.ones((8,))
-    corrected = basic.transform(images)
+    corrected = basic.transform(da.array(images)).compute()
     corrected_error = corrected.mean()
     assert corrected_error < 0.5
 
     # with darkfield correction
     basic.darkfield = np.full(basic.flatfield.shape, 8)
-    corrected = basic.transform(images)
+    corrected = basic.transform(da.array(images)).compute()
     assert corrected.mean() <= corrected_error
+
+    """Test shortcut"""
+    corrected = basic(images)
 
 
 @pytest.fixture(params=[2, 3])  # param is dimension
@@ -248,7 +243,7 @@ def profiles():
 def model_path(tmp_path, profiles):
     settings_json = """\
     {"epsilon": 0.2, "estimation_mode": "l0", "get_darkfield": false,
-    "lambda_darkfield": 0.0, "lambda_flatfield": 0.0, "max_iterations": 500,
+    "lambda_darkfield": 0.0, "lambda_flatfield": 0.01, "max_iterations": 500,
     "max_reweight_iterations": 10, "optimization_tol": 1e-06, "reweighting_tol": 0.001,
     "varying_coeff": true, "working_size": 128}
     """

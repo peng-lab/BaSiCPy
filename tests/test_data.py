@@ -1,6 +1,7 @@
-from basicpy import data
 import numpy as np
 import pytest
+
+from basicpy import data
 
 
 @pytest.mark.parametrize("data_name", data.RESCALED_TEST_DATA_PROPS.keys())
