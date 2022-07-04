@@ -10,7 +10,7 @@ A python package for background and shading correction of optical microscopy ima
 [![Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Read the Docs](https://img.shields.io/readthedocs/basicpy/latest.svg?label=Read%20the%20Docs)](https://basicpy.readthedocs.io/)
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
-[![All Contributors](https://img.shields.io/badge/all_contributors-5-orange.svg?style=flat-square)](#contributors-)
+[![All Contributors](https://img.shields.io/badge/all_contributors-5-orange.svg)](#contributors-)
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
 
 BaSiCPy is a python package for background and shading correction of optical microscopy images.
