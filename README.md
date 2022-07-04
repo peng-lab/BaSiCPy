@@ -41,13 +41,13 @@ See [Read the Docs](https://basicpy.readthedocs.io/en/latest/) for the detailed 
 
 ### For Mac, Linux or WSL2 users
 
-Download from PyPI
+ Install from PyPI
 
 ```console
 pip install basicpy
 ```
 
-or install latest development version
+or install the latest development version
 
 ```console
 git clone https://github.com/peng-lab/BaSiCPy.git
