@@ -73,7 +73,7 @@ class FittingMode(str, Enum):
 class BaSiC(BaseModel):
     """A class for fitting and applying BaSiC illumination correction profiles."""
 
-    baseline: np.ndarray = Field(
+    baseline: Optional[np.ndarray] = Field(
         None,
         description="Holds the baseline for the shading model.",
         exclude=True,  # Don't dump to output json/yaml
