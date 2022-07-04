@@ -1,5 +1,6 @@
 # BaSiCPy
 A python package for background and shading correction of optical microscopy images
+
 [![PyPI](https://img.shields.io/pypi/v/basicpy.svg)](https://pypi.org/project/basicpy)
 [![Status](https://img.shields.io/pypi/status/basicpy.svg)](https://pypi.org/project/basicpy/)
 [![Python Version](https://img.shields.io/pypi/pyversions/basicpy.svg)](https://python.org)
@@ -9,7 +10,7 @@ A python package for background and shading correction of optical microscopy ima
 [![Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Read the Docs](https://img.shields.io/readthedocs/basicpy/latest.svg?label=Read%20the%20Docs)](https://basicpy.readthedocs.io/)
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
-[![All Contributors](https://img.shields.io/badge/all_contributors-5-orange.svg?style=flat-square)](#contributors-)
+[![All Contributors](https://img.shields.io/badge/all_contributors-5-orange.svg)](#contributors-)
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
 
 BaSiCPy is a python package for background and shading correction of optical microscopy images.
@@ -19,6 +20,7 @@ Reference:
 - BaSiCPy: A robust and scalable shadow correction tool for optical microscopy images (in prep.)
 - A BaSiC Tool for Background and Shading Correction of Optical Microscopy Images
   by Tingying Peng, Kurt Thorn, Timm Schroeder, Lichao Wang, Fabian J Theis, Carsten Marr\*, Nassir Navab\*, Nature Communication 8:14836 (2017). [doi: 10.1038/ncomms14836](http://www.nature.com/articles/ncomms14836).
+
 
 ## Simple examples
 
@@ -31,18 +33,21 @@ Reference:
 You can also find examples of running the package at [notebooks folder](https://github.com/peng-lab/BaSiCPy/tree/dev/docs/notebooks). Data used in the examples and a description can be downloaded from [Zenodo](https://doi.org/10.5281/zenodo.6334809).
 
 ---
+## Usage
+
+See [Read the Docs](https://basicpy.readthedocs.io/en/latest/) for the detailed usage.
 
 ## Installation
 
 ### For Mac, Linux or WSL2 users
 
-Download from PyPI
+ Install from PyPI
 
 ```console
 pip install basicpy
 ```
 
-or install latest development version
+or install the latest development version
 
 ```console
 git clone https://github.com/peng-lab/BaSiCPy.git
