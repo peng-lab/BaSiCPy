@@ -469,11 +469,18 @@ class BaSiC(BaseModel):
         im_float = images.astype(np.float32)
 
         if timelapse:
-            baseline_inds = tuple([slice(None)] + ([np.newaxis] * (im_float.ndim - 1)))
-            baseline_flatfield = (
-                self.flatfield[np.newaxis] * self.baseline[baseline_inds]
-            )
-            output = (im_float - self.darkfield[np.newaxis]) / baseline_flatfield
+            if timelapse == "max":
+                baseline = self.baseline - self.baseline.max()
+                logger.debug("Normalizing frame intensities to max baseline")
+            elif timelapse == "mean":
+                baseline = self.baseline - self.baseline.mean()
+                logger.debug("Normalizing frame intensities to mean baseline")
+            else:
+                baseline = self.baseline
+                logger.debug("Normalizing frame intensities to baseline")
+            output = (im_float - self.darkfield[np.newaxis]) / self.flatfield[
+                np.newaxis
+            ] - baseline[:, np.newaxis, np.newaxis]
         else:
             output = (im_float - self.darkfield[np.newaxis]) / self.flatfield[
                 np.newaxis
