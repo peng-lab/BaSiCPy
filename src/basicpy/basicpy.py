@@ -18,13 +18,14 @@ import jax.numpy as jnp
 # 3rd party modules
 import numpy as np
 from jax import device_put
-from jax.image import ResizeMethod, resize
+from jax.image import ResizeMethod
+from jax.image import resize as jax_resize
 
 # FIXME change this to jax.xla.XlaRuntimeError
 # when https://github.com/google/jax/pull/10676 gets merged
 from jaxlib.xla_extension import XlaRuntimeError
 from pydantic import BaseModel, Field, PrivateAttr
-from skimage.transform import resize as _resize
+from skimage.transform import resize as skimage_resize
 
 from basicpy._jax_routines import ApproximateFit, LadmapFit
 from basicpy.tools.dct_tools import JaxDCT
@@ -64,6 +65,13 @@ class FittingMode(str, Enum):
 
     ladmap: str = "ladmap"
     approximate: str = "approximate"
+
+
+class ResizeMode(str, Enum):
+
+    jax: str = "jax"
+    scipy: str = "skimage"
+    scipy_dask: str = "skimage_dask"
 
 
 class TimelapseTransformMode(str, Enum):
@@ -153,9 +161,14 @@ class BaSiC(BaseModel):
         1e-3,
         description="Optimization tolerance for update diff.",
     )
-    resize_method: ResizeMethod = Field(
-        ResizeMethod.LINEAR,
-        description="Resize method to use when downsampling images.",
+    resize_mode: ResizeMode = Field(
+        ResizeMode.jax,
+        description="Resize mode to use when downsampling images. "
+        + "Must be one of 'jax', 'scipy', and 'scipy_dask'",
+    )
+    resize_params: Dict = Field(
+        {},
+        description="Parameters for the resize function when downsampling images.",
     )
     reweighting_tol: float = Field(
         1e-2,
@@ -211,7 +224,25 @@ class BaSiC(BaseModel):
 
         return self.transform(images, timelapse)
 
-    def _resize(self, Im):
+    def _resize(self, Im, target_shape):
+        if self.resize_mode == ResizeMode.jax:
+            resize_params = dict(method=ResizeMethod.LINEAR)
+            resize_params.update(self.resize_params)
+            return jax_resize(Im, target_shape, **resize_params)
+        elif self.resize_mode == ResizeMode.scipy:
+            return skimage_resize(Im, target_shape, self.resize_method)
+        if self.resize_mode == ResizeMode.scipy_dask:
+            assert np.array_equal(target_shape[:-2], Im.shape[:-2])
+            import dask.array as da
+
+            return da.from_array(
+                [
+                    skimage_resize(Im[tuple(inds)], target_shape[-2:])
+                    for inds in np.ndindex(Im.shape[:-2])
+                ]
+            ).compute()
+
+    def _resize_to_working_size(self, Im):
         """
         Resize the images to the working size.
         """
@@ -225,7 +256,9 @@ class BaSiC(BaseModel):
                     )
                 else:
                     working_shape = self.working_size
-            Im = resize(Im, [*Im.shape[:2], *working_shape], self.resize_method)
+            target_shape = [*Im.shape[:2], *working_shape]
+            Im = self._resize(Im, target_shape)
+
         return Im
 
     def fit(
@@ -270,11 +303,11 @@ class BaSiC(BaseModel):
         start_time = time.monotonic()
 
         Im = device_put(images).astype(jnp.float32)
-        Im = self._resize(Im)
+        Im = self._resize_to_working_size(Im)
 
         if fitting_weight is not None:
             Ws = device_put(fitting_weight).astype(jnp.float32)
-            Ws = self._resize(Ws)
+            Ws = self._resize_to_working_size(Ws)
             # normalize relative weight to 0 to 1
             Ws_min = jnp.min(Ws)
             Ws_max = jnp.max(Ws)
@@ -435,8 +468,8 @@ class BaSiC(BaseModel):
                 self._residual = I_R
                 logger.info(f"Iteration {i} finished.")
 
-        self.flatfield = _resize(S, images.shape[1:])
-        self.darkfield = _resize(D, images.shape[1:])
+        self.flatfield = skimage_resize(S, images.shape[1:])
+        self.darkfield = skimage_resize(D, images.shape[1:])
         if ndim == 3:
             self.flatfield = self.flatfield[0]
             self.darkfield = self.darkfield[0]
