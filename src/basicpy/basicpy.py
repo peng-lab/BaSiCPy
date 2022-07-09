@@ -1,7 +1,4 @@
 """Main BaSiC class.
-
-Todo:
-    Keep examples up to date with changing API.
 """
 
 # Core modules
@@ -67,6 +64,12 @@ class FittingMode(str, Enum):
 
     ladmap: str = "ladmap"
     approximate: str = "approximate"
+
+
+class TimelapseTransformMode(str, Enum):
+
+    additive: str = "additive"
+    multiplicative: str = "multiplicative"
 
 
 # multiple channels should be handled by creating a `basic` object for each chan
@@ -443,7 +446,7 @@ class BaSiC(BaseModel):
         )
 
     def transform(
-        self, images: np.ndarray, timelapse: bool = False
+        self, images: np.ndarray, timelapse: Union[bool, TimelapseTransformMode] = False
     ) -> Union[Tuple[np.ndarray, np.ndarray], np.ndarray]:
         """Apply profile to images.
 
@@ -468,12 +471,39 @@ class BaSiC(BaseModel):
         # Convert to the correct format
         im_float = images.astype(np.float32)
 
+        # Image = B_n x S_l + D_l + I_R_nl
+
+        # in timelapse cases ...
+        # "Multiplicative" mode
+        # Real Image x S_l = I_R_nl
+        # Image = (B_n + Real Image) x S_l + D_l
+        # Real Image = (Image - D_l) / S_l - B_n
+
+        # "Additive" mode
+        # Real Image = I_R_nl
+        # Image = B_n x S_l + D_l + Real Image
+        # Real Image = Image - D_l - (S_l x B_n)
+
+        # in non-timelapse cases ...
+        # we assume B_n is the mean of Real Image
+        # and then always assume Multiplicative mode
+        # the image model is
+        # Image = Real Image x S_l + D_l
+        # Real Image = (Image - D_l) / S_l
+
         if timelapse:
+            if timelapse is True:
+                timelapse = TimelapseTransformMode.multiplicative
             baseline_inds = tuple([slice(None)] + ([np.newaxis] * (im_float.ndim - 1)))
-            baseline_flatfield = (
-                self.flatfield[np.newaxis] * self.baseline[baseline_inds]
-            )
-            output = (im_float - self.darkfield[np.newaxis]) / baseline_flatfield
+            if timelapse == TimelapseTransformMode.multiplicative:
+                output = (im_float - self.darkfield[np.newaxis]) / self.flatfield[
+                    np.newaxis
+                ] - self.baseline[baseline_inds]
+            elif timelapse == TimelapseTransformMode.additive:
+                baseline_flatfield = (
+                    self.flatfield[np.newaxis] * self.baseline[baseline_inds]
+                )
+                output = im_float - self.darkfield[np.newaxis] - baseline_flatfield
         else:
             output = (im_float - self.darkfield[np.newaxis]) / self.flatfield[
                 np.newaxis
@@ -481,7 +511,7 @@ class BaSiC(BaseModel):
         logger.info(
             f"=== BaSiC transform finished in {time.monotonic()-start_time} seconds ==="
         )
-        return output.astype(images.dtype)
+        return output
 
     # REFACTOR large datasets will probably prefer saving corrected images to
     # files directly, a generator may be handy
