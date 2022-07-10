@@ -128,7 +128,8 @@ def test_basic_fit_experimental(datadir, datafiles):
 
 
 # Test BaSiC transform function
-def test_basic_transform(synthesized_test_data):
+@pytest.mark.parametrize("use_dask", [False, True])
+def test_basic_transform(synthesized_test_data, use_dask):
 
     basic = BaSiC(get_darkfield=False)
     gradient, images, truth = synthesized_test_data
@@ -137,36 +138,21 @@ def test_basic_transform(synthesized_test_data):
     # flatfield only
     basic.flatfield = gradient
     basic.baseline = np.ones((8,))
-    corrected = basic.transform(images)
-    corrected_error = corrected.mean()
+    if use_dask:
+        corrected = basic.transform(da.array(images)).compute()
+    else:
+        corrected = basic.transform(images)
+    corrected_error = np.abs(corrected.mean() - 1.0)
     assert corrected_error < 0.5
 
     # with darkfield correction
     basic.darkfield = np.full(basic.flatfield.shape, 8)
-    corrected = basic.transform(images)
-    assert corrected.mean() <= corrected_error
-
-    """Test shortcut"""
-    corrected = basic(images)
-
-
-def test_basic_transform_dask(synthesized_test_data):
-
-    basic = BaSiC(get_darkfield=False)
-    gradient, images, truth = synthesized_test_data
-
-    """Apply the shading model to the images"""
-    # flatfield only
-    basic.flatfield = gradient
-    basic.baseline = np.ones((8,))
-    corrected = basic.transform(da.array(images)).compute()
-    corrected_error = corrected.mean()
+    if use_dask:
+        corrected = basic.transform(da.array(images + 8)).compute()
+    else:
+        corrected = basic.transform(images + 8)
+    corrected_error = np.abs(corrected.mean() - 1.0)
     assert corrected_error < 0.5
-
-    # with darkfield correction
-    basic.darkfield = np.full(basic.flatfield.shape, 8)
-    corrected = basic.transform(da.array(images)).compute()
-    assert corrected.mean() <= corrected_error
 
     """Test shortcut"""
     corrected = basic(images)
