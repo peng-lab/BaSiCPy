@@ -155,3 +155,4 @@ cython_debug/
 .DS_Store
 scratch/
 node_modules/
+package-lock.json
