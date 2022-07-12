@@ -70,8 +70,8 @@ class FittingMode(str, Enum):
 class ResizeMode(str, Enum):
 
     jax: str = "jax"
-    scipy: str = "skimage"
-    scipy_dask: str = "skimage_dask"
+    skimage: str = "skimage"
+    skimage_dask: str = "skimage_dask"
 
 
 class TimelapseTransformMode(str, Enum):
@@ -164,7 +164,7 @@ class BaSiC(BaseModel):
     resize_mode: ResizeMode = Field(
         ResizeMode.jax,
         description="Resize mode to use when downsampling images. "
-        + "Must be one of 'jax', 'scipy', and 'scipy_dask'",
+        + "Must be one of 'jax', 'skimage', and 'skimage_dask'",
     )
     resize_params: Dict = Field(
         {},
@@ -229,10 +229,12 @@ class BaSiC(BaseModel):
             resize_params = dict(method=ResizeMethod.LINEAR)
             resize_params.update(self.resize_params)
             return jax_resize(Im, target_shape, **resize_params)
-        elif self.resize_mode == ResizeMode.scipy:
-            return skimage_resize(Im, target_shape, self.resize_method)
-        if self.resize_mode == ResizeMode.scipy_dask:
-            assert np.array_equal(target_shape[:-2], Im.shape[:-2])
+        elif self.resize_mode == ResizeMode.skimage:
+            return skimage_resize(Im, target_shape, **self.resize_params)
+        elif self.resize_mode == ResizeMode.skimage_dask:
+            assert np.array_equal(
+                target_shape[:-2], Im.shape[:-2], **self.resize_params
+            )
             import dask.array as da
 
             return da.from_array(
@@ -527,6 +529,7 @@ class BaSiC(BaseModel):
         if timelapse:
             if timelapse is True:
                 timelapse = TimelapseTransformMode.multiplicative
+
             baseline_inds = tuple([slice(None)] + ([np.newaxis] * (im_float.ndim - 1)))
             if timelapse == TimelapseTransformMode.multiplicative:
                 output = (im_float - self.darkfield[np.newaxis]) / self.flatfield[
@@ -537,6 +540,10 @@ class BaSiC(BaseModel):
                     self.flatfield[np.newaxis] * self.baseline[baseline_inds]
                 )
                 output = im_float - self.darkfield[np.newaxis] - baseline_flatfield
+            else:
+                raise ValueError(
+                    "timelapse value must be bool, 'multiplicative' or 'additive'"
+                )
         else:
             output = (im_float - self.darkfield[np.newaxis]) / self.flatfield[
                 np.newaxis

@@ -3,6 +3,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 from dask import array as da
+from skimage.transform import resize
 
 from basicpy import BaSiC
 
@@ -58,6 +59,15 @@ def test_basic_verify_init():
     assert all([d == 128 for d in basic.flatfield.shape])
 
     return
+
+
+@pytest.mark.parametrize("resize_mode", ["jax", "skimage", "skimage_dask"])
+def test_basic_resize(synthesized_test_data, resize_mode):
+    _, images, _ = synthesized_test_data
+    target_size = (*images.shape[:-2], 123, 456)
+    rescaled = np.array([resize(im, target_size) for im in images])
+    basic = BaSiC(resize_mode=resize_mode)
+    resized2 = basic._resize(images, target_size)
 
 
 # Test BaSiC fitting function (with synthetic data)
