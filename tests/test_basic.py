@@ -65,9 +65,12 @@ def test_basic_verify_init():
 def test_basic_resize(synthesized_test_data, resize_mode):
     _, images, _ = synthesized_test_data
     target_size = (*images.shape[:-2], 123, 456)
-    rescaled = np.array([resize(im, target_size) for im in images])
+    resized = np.array(
+        [resize(im, target_size[1:], preserve_range=True) for im in images]
+    )
     basic = BaSiC(resize_mode=resize_mode)
     resized2 = basic._resize(images, target_size)
+    assert np.allclose(resized, resized2, rtol=0.1, atol=10)
 
 
 # Test BaSiC fitting function (with synthetic data)

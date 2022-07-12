@@ -230,19 +230,28 @@ class BaSiC(BaseModel):
             resize_params.update(self.resize_params)
             return jax_resize(Im, target_shape, **resize_params)
         elif self.resize_mode == ResizeMode.skimage:
-            return skimage_resize(Im, target_shape, **self.resize_params)
-        elif self.resize_mode == ResizeMode.skimage_dask:
-            assert np.array_equal(
-                target_shape[:-2], Im.shape[:-2], **self.resize_params
+            return skimage_resize(
+                Im, target_shape, preserve_range=True, **self.resize_params
             )
+        elif self.resize_mode == ResizeMode.skimage_dask:
+            assert np.array_equal(target_shape[:-2], Im.shape[:-2])
             import dask.array as da
 
-            return da.from_array(
-                [
-                    skimage_resize(Im[tuple(inds)], target_shape[-2:])
-                    for inds in np.ndindex(Im.shape[:-2])
-                ]
-            ).compute()
+            return (
+                da.from_array(
+                    [
+                        skimage_resize(
+                            Im[tuple(inds)],
+                            target_shape[-2:],
+                            preserve_range=True,
+                            **self.resize_params,
+                        )
+                        for inds in np.ndindex(Im.shape[:-2])
+                    ]
+                )
+                .reshape((*Im.shape[:-2], *target_shape[-2:]))
+                .compute()
+            )
 
     def _resize_to_working_size(self, Im):
         """
