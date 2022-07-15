@@ -496,7 +496,11 @@ class BaSiC(BaseModel):
 
         Args:
             images: input images to fit and correct. See `fit`.
-            timelapse: If `True`, corrects the timelapse/photobleaching offsets.
+            timelapse: If `True`, corrects the timelapse/photobleaching offsets,
+                       assuming that the residual is the product of flatfield and
+                       the object fluorescence. Also accepts "multplicative"
+                       (the same as `True`) or "additive" (residual is the object
+                       fluorescence).
 
         Returns:
             corrected images
