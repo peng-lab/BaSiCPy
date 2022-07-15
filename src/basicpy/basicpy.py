@@ -229,7 +229,10 @@ class BaSiC(BaseModel):
         return Im
 
     def fit(
-        self, images: np.ndarray, fitting_weight: Optional[np.ndarray] = None
+        self,
+        images: np.ndarray,
+        fitting_weight: Optional[np.ndarray] = None,
+        baseline_only=False,
     ) -> None:
         """
         Generate illumination correction profiles from images.
@@ -240,6 +243,7 @@ class BaSiC(BaseModel):
             fitting_weight: relative fitting weight for each pixel.
                     Higher value means more contribution to fitting.
                     Must has the same shape as images.
+            baseline_only: If True, will only fit the baseline.
 
         Example:
             >>> from basicpy import BaSiC
@@ -432,13 +436,13 @@ class BaSiC(BaseModel):
                 self._weight = W
                 self._residual = I_R
                 logger.info(f"Iteration {i} finished.")
-
-        if ndim == 3:
-            self.flatfield = S[0]
-            self.darkfield = D[0]
-        else:
-            self.flatfield = S
-            self.darkfield = D
+        if not baseline_only:
+            if ndim == 3:
+                self.flatfield = S[0]
+                self.darkfield = D[0]
+            else:
+                self.flatfield = S
+                self.darkfield = D
         self.baseline = B
         logger.info(
             f"=== BaSiC fit finished in {time.monotonic()-start_time} seconds ==="
