@@ -495,7 +495,7 @@ class BaSiC(BaseModel):
         """Apply profile to images.
 
         Args:
-            images: input images to fit and correct. See `fit`.
+            images: input images to correct. See `fit`.
             timelapse: If `True`, corrects the timelapse/photobleaching offsets,
                        assuming that the residual is the product of flatfield and
                        the object fluorescence. Also accepts "multplicative"
@@ -585,7 +585,6 @@ class BaSiC(BaseModel):
         self.fit(images)
         corrected = self.transform(images, timelapse)
 
-        # NOTE or only return corrected images and user can get profiles separately
         return corrected
 
     @property
