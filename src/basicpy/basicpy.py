@@ -299,6 +299,8 @@ class BaSiC(BaseModel):
         ndim = images.ndim
         if images.ndim == 3:
             images = images[:, np.newaxis, ...]
+            if fitting_weight is not None:
+                fitting_weight = fitting_weight[:, np.newaxis, ...]
         elif images.ndim == 4:
             if self.fitting_mode == FittingMode.approximate:
                 raise ValueError(
