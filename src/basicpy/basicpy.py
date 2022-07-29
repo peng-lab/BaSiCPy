@@ -11,7 +11,7 @@ import time
 from enum import Enum
 from multiprocessing import cpu_count
 from pathlib import Path
-from typing import Dict, Iterable, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 import jax.numpy as jnp
 
@@ -178,7 +178,7 @@ class BaSiC(BaseModel):
         False,
         description="Whether or not to sort the intensities of the image.",
     )
-    working_size: Optional[Union[int, Iterable[int]]] = Field(
+    working_size: Optional[Union[int, List[int]]] = Field(
         128,
         description="Size for running computations. None means no rescaling.",
     )
@@ -228,16 +228,18 @@ class BaSiC(BaseModel):
         if self.resize_mode == ResizeMode.jax:
             resize_params = dict(method=ResizeMethod.LINEAR)
             resize_params.update(self.resize_params)
+            Im = device_put(Im).astype(jnp.float32)
             return jax_resize(Im, target_shape, **resize_params)
         elif self.resize_mode == ResizeMode.skimage:
-            return skimage_resize(
+            Im = skimage_resize(
                 Im, target_shape, preserve_range=True, **self.resize_params
             )
+            return device_put(Im).astype(jnp.float32)
         elif self.resize_mode == ResizeMode.skimage_dask:
             assert np.array_equal(target_shape[:-2], Im.shape[:-2])
             import dask.array as da
 
-            return (
+            Im = (
                 da.from_array(
                     [
                         skimage_resize(
@@ -252,6 +254,7 @@ class BaSiC(BaseModel):
                 .reshape((*Im.shape[:-2], *target_shape[-2:]))
                 .compute()
             )
+            return device_put(Im).astype(jnp.float32)
 
     def _resize_to_working_size(self, Im):
         """
@@ -315,8 +318,7 @@ class BaSiC(BaseModel):
         logger.info("=== BaSiC fit started ===")
         start_time = time.monotonic()
 
-        Im = device_put(images).astype(jnp.float32)
-        Im = self._resize_to_working_size(Im)
+        Im = self._resize_to_working_size(images)
 
         if fitting_weight is not None:
             Ws = device_put(fitting_weight).astype(jnp.float32)
