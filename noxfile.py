@@ -22,6 +22,7 @@ def tests(session: Session) -> None:
         )
     session.install(".")
     session.install(
+        "dask",
         "pytest",
         "pytest-benchmark",
         "pytest-datafiles",
