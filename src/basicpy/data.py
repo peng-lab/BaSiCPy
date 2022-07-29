@@ -30,19 +30,19 @@ ORIGINAL_TEST_DATA_PROPS = {
 
 RESCALED_TEST_DATA_PROPS = {
     "cell_culture": {
-        "hash": "md5:b9718febdb2aa7a84f90c7d149cf2caf",
+        "hash": "md5:65b91d0e1e9161826da79f0ed8ea91d1",
     },
     "timelapse_brightfield": {
-        "hash": "md5:87a99a3c3dda7e170e272e9cd6f1ccd6",
+        "hash": "md5:8bedded105fff92a478bfde56d15f80f",
     },
     "timelapse_nanog": {
-        "hash": "md5:e6c2f7776575e6ad4ff65950f8371c05",
+        "hash": "md5:252fd6b8a054ce659cc6ba33dc9302ff",
     },
     "timelapse_pu1": {
-        "hash": "md5:02c4c74f9375369f2bf3c6f3bbca9109",
+        "hash": "md5:598ee2343b6562534c09bea05235f657",
     },
     "wsi_brain": {
-        "hash": "md5:52bcb25df3187b4947cbf89798933d0c",
+        "hash": "md5:6e58f605916ddb1b81724f1bfea73560",
     },
 }
 for k in RESCALED_TEST_DATA_PROPS.keys():
