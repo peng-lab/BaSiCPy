@@ -181,6 +181,7 @@ class BaSiC(BaseModel):
     class Config:
 
         arbitrary_types_allowed = True
+        extra = "forbid"
 
     def __init__(self, **kwargs) -> None:
         """Initialize BaSiC with the provided settings."""
