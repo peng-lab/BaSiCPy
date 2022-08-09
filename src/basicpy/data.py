@@ -57,9 +57,8 @@ ORIGINAL_POOCH = pooch.create(
 
 RESCALED_POOCH = pooch.create(
     path=pooch.os_cache("basicpy"),
-    # FIXME change the URL when the beta version is about to release
-    # see https://www.fatiando.org/pooch/latest/sample-data.html
-    base_url="https://github.com/peng-lab/BaSiCPy/raw/main/data/",
+    # Use the Zenodo DOI
+    base_url="doi:10.5281/zenodo.6974039/",
     # base_url="https://github.com/yfukai/BaSiCpy/raw/data_in_package/data/",
     registry={v["filename"]: v["hash"] for v in RESCALED_TEST_DATA_PROPS.values()},
 )
