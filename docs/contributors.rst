@@ -31,6 +31,7 @@ Current developers
     - Providing sample data reading functions in the package
     - Providing tests
     - Code review
+    - CI by GitHub Actions
 - Yu Liu (@YuLiu-web)
     - Providing documentation of the package
     - User testing
