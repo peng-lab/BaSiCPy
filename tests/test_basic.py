@@ -5,12 +5,11 @@ import pytest
 from dask import array as da
 from skimage.transform import resize
 
-from basicpy import BaSiC
+from basicpy import BaSiC, datasets
 
 # allowed max error for the synthetic test data prediction
 SYNTHETIC_TEST_DATA_MAX_ERROR = 0.35
 EXPERIMENTAL_TEST_DATA_COUNT = 10
-DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 
 
 @pytest.fixture(params=[2, 3])  # param is dimension
@@ -102,14 +101,7 @@ def test_basic_fit_synthetic(synthesized_test_data):
 
 
 # Test BaSiC fitting function (with experimental data)
-@pytest.mark.datafiles(
-    DATA_DIR / "cell_culture.npz",
-    DATA_DIR / "timelapse_brightfield.npz",
-    DATA_DIR / "timelapse_nanog.npz",
-    DATA_DIR / "timelapse_pu1.npz",
-    DATA_DIR / "wsi_brain.npz",
-)
-def test_basic_fit_experimental(datadir, datafiles):
+def test_basic_fit_experimental(datadir):
 
     # not sure if it is a good practice
     fit_results = list(datadir.glob("*.npz"))
@@ -125,11 +117,7 @@ def test_basic_fit_experimental(datadir, datafiles):
         image_name = d["image_name"]
         params = d["params"]
         basic = BaSiC(**params)
-        images_path = [
-            f for f in datafiles.listdir() if f.basename == image_name + ".npz"
-        ]
-        assert len(images_path) == 1
-        images = np.load(str(images_path[0]))["images"]
+        images = datasets.fetch(image_name, original=False)
         basic.fit(images)
         assert np.all(np.isclose(basic.flatfield, d["flatfield"], atol=0.05, rtol=0.05))
         tol = 0.2
