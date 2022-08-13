@@ -49,39 +49,6 @@ def test_dct_backends(backend):
     assert np.allclose(arr_reverse_exp_3d, arr_reverse_actual, atol=1e-5, rtol=1e-5)
 
 
-@pytest.mark.parametrize("backend", backends)
-def test_dct_backend_import(monkeypatch, backend):
-    import basicpy.tools.dct_tools
-
-    idct2d = DCT_BACKENDS[backend].idct2d
-
-    monkeypatch.setenv("BASIC_DCT_BACKEND", backend)
-    importlib.reload(basicpy.tools.dct_tools)
-
-    assert basicpy.tools.dct_tools.dct._backend == backend
-
-
-def test_unrecognized_backend(monkeypatch):
-    import basicpy.tools.dct_tools
-
-    backend = "FAKE_BACKEND"
-
-    monkeypatch.setenv("BASIC_DCT_BACKEND", "FAKE_BACKEND")
-
-    # with pytest.raises(KeyError):
-    #     importlib.reload(basicpy.tools.dct2d_tools)
-
-    assert (
-        basicpy.tools.dct_tools.dct._backend == basicpy.tools.dct_tools.DEFAULT_BACKEND
-    )
-
-
-@pytest.mark.parametrize("backend", backends)
-def test_backend_not_installed(monkeypatch, backend):
-    # TODO mimic package not installed by removing from path?
-    ...
-
-
 ### BENCHMARKING ###
 @pytest.mark.parametrize("backend", backends)
 def test_dct_backends_benchmark_dct2d(backend, benchmark):
