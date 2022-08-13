@@ -3,7 +3,7 @@
 import logging
 import os
 
-from basicpy import data
+from basicpy import datasets
 from basicpy.basicpy import BaSiC
 
 # Set logger level from environment variable
@@ -12,4 +12,4 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging_level)
 
 
-__all__ = ["BaSiC", "data"]
+__all__ = ["BaSiC", "datasets"]
