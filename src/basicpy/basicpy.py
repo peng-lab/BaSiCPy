@@ -340,7 +340,7 @@ class BaSiC(BaseModel):
             Im2 = Im
             Ws2 = Ws
 
-        if self.fitting == FittingMode.approximate:
+        if self.fitting_mode == FittingMode.approximate:
             mean_image = jnp.mean(Im2, axis=0)
             mean_image = mean_image / jnp.mean(Im2)
             mean_image_dct = JaxDCT.dct3d(mean_image.T)
