@@ -88,6 +88,7 @@ class BaseFit(BaseModel):
         self,
         Im,
         W,
+        W_D,
         S,
         D_R,
         D_Z,
@@ -105,6 +106,7 @@ class BaseFit(BaseModel):
             self._step,
             Im,
             W,
+            W_D,
         )
         #        while self._cond(vals):
         #            vals = step(vals)
@@ -118,6 +120,7 @@ class BaseFit(BaseModel):
         self,
         Im,
         W,
+        W_D,
         S,
         D,
         B,
@@ -134,6 +137,7 @@ class BaseFit(BaseModel):
             self._step_only_baseline,
             Im,
             W,
+            W_D,
             S,
             D,
         )
@@ -149,6 +153,7 @@ class BaseFit(BaseModel):
         self,
         Im,
         W,
+        W_D,
         S,
         D_R,
         D_Z,
@@ -167,12 +172,15 @@ class BaseFit(BaseModel):
             raise ValueError("I_R must have the same shape as images.shape")
         if W.shape != Im.shape:
             raise ValueError("weight must have the same shape as images.shape")
-        return self._fit_jit(Im, W, S, D_R, D_Z, B, I_R)
+        if W_D.shape != Im.shape:
+            raise ValueError("residual weight must have the same shape as images.shape")
+        return self._fit_jit(Im, W, W_D, S, D_R, D_Z, B, I_R)
 
     def fit_baseline(
         self,
         Im,
         W,
+        W_D,
         S,
         D,
         B,
@@ -188,7 +196,9 @@ class BaseFit(BaseModel):
             raise ValueError("I_R must have the same shape as images.shape")
         if W.shape != Im.shape:
             raise ValueError("weight must have the same shape as images.shape")
-        return self._fit_baseline_jit(Im, W, S, D, B, I_R)
+        if W.shape != Im.shape:
+            raise ValueError("residual weight must have the same shape as images.shape")
+        return self._fit_baseline_jit(Im, W, W_D, S, D, B, I_R)
 
     def tree_flatten(self):
         # all of the fields are treated as "static" values for JAX
@@ -208,6 +218,7 @@ class LadmapFit(BaseFit):
         self,
         Im,
         weight,
+        dark_weight,
         vals,
     ):
         k, S, D_R, D_Z, I_R, B, Y, mu, fit_residual, value_diff = vals
@@ -288,7 +299,7 @@ class LadmapFit(BaseFit):
         return (k + 1, S, D_R, D_Z, I_R, B, Y, mu, fit_residual, value_diff)
 
     @jit
-    def _step_only_baseline(self, Im, weight, S, D, vals):
+    def _step_only_baseline(self, Im, weight, dark_weight, S, D, vals):
         k, I_R, B, Y, mu, fit_residual, value_diff = vals
         I_B = S[newax, ...] * B[:, newax, newax, newax] + D[newax, ...]
         I_R_new = _jshrinkage(Im - I_B + Y / mu, weight / mu)
@@ -321,9 +332,10 @@ class LadmapFit(BaseFit):
         return (k + 1, I_R, B, Y, mu, fit_residual, value_diff)
 
     def calc_weights(self, I_B, I_R):
-        return jnp.ones_like(I_R, dtype=jnp.float32) / (
+        Ws = jnp.ones_like(I_R, dtype=jnp.float32) / (
             jnp.abs(I_R / (I_B + self.epsilon)) + self.epsilon
         )
+        return Ws / jnp.mean(Ws)
 
     def calc_weights_baseline(self, I_B, I_R):
         return self.calc_weights(I_B, I_R)
@@ -342,6 +354,7 @@ class ApproximateFit(BaseFit):
         self,
         Im,
         weight,
+        dark_weight,
         vals,
     ):
         k, S, D_R, D_Z, I_R, B, Y, mu, fit_residual, value_diff = vals
@@ -424,7 +437,7 @@ class ApproximateFit(BaseFit):
         return (k + 1, S, D_R, D_Z, I_R, B, Y, mu, fit_residual, 0.0)
 
     @jit
-    def _step_only_baseline(self, Im, weight, S, D, vals):
+    def _step_only_baseline(self, Im, weight, dark_weight, S, D, vals):
         k, I_R, B, Y, mu, fit_residual, value_diff = vals
         Im = Im[:, 0, ...]
         weight = weight[:, 0, ...]

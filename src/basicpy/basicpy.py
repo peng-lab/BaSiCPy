@@ -340,23 +340,25 @@ class BaSiC(BaseModel):
             Im2 = Im
             Ws2 = Ws
 
-        mean_image = jnp.mean(Im2, axis=0)
-        mean_image = mean_image / jnp.mean(Im2)
-        mean_image_dct = JaxDCT.dct3d(mean_image.T)
-        self._lambda_flatfield = (
-            jnp.sum(jnp.abs(mean_image_dct)) * self.lambda_flatfield_coef
-        )
-
-        if self.fitting_mode == FittingMode.approximate:
+        if self.fitting == FittingMode.approximate:
+            mean_image = jnp.mean(Im2, axis=0)
+            mean_image = mean_image / jnp.mean(Im2)
+            mean_image_dct = JaxDCT.dct3d(mean_image.T)
+            self._lambda_flatfield = (
+                jnp.sum(jnp.abs(mean_image_dct)) * self.lambda_flatfield_coef
+            )
             self._lambda_flatfield = self._lambda_flatfield / 80000
 
-        self._lambda_darkfield = self._lambda_flatfield * self.lambda_darkfield_coef
-        self._lambda_darkfield_sparse = (
-            self._lambda_flatfield * self.lambda_darkfield_sparse_coef
-        )
-        if self.fitting_mode == FittingMode.approximate:
+            self._lambda_darkfield = self._lambda_flatfield * self.lambda_darkfield_coef
+            self._lambda_darkfield_sparse = (
+                self._lambda_flatfield * self.lambda_darkfield_sparse_coef
+            )
             self._lambda_darkfield = self._lambda_darkfield * 20
             self._lambda_darkfield_sparse = self._lambda_darkfield_sparse * 2000
+        else:
+            self._lambda_flatfield = 0  # XXX
+            self._lambda_darkfield = 0  # XXX
+            self._lambda_darkfield_sparse = 0  # XXX
 
         # spectral_norm = jnp.linalg.norm(Im.reshape((Im.shape[0], -1)), ord=2)
         if self.fitting_mode == FittingMode.ladmap:
@@ -387,6 +389,7 @@ class BaSiC(BaseModel):
 
         # Initialize variables
         W = jnp.ones_like(Im2, dtype=jnp.float32)
+        W_D = jnp.ones_like(Im2, dtype=jnp.float32)
         last_S = None
         last_D = None
         S = None
@@ -414,6 +417,7 @@ class BaSiC(BaseModel):
             S, D_R, D_Z, I_R, B, norm_ratio, converged = fitting_step.fit(
                 Im2,
                 W,
+                W_D,
                 S,
                 D_R,
                 D_Z,
@@ -435,8 +439,11 @@ class BaSiC(BaseModel):
             B = B * mean_S  # baseline
             I_B = B[:, newax, newax, newax] * S[newax, ...] + D[newax, ...]
             W = fitting_step.calc_weights(I_B, I_R) * Ws2
+            if self.fitting_mode == FittingMode.ladmap:
+                W_D = fitting_step.calc_weights(I_B, D_R) * Ws2
 
             self._weight = W
+            self._weight_residual = W_D
             self._residual = I_R
 
             logger.info(f"Iteration {i} finished.")
@@ -474,6 +481,7 @@ class BaSiC(BaseModel):
                 I_R, B, norm_ratio, converged = fitting_step.fit_baseline(
                     Im,
                     W,
+                    W_D,
                     S,
                     D,
                     B,
