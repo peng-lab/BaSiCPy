@@ -23,7 +23,6 @@ from jax.image import resize as jax_resize
 
 # FIXME change this to jax.xla.XlaRuntimeError
 # when https://github.com/google/jax/pull/10676 gets merged
-from jaxlib.xla_extension import XlaRuntimeError
 from pydantic import BaseModel, Field, PrivateAttr
 from skimage.transform import resize as skimage_resize
 
@@ -187,6 +186,7 @@ class BaSiC(BaseModel):
     _score: float = PrivateAttr(None)
     _reweight_score: float = PrivateAttr(None)
     _weight: float = PrivateAttr(None)
+    _weight_dark: float = PrivateAttr(None)
     _residual: float = PrivateAttr(None)
     _S: float = PrivateAttr(None)
     _B: float = PrivateAttr(None)
@@ -361,16 +361,8 @@ class BaSiC(BaseModel):
             self._lambda_darkfield_sparse = 0  # XXX
 
         # spectral_norm = jnp.linalg.norm(Im.reshape((Im.shape[0], -1)), ord=2)
-        if self.fitting_mode == FittingMode.ladmap:
-            try:
-                spectral_norm = jnp.linalg.norm(Im2.reshape((Im2.shape[0], -1)), ord=2)
-            except XlaRuntimeError:  # pragma: no cover
-                # RESOURCE_EXHAUSTED: Out of memory case
-                spectral_norm = np.linalg.norm(Im2.reshape((Im2.shape[0], -1)), ord=2)
-
-        else:
-            _temp = jnp.linalg.svd(Im2.reshape((Im2.shape[0], -1)), full_matrices=False)
-            spectral_norm = _temp[1][0]
+        _temp = jnp.linalg.svd(Im2.reshape((Im2.shape[0], -1)), full_matrices=False)
+        spectral_norm = _temp[1][0]
 
         init_mu = self.mu_coef / spectral_norm
         fit_params = self.dict()
@@ -443,7 +435,7 @@ class BaSiC(BaseModel):
                 W_D = fitting_step.calc_weights(I_B, D_R) * Ws2
 
             self._weight = W
-            self._weight_residual = W_D
+            self._weight_dark = W_D
             self._residual = I_R
 
             logger.info(f"Iteration {i} finished.")
