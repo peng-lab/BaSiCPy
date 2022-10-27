@@ -202,6 +202,7 @@ class BaSiC(BaseModel):
     class Config:
 
         arbitrary_types_allowed = True
+        extra = "forbid"
 
     def __init__(self, **kwargs) -> None:
         """Initialize BaSiC with the provided settings."""
@@ -345,8 +346,10 @@ class BaSiC(BaseModel):
         self._lambda_flatfield = (
             jnp.sum(jnp.abs(mean_image_dct)) * self.lambda_flatfield_coef
         )
+
         if self.fitting_mode == FittingMode.approximate:
             self._lambda_flatfield = self._lambda_flatfield / 80000
+
         self._lambda_darkfield = self._lambda_flatfield * self.lambda_darkfield_coef
         self._lambda_darkfield_sparse = (
             self._lambda_flatfield * self.lambda_darkfield_sparse_coef

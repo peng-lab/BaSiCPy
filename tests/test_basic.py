@@ -3,6 +3,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 from dask import array as da
+from pydantic import ValidationError
 from skimage.transform import resize
 
 from basicpy import BaSiC, datasets
@@ -231,10 +232,10 @@ def profiles():
 @pytest.fixture
 def model_path(tmp_path, profiles):
     settings_json = """\
-    {"epsilon": 0.2, "estimation_mode": "l0", "get_darkfield": false,
-    "lambda_darkfield": 0.0, "lambda_flatfield": 0.01, "max_iterations": 500,
+    {"epsilon": 0.2, "get_darkfield": false,
+    "lambda_darkfield_coef": 0.0, "lambda_flatfield_coef": 0.0, "max_iterations": 500,
     "max_reweight_iterations": 10, "optimization_tol": 1e-06, "reweighting_tol": 0.001,
-    "varying_coeff": true, "working_size": 128}
+    "working_size": 128}
     """
     with open(tmp_path / "settings.json", "w") as fp:
         fp.write(settings_json)
@@ -260,3 +261,8 @@ def test_basic_load_model(model_path: str, raises_error: bool, profiles: np.ndar
 
         # check that settings are not default
         assert basic.epsilon != BaSiC.__fields__["epsilon"].default
+
+
+def test_no_accepting_wrong_argments() -> None:
+    with pytest.raises(ValidationError):
+        _ = BaSiC(novalid=True)
