@@ -25,7 +25,6 @@ def tests(session: Session) -> None:
         "dask",
         "pytest",
         "pytest-benchmark",
-        "pytest-datafiles",
         "pytest-datadir",
         "pytest-cov",
         "xdoctest",

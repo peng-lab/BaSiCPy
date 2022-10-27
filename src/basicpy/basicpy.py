@@ -292,7 +292,7 @@ class BaSiC(BaseModel):
 
         Example:
             >>> from basicpy import BaSiC
-            >>> from basicpy import data as bdata
+            >>> from basicpy import datasets as bdata
             >>> images = bdata.wsi_brain()
             >>> basic = BaSiC()  # use default settings
             >>> basic.fit(images)
