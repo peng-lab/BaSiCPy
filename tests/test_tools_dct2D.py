@@ -1,7 +1,6 @@
 """Tests the 2D dct tools."""
 
 # from basicpy.tools import dct2d_tools
-import importlib
 
 import numpy as np
 import pytest
@@ -32,8 +31,8 @@ def test_dct_backends(backend):
     arr_forward_actual = dct2d(arr_input_2d)
     arr_reverse_actual = idct2d(arr_input_2d)
 
-    assert np.allclose(arr_forward_exp_2d, arr_forward_actual)
-    assert np.allclose(arr_reverse_exp_2d, arr_reverse_actual)
+    assert np.allclose(arr_forward_exp_2d, arr_forward_actual, rtol=2e-5, atol=1e-5)
+    assert np.allclose(arr_reverse_exp_2d, arr_reverse_actual, rtol=2e-5, atol=1e-5)
 
     dct3d = DCT_BACKENDS[backend].dct3d
     idct3d = DCT_BACKENDS[backend].idct3d
