@@ -356,9 +356,15 @@ class BaSiC(BaseModel):
             self._lambda_darkfield = self._lambda_darkfield * 20
             self._lambda_darkfield_sparse = self._lambda_darkfield_sparse * 2000
         else:
-            self._lambda_flatfield = 0  # XXX
-            self._lambda_darkfield = 0  # XXX
-            self._lambda_darkfield_sparse = 0  # XXX
+            self._lambda_flatfield = (
+                self.lambda_flatfield_coef
+            )  # * np.product(Im2.shape)
+            self._lambda_darkfield = self.lambda_darkfield_coef
+            self._lambda_darkfield_sparse = self.lambda_darkfield_sparse_coef
+
+        logger.info(f"lamba_flatfield set to {self._lambda_flatfield}")
+        logger.info(f"lamba_darkfield set to {self._lambda_darkfield}")
+        logger.info(f"lamba_darkfield_sparse set to {self._lambda_darkfield_sparse}")
 
         # spectral_norm = jnp.linalg.norm(Im.reshape((Im.shape[0], -1)), ord=2)
         _temp = jnp.linalg.svd(Im2.reshape((Im2.shape[0], -1)), full_matrices=False)
@@ -398,13 +404,13 @@ class BaSiC(BaseModel):
             if self.fitting_mode == FittingMode.approximate:
                 S = jnp.zeros(Im2.shape[1:], dtype=jnp.float32)
             else:
-                S = jnp.ones(Im2.shape[1:], dtype=jnp.float32)
+                S = jnp.median(Im2, axis=0)
             D_R = jnp.zeros(Im2.shape[1:], dtype=jnp.float32)
             D_Z = 0.0
             if self.fitting_mode == FittingMode.approximate:
                 B = jnp.ones(Im2.shape[0], dtype=jnp.float32)
             else:
-                B = jnp.mean(Im2, axis=(1, 2, 3))
+                B = jnp.ones(Im2.shape[0], dtype=jnp.float32)
             I_R = jnp.zeros(Im2.shape, dtype=jnp.float32)
             S, D_R, D_Z, I_R, B, norm_ratio, converged = fitting_step.fit(
                 Im2,
