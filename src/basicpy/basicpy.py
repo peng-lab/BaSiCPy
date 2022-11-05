@@ -370,7 +370,10 @@ class BaSiC(BaseModel):
         _temp = jnp.linalg.svd(Im2.reshape((Im2.shape[0], -1)), full_matrices=False)
         spectral_norm = _temp[1][0]
 
-        init_mu = self.mu_coef / spectral_norm
+        if self.fitting_mode == FittingMode.approximate:
+            init_mu = self.mu_coef / spectral_norm
+        else:
+            init_mu = self.mu_coef / spectral_norm / np.product(Im2.shape)
         fit_params = self.dict()
         fit_params.update(
             dict(

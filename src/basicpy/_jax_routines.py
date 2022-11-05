@@ -222,10 +222,10 @@ class LadmapFit(BaseFit):
         vals,
     ):
         k, S, D_R, D_Z, I_R, B, Y, mu, fit_residual, value_diff = vals
-        N = jnp.product(jnp.array(Im.shape))
+        N = Im.shape[0]  # jnp.product(jnp.array(Im.shape))
         M = jnp.product(jnp.array(Im.shape[1:]))
-        N = 1
-        M = 1
+        #        N = 1
+        #        M = 1
 
         I_B = S[newax, ...] * B[:, newax, newax, newax] + D_R[newax, ...] + D_Z
         eta_S = jnp.sum(B**2) * 1.02
