@@ -222,22 +222,17 @@ class LadmapFit(BaseFit):
         vals,
     ):
         k, S, D_R, D_Z, I_R, B, Y, mu, fit_residual, value_diff = vals
-        N = Im.shape[0]  # jnp.product(jnp.array(Im.shape))
-        M = jnp.product(jnp.array(Im.shape[1:]))
-        #        N = 1
-        #        M = 1
+        N = Im.shape[0]
 
         I_B = S[newax, ...] * B[:, newax, newax, newax] + D_R[newax, ...] + D_Z
-        eta_S = jnp.sum(B**2) * 1.02
+        eta_S = jnp.sum(B**2) * 1.02 + 0.01
         S_new = (
             S
             + jnp.sum(B[:, newax, newax, newax] * (Im - I_B - I_R + Y / mu), axis=0)
             / eta_S
         )
         S_new = idct3d(_jshrinkage(dct3d(S_new), self.lambda_flatfield / (eta_S * mu)))
-        #        mean_S = jnp.mean(S_new)
-        #        S_new = jnp.where(mean_S > 0, S_new / mean_S, S_new)
-        #        B = jnp.where(mean_S > 0, B * mean_S, B)
+        S_new = jnp.where(S_new.min() < 0, S_new - S_new.min(), S_new)
         dS = S_new - S
         S = S_new
 
@@ -273,9 +268,7 @@ class LadmapFit(BaseFit):
             D_R_new = idct3d(
                 _jshrinkage(dct3d(D_R_new), self.lambda_darkfield / eta_D / mu)
             )
-            D_R_new = _jshrinkage(
-                D_R_new, self.lambda_darkfield_sparse / eta_D / mu / M
-            )
+            D_R_new = _jshrinkage(D_R_new, self.lambda_darkfield_sparse / eta_D / mu)
             dD_R = D_R_new - D_R
             D_R = D_R_new
 

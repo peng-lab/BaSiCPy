@@ -116,19 +116,13 @@ class BaSiC(BaseModel):
         description="When True, will estimate the darkfield shading component.",
     )
     lambda_flatfield_coef: float = Field(
-        100,
-        description="Weight of the flatfield term in the Lagrangian."
-        + "When fitting_mode='approximate', multiplied by 1 / 80000",
+        1.0, description="Weight of the flatfield term in the Lagrangian."
     )
     lambda_darkfield_coef: float = Field(
-        0.01,
-        description="Relative weight of the darkfield term in the Lagrangian."
-        + "When fitting_mode='approximate', multiplied by 20",
+        1.0, description="Weight of the darkfield term in the Lagrangian."
     )
     lambda_darkfield_sparse_coef: float = Field(
-        0.0001,
-        description="Relative weight of the darkfield sparse term in the Lagrangian."
-        + "When fitting_mode='approximate', multiplied by 2000",
+        0.01, description="Weight of the darkfield sparse term in the Lagrangian."
     )
     max_iterations: int = Field(
         500,
@@ -153,11 +147,11 @@ class BaSiC(BaseModel):
         1e7, description="Maximum allowed value of mu, divided by the initial value."
     )
     optimization_tol: float = Field(
-        1e-6,
+        1e-3,
         description="Optimization tolerance.",
     )
     optimization_tol_diff: float = Field(
-        1e-3,
+        1e-2,
         description="Optimization tolerance for update diff.",
     )
     resize_mode: ResizeMode = Field(
@@ -345,20 +339,16 @@ class BaSiC(BaseModel):
             mean_image = mean_image / jnp.mean(Im2)
             mean_image_dct = JaxDCT.dct3d(mean_image.T)
             self._lambda_flatfield = (
-                jnp.sum(jnp.abs(mean_image_dct)) * self.lambda_flatfield_coef
+                jnp.sum(jnp.abs(mean_image_dct)) / 800 * self.lambda_flatfield_coef
             )
-            self._lambda_flatfield = self._lambda_flatfield / 80000
-
-            self._lambda_darkfield = self._lambda_flatfield * self.lambda_darkfield_coef
+            self._lambda_darkfield = (
+                self._lambda_flatfield * self.lambda_darkfield_coef / 2.5
+            )
             self._lambda_darkfield_sparse = (
-                self._lambda_flatfield * self.lambda_darkfield_sparse_coef
+                self._lambda_flatfield * self.lambda_darkfield_sparse_coef / 2.5 * 100
             )
-            self._lambda_darkfield = self._lambda_darkfield * 20
-            self._lambda_darkfield_sparse = self._lambda_darkfield_sparse * 2000
         else:
-            self._lambda_flatfield = (
-                self.lambda_flatfield_coef
-            )  # * np.product(Im2.shape)
+            self._lambda_flatfield = self.lambda_flatfield_coef
             self._lambda_darkfield = self.lambda_darkfield_coef
             self._lambda_darkfield_sparse = self.lambda_darkfield_sparse_coef
 
@@ -430,6 +420,11 @@ class BaSiC(BaseModel):
             self._score = norm_ratio
             if not converged:
                 logger.warning("single-step optimization did not converge.")
+            if S.max() == 0:
+                logger.error("S is zero. Please try to increase lambda_darkfield_coef.")
+                raise RuntimeError(
+                    "S is zero. Please try to increase lambda_darkfield_coef."
+                )
             self._S = S
             self._D_R = D_R
             self._B = B
