@@ -78,15 +78,19 @@ def test_basic_resize(synthesized_test_data, resize_mode):
 # Test BaSiC fitting function (with synthetic data)
 def test_basic_fit_synthetic(synthesized_test_data):
 
-    basic = BaSiC(get_darkfield=False, lambda_flatfield_coef=10)
+    basic = BaSiC(get_darkfield=False, lambda_flatfield_coef=1)
 
     gradient, images, truth = synthesized_test_data
 
     """Fit with BaSiC"""
     basic.fit(images)
 
+    flatfield = basic.flatfield.copy()
     assert np.max(np.abs(basic.flatfield - truth)) < SYNTHETIC_TEST_DATA_MAX_ERROR
     assert np.array_equal(basic.flatfield.shape, images.shape[1:])
+
+    basic.fit(images * 100)
+    assert np.allclose(flatfield, basic.flatfield, rtol=1e-3, atol=1e-3)
 
     """
     code for debug plotting :
