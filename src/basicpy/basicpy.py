@@ -380,7 +380,7 @@ class BaSiC(BaseModel):
 
         # Initialize variables
         W = jnp.ones_like(Im2, dtype=jnp.float32)
-        W_D = jnp.ones_like(Im2, dtype=jnp.float32)
+        W_D = jnp.ones(Im2.shape[1:], dtype=jnp.float32)
         last_S = None
         last_D = None
         S = None
@@ -435,8 +435,7 @@ class BaSiC(BaseModel):
             B = B * mean_S  # baseline
             I_B = B[:, newax, newax, newax] * S[newax, ...] + D[newax, ...]
             W = fitting_step.calc_weights(I_B, I_R) * Ws2
-            if self.fitting_mode == FittingMode.ladmap:
-                W_D = fitting_step.calc_weights(I_B, D_R) * Ws2
+            W_D = fitting_step.calc_dark_weights(D_R)
 
             self._weight = W
             self._weight_dark = W_D
@@ -477,7 +476,6 @@ class BaSiC(BaseModel):
                 I_R, B, norm_ratio, converged = fitting_step.fit_baseline(
                     Im,
                     W,
-                    W_D,
                     S,
                     D,
                     B,

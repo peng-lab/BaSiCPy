@@ -120,7 +120,6 @@ class BaseFit(BaseModel):
         self,
         Im,
         W,
-        W_D,
         S,
         D,
         B,
@@ -137,7 +136,6 @@ class BaseFit(BaseModel):
             self._step_only_baseline,
             Im,
             W,
-            W_D,
             S,
             D,
         )
@@ -172,15 +170,17 @@ class BaseFit(BaseModel):
             raise ValueError("I_R must have the same shape as images.shape")
         if W.shape != Im.shape:
             raise ValueError("weight must have the same shape as images.shape")
-        if W_D.shape != Im.shape:
-            raise ValueError("residual weight must have the same shape as images.shape")
+        if W_D.shape != Im.shape[1:]:
+            print(W_D.shape)
+            raise ValueError(
+                "darkfield weight must have the same shape as images.shape[1:]"
+            )
         return self._fit_jit(Im, W, W_D, S, D_R, D_Z, B, I_R)
 
     def fit_baseline(
         self,
         Im,
         W,
-        W_D,
         S,
         D,
         B,
@@ -196,9 +196,7 @@ class BaseFit(BaseModel):
             raise ValueError("I_R must have the same shape as images.shape")
         if W.shape != Im.shape:
             raise ValueError("weight must have the same shape as images.shape")
-        if W.shape != Im.shape:
-            raise ValueError("residual weight must have the same shape as images.shape")
-        return self._fit_baseline_jit(Im, W, W_D, S, D, B, I_R)
+        return self._fit_baseline_jit(Im, W, S, D, B, I_R)
 
     def tree_flatten(self):
         # all of the fields are treated as "static" values for JAX
@@ -268,7 +266,9 @@ class LadmapFit(BaseFit):
             D_R_new = idct3d(
                 _jshrinkage(dct3d(D_R_new), self.lambda_darkfield / eta_D / mu)
             )
-            D_R_new = _jshrinkage(D_R_new, self.lambda_darkfield_sparse / eta_D / mu)
+            D_R_new = _jshrinkage(
+                D_R_new, self.lambda_darkfield_sparse * dark_weight / eta_D / mu
+            )
             dD_R = D_R_new - D_R
             D_R = D_R_new
 
@@ -304,7 +304,7 @@ class LadmapFit(BaseFit):
         return (k + 1, S, D_R, D_Z, I_R, B, Y, mu, fit_residual, value_diff)
 
     @jit
-    def _step_only_baseline(self, Im, weight, dark_weight, S, D, vals):
+    def _step_only_baseline(self, Im, weight, S, D, vals):
         k, I_R, B, Y, mu, fit_residual, value_diff = vals
         N = jnp.product(jnp.array(Im.shape))
 
@@ -342,6 +342,10 @@ class LadmapFit(BaseFit):
         Ws = jnp.ones_like(I_R, dtype=jnp.float32) / (
             jnp.abs(I_R / (I_B + self.epsilon)) + self.epsilon
         )
+        return Ws / jnp.mean(Ws)
+
+    def calc_dark_weights(self, D_R):
+        Ws = np.ones_like(D_R, dtype=jnp.float32) / (jnp.abs(D_R) + self.epsilon)
         return Ws / jnp.mean(Ws)
 
     def calc_weights_baseline(self, I_B, I_R):
@@ -444,7 +448,7 @@ class ApproximateFit(BaseFit):
         return (k + 1, S, D_R, D_Z, I_R, B, Y, mu, fit_residual, 0.0)
 
     @jit
-    def _step_only_baseline(self, Im, weight, dark_weight, S, D, vals):
+    def _step_only_baseline(self, Im, weight, S, D, vals):
         k, I_R, B, Y, mu, fit_residual, value_diff = vals
         Im = Im[:, 0, ...]
         weight = weight[:, 0, ...]
@@ -482,6 +486,9 @@ class ApproximateFit(BaseFit):
         weight = jnp.ones_like(I_R) / (jnp.abs(XE_norm) + self.epsilon)
         weight = weight / jnp.mean(weight)
         return weight[:, newax, ...]
+
+    def calc_dark_weights(self, D_R):
+        return jnp.ones_like(D_R)
 
     def calc_weights_baseline(self, I_B, I_R):
         I_B = I_B[:, 0, ...]
