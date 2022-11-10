@@ -219,7 +219,7 @@ class LadmapFit(BaseFit):
         vals,
     ):
         k, S, D_R, D_Z, I_R, B, Y, mu, fit_residual, value_diff = vals
-        N = Im.shape[0]
+        T_max = Im.shape[0]
 
         I_B = S[newax, ...] * B[:, newax, newax, newax] + D_R[newax, ...] + D_Z
         eta_S = jnp.sum(B**2) * 1.02 + 0.01
@@ -234,7 +234,7 @@ class LadmapFit(BaseFit):
         S = S_new
 
         I_B = S[newax, ...] * B[:, newax, newax, newax] + D_R[newax, ...] + D_Z
-        I_R_new = _jshrinkage(Im - I_B + Y / mu, weight / mu / N)
+        I_R_new = _jshrinkage(Im - I_B + Y / mu, weight / mu / T_max)
         dI_R = I_R_new - I_R
         I_R = I_R_new
 
@@ -305,10 +305,10 @@ class LadmapFit(BaseFit):
     @jit
     def _step_only_baseline(self, Im, weight, S, D, vals):
         k, I_R, B, Y, mu, fit_residual, value_diff = vals
-        N = jnp.product(jnp.array(Im.shape))
+        T_max = Im.shape[0]
 
         I_B = S[newax, ...] * B[:, newax, newax, newax] + D[newax, ...]
-        I_R_new = _jshrinkage(Im - I_B + Y / mu, weight / mu / N)
+        I_R_new = _jshrinkage(Im - I_B + Y / mu, weight / mu / T_max)
         dI_R = I_R_new - I_R
         I_R = I_R_new
 
