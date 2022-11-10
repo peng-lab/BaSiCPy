@@ -93,6 +93,7 @@ def test_basic_fit_synthetic(synthesized_test_data):
     assert np.allclose(flatfield, basic.flatfield, rtol=1e-3, atol=1e-3)
 
     """
+    from matplotlib import pyplot as plt
     code for debug plotting :
     plt.figure(figsize=(15,5)) ;
     plt.subplot(131) ; plt.imshow(truth) ;plt.title("truth") ;
