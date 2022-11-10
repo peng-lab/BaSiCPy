@@ -171,7 +171,6 @@ class BaseFit(BaseModel):
         if W.shape != Im.shape:
             raise ValueError("weight must have the same shape as images.shape")
         if W_D.shape != Im.shape[1:]:
-            print(W_D.shape)
             raise ValueError(
                 "darkfield weight must have the same shape as images.shape[1:]"
             )
