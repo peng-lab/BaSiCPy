@@ -115,13 +115,13 @@ class BaSiC(BaseModel):
         False,
         description="When True, will estimate the darkfield shading component.",
     )
-    smoothness_flatfield_coef: float = Field(
+    smoothness_flatfield: float = Field(
         1.0, description="Weight of the flatfield term in the Lagrangian."
     )
-    smoothness_darkfield_coef: float = Field(
+    smoothness_darkfield: float = Field(
         1.0, description="Weight of the darkfield term in the Lagrangian."
     )
-    sparse_cost_darkfield_coef: float = Field(
+    sparse_cost_darkfield: float = Field(
         0.01, description="Weight of the darkfield sparse term in the Lagrangian."
     )
     max_iterations: int = Field(
@@ -339,18 +339,18 @@ class BaSiC(BaseModel):
             mean_image = mean_image / jnp.mean(Im2)
             mean_image_dct = JaxDCT.dct3d(mean_image.T)
             self._smoothness_flatfield = (
-                jnp.sum(jnp.abs(mean_image_dct)) / 800 * self.smoothness_flatfield_coef
+                jnp.sum(jnp.abs(mean_image_dct)) / 800 * self.smoothness_flatfield
             )
             self._smoothness_darkfield = (
-                self._smoothness_flatfield * self.smoothness_darkfield_coef / 2.5
+                self._smoothness_flatfield * self.smoothness_darkfield / 2.5
             )
             self._sparse_cost_darkfield = (
-                self._smoothness_flatfield * self.sparse_cost_darkfield_coef / 2.5 * 100
+                self._smoothness_flatfield * self.sparse_cost_darkfield / 2.5 * 100
             )
         else:
-            self._smoothness_flatfield = self.smoothness_flatfield_coef
-            self._smoothness_darkfield = self.smoothness_darkfield_coef
-            self._sparse_cost_darkfield = self.sparse_cost_darkfield_coef
+            self._smoothness_flatfield = self.smoothness_flatfield
+            self._smoothness_darkfield = self.smoothness_darkfield
+            self._sparse_cost_darkfield = self.sparse_cost_darkfield
 
         logger.info(f"lamba_flatfield set to {self._smoothness_flatfield}")
         logger.info(f"lamba_darkfield set to {self._smoothness_darkfield}")
@@ -421,11 +421,9 @@ class BaSiC(BaseModel):
             if not converged:
                 logger.warning("single-step optimization did not converge.")
             if S.max() == 0:
-                logger.error(
-                    "S is zero. Please try to increase smoothness_darkfield_coef."
-                )
+                logger.error("S is zero. Please try to increase smoothness_darkfield.")
                 raise RuntimeError(
-                    "S is zero. Please try to increase smoothness_darkfield_coef."
+                    "S is zero. Please try to increase smoothness_darkfield."
                 )
             self._S = S
             self._D_R = D_R
