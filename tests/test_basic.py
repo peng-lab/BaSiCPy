@@ -78,7 +78,7 @@ def test_basic_resize(synthesized_test_data, resize_mode):
 # Test BaSiC fitting function (with synthetic data)
 def test_basic_fit_synthetic(synthesized_test_data):
 
-    basic = BaSiC(get_darkfield=False, lambda_flatfield_coef=1)
+    basic = BaSiC(get_darkfield=False, smoothness_flatfield_coef=1)
 
     gradient, images, truth = synthesized_test_data
 
@@ -238,7 +238,7 @@ def profiles():
 def model_path(tmp_path, profiles):
     settings_json = """\
     {"epsilon": 0.2, "get_darkfield": false,
-    "lambda_darkfield_coef": 0.0, "lambda_flatfield_coef": 0.0, "max_iterations": 500,
+    "smoothness_darkfield_coef": 0.0, "smoothness_flatfield_coef": 0.0, "max_iterations": 500,
     "max_reweight_iterations": 10, "optimization_tol": 1e-06, "reweighting_tol": 0.001,
     "working_size": 128}
     """
