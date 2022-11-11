@@ -23,7 +23,6 @@ from jax.image import resize as jax_resize
 
 # FIXME change this to jax.xla.XlaRuntimeError
 # when https://github.com/google/jax/pull/10676 gets merged
-from jaxlib.xla_extension import XlaRuntimeError
 from pydantic import BaseModel, Field, PrivateAttr
 from skimage.transform import resize as skimage_resize
 
@@ -116,20 +115,14 @@ class BaSiC(BaseModel):
         False,
         description="When True, will estimate the darkfield shading component.",
     )
-    lambda_flatfield_coef: float = Field(
-        100,
-        description="Weight of the flatfield term in the Lagrangian."
-        + "When fitting_mode='approximate', multiplied by 1 / 80000",
+    smoothness_flatfield: float = Field(
+        1.0, description="Weight of the flatfield term in the Lagrangian."
     )
-    lambda_darkfield_coef: float = Field(
-        0.01,
-        description="Relative weight of the darkfield term in the Lagrangian."
-        + "When fitting_mode='approximate', multiplied by 20",
+    smoothness_darkfield: float = Field(
+        1.0, description="Weight of the darkfield term in the Lagrangian."
     )
-    lambda_darkfield_sparse_coef: float = Field(
-        0.0001,
-        description="Relative weight of the darkfield sparse term in the Lagrangian."
-        + "When fitting_mode='approximate', multiplied by 2000",
+    sparse_cost_darkfield: float = Field(
+        0.01, description="Weight of the darkfield sparse term in the Lagrangian."
     )
     max_iterations: int = Field(
         500,
@@ -154,11 +147,11 @@ class BaSiC(BaseModel):
         1e7, description="Maximum allowed value of mu, divided by the initial value."
     )
     optimization_tol: float = Field(
-        1e-6,
+        1e-3,
         description="Optimization tolerance.",
     )
     optimization_tol_diff: float = Field(
-        1e-3,
+        1e-2,
         description="Optimization tolerance for update diff.",
     )
     resize_mode: ResizeMode = Field(
@@ -187,14 +180,15 @@ class BaSiC(BaseModel):
     _score: float = PrivateAttr(None)
     _reweight_score: float = PrivateAttr(None)
     _weight: float = PrivateAttr(None)
+    _weight_dark: float = PrivateAttr(None)
     _residual: float = PrivateAttr(None)
     _S: float = PrivateAttr(None)
     _B: float = PrivateAttr(None)
     _D_R: float = PrivateAttr(None)
     _D_Z: float = PrivateAttr(None)
-    _lambda_flatfield: float = PrivateAttr(None)
-    _lambda_darkfield: float = PrivateAttr(None)
-    _lambda_darkfield_sparse: float = PrivateAttr(None)
+    _smoothness_flatfield: float = PrivateAttr(None)
+    _smoothness_darkfield: float = PrivateAttr(None)
+    _sparse_cost_darkfield: float = PrivateAttr(None)
 
     _settings_fname = "settings.json"
     _profiles_fname = "profiles.npy"
@@ -202,6 +196,7 @@ class BaSiC(BaseModel):
     class Config:
 
         arbitrary_types_allowed = True
+        extra = "forbid"
 
     def __init__(self, **kwargs) -> None:
         """Initialize BaSiC with the provided settings."""
@@ -292,7 +287,7 @@ class BaSiC(BaseModel):
 
         Example:
             >>> from basicpy import BaSiC
-            >>> from basicpy import data as bdata
+            >>> from basicpy import datasets as bdata
             >>> images = bdata.wsi_brain()
             >>> basic = BaSiC()  # use default settings
             >>> basic.fit(images)
@@ -339,41 +334,42 @@ class BaSiC(BaseModel):
             Im2 = Im
             Ws2 = Ws
 
-        mean_image = jnp.mean(Im2, axis=0)
-        mean_image = mean_image / jnp.mean(Im2)
-        mean_image_dct = JaxDCT.dct3d(mean_image.T)
-        self._lambda_flatfield = (
-            jnp.sum(jnp.abs(mean_image_dct)) * self.lambda_flatfield_coef
-        )
         if self.fitting_mode == FittingMode.approximate:
-            self._lambda_flatfield = self._lambda_flatfield / 80000
-        self._lambda_darkfield = self._lambda_flatfield * self.lambda_darkfield_coef
-        self._lambda_darkfield_sparse = (
-            self._lambda_flatfield * self.lambda_darkfield_sparse_coef
-        )
-        if self.fitting_mode == FittingMode.approximate:
-            self._lambda_darkfield = self._lambda_darkfield * 20
-            self._lambda_darkfield_sparse = self._lambda_darkfield_sparse * 2000
+            mean_image = jnp.mean(Im2, axis=0)
+            mean_image = mean_image / jnp.mean(Im2)
+            mean_image_dct = JaxDCT.dct3d(mean_image.T)
+            self._smoothness_flatfield = (
+                jnp.sum(jnp.abs(mean_image_dct)) / 800 * self.smoothness_flatfield
+            )
+            self._smoothness_darkfield = (
+                self._smoothness_flatfield * self.smoothness_darkfield / 2.5
+            )
+            self._sparse_cost_darkfield = (
+                self._smoothness_flatfield * self.sparse_cost_darkfield / 2.5 * 100
+            )
+        else:
+            self._smoothness_flatfield = self.smoothness_flatfield
+            self._smoothness_darkfield = self.smoothness_darkfield
+            self._sparse_cost_darkfield = self.sparse_cost_darkfield
+
+        logger.info(f"lamba_flatfield set to {self._smoothness_flatfield}")
+        logger.info(f"lamba_darkfield set to {self._smoothness_darkfield}")
+        logger.info(f"lamba_darkfield_sparse set to {self._sparse_cost_darkfield}")
 
         # spectral_norm = jnp.linalg.norm(Im.reshape((Im.shape[0], -1)), ord=2)
-        if self.fitting_mode == FittingMode.ladmap:
-            try:
-                spectral_norm = jnp.linalg.norm(Im2.reshape((Im2.shape[0], -1)), ord=2)
-            except XlaRuntimeError:  # pragma: no cover
-                # RESOURCE_EXHAUSTED: Out of memory case
-                spectral_norm = np.linalg.norm(Im2.reshape((Im2.shape[0], -1)), ord=2)
+        _temp = jnp.linalg.svd(Im2.reshape((Im2.shape[0], -1)), full_matrices=False)
+        spectral_norm = _temp[1][0]
 
+        if self.fitting_mode == FittingMode.approximate:
+            init_mu = self.mu_coef / spectral_norm
         else:
-            _temp = jnp.linalg.svd(Im2.reshape((Im2.shape[0], -1)), full_matrices=False)
-            spectral_norm = _temp[1][0]
-
-        init_mu = self.mu_coef / spectral_norm
+            init_mu = self.mu_coef / spectral_norm / np.product(Im2.shape)
         fit_params = self.dict()
         fit_params.update(
             dict(
-                lambda_flatfield=self._lambda_flatfield,
-                lambda_darkfield=self._lambda_darkfield,
-                lambda_darkfield_sparse=self._lambda_darkfield_sparse,
+                smoothness_flatfield=self._smoothness_flatfield,
+                smoothness_darkfield=self._smoothness_darkfield,
+                sparse_cost_darkfield=self._sparse_cost_darkfield,
                 # matrix 2-norm (largest sing. value)
                 init_mu=init_mu,
                 max_mu=init_mu * self.max_mu_coef,
@@ -384,6 +380,7 @@ class BaSiC(BaseModel):
 
         # Initialize variables
         W = jnp.ones_like(Im2, dtype=jnp.float32)
+        W_D = jnp.ones(Im2.shape[1:], dtype=jnp.float32)
         last_S = None
         last_D = None
         S = None
@@ -400,17 +397,18 @@ class BaSiC(BaseModel):
             if self.fitting_mode == FittingMode.approximate:
                 S = jnp.zeros(Im2.shape[1:], dtype=jnp.float32)
             else:
-                S = jnp.ones(Im2.shape[1:], dtype=jnp.float32)
+                S = jnp.median(Im2, axis=0)
             D_R = jnp.zeros(Im2.shape[1:], dtype=jnp.float32)
             D_Z = 0.0
             if self.fitting_mode == FittingMode.approximate:
                 B = jnp.ones(Im2.shape[0], dtype=jnp.float32)
             else:
-                B = jnp.mean(Im2, axis=(1, 2, 3))
+                B = jnp.ones(Im2.shape[0], dtype=jnp.float32)
             I_R = jnp.zeros(Im2.shape, dtype=jnp.float32)
             S, D_R, D_Z, I_R, B, norm_ratio, converged = fitting_step.fit(
                 Im2,
                 W,
+                W_D,
                 S,
                 D_R,
                 D_Z,
@@ -422,6 +420,11 @@ class BaSiC(BaseModel):
             self._score = norm_ratio
             if not converged:
                 logger.warning("single-step optimization did not converge.")
+            if S.max() == 0:
+                logger.error("S is zero. Please try to increase smoothness_darkfield.")
+                raise RuntimeError(
+                    "S is zero. Please try to increase smoothness_darkfield."
+                )
             self._S = S
             self._D_R = D_R
             self._B = B
@@ -432,8 +435,10 @@ class BaSiC(BaseModel):
             B = B * mean_S  # baseline
             I_B = B[:, newax, newax, newax] * S[newax, ...] + D[newax, ...]
             W = fitting_step.calc_weights(I_B, I_R) * Ws2
+            W_D = fitting_step.calc_dark_weights(D_R)
 
             self._weight = W
+            self._weight_dark = W_D
             self._residual = I_R
 
             logger.info(f"Iteration {i} finished.")

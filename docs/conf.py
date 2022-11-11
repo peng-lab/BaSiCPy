@@ -12,7 +12,6 @@
 #
 import os
 import sys
-from pathlib import Path
 
 sys.path.insert(0, os.path.abspath("."))
 
@@ -20,8 +19,8 @@ sys.path.insert(0, os.path.abspath("."))
 # -- Project information -----------------------------------------------------
 
 project = "BaSiCPy"
-copyright = "2022, -"
-author = "-"
+copyright = "2022, BaSiCPy collaboration"
+author = "BaSiCPy collaboration"
 
 # The full version, including alpha/beta/rc tags
 

@@ -3,14 +3,14 @@ from pathlib import Path
 import numpy as np
 import pytest
 from dask import array as da
+from pydantic import ValidationError
 from skimage.transform import resize
 
-from basicpy import BaSiC
+from basicpy import BaSiC, datasets
 
 # allowed max error for the synthetic test data prediction
 SYNTHETIC_TEST_DATA_MAX_ERROR = 0.35
 EXPERIMENTAL_TEST_DATA_COUNT = 10
-DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 
 
 @pytest.fixture(params=[2, 3])  # param is dimension
@@ -78,17 +78,22 @@ def test_basic_resize(synthesized_test_data, resize_mode):
 # Test BaSiC fitting function (with synthetic data)
 def test_basic_fit_synthetic(synthesized_test_data):
 
-    basic = BaSiC(get_darkfield=False, lambda_flatfield_coef=10)
+    basic = BaSiC(get_darkfield=False, smoothness_flatfield=1)
 
     gradient, images, truth = synthesized_test_data
 
     """Fit with BaSiC"""
     basic.fit(images)
 
+    flatfield = basic.flatfield.copy()
     assert np.max(np.abs(basic.flatfield - truth)) < SYNTHETIC_TEST_DATA_MAX_ERROR
     assert np.array_equal(basic.flatfield.shape, images.shape[1:])
 
+    basic.fit(images * 100)
+    assert np.allclose(flatfield, basic.flatfield, rtol=1e-3, atol=1e-3)
+
     """
+    from matplotlib import pyplot as plt
     code for debug plotting :
     plt.figure(figsize=(15,5)) ;
     plt.subplot(131) ; plt.imshow(truth) ;plt.title("truth") ;
@@ -102,14 +107,7 @@ def test_basic_fit_synthetic(synthesized_test_data):
 
 
 # Test BaSiC fitting function (with experimental data)
-@pytest.mark.datafiles(
-    DATA_DIR / "cell_culture.npz",
-    DATA_DIR / "timelapse_brightfield.npz",
-    DATA_DIR / "timelapse_nanog.npz",
-    DATA_DIR / "timelapse_pu1.npz",
-    DATA_DIR / "wsi_brain.npz",
-)
-def test_basic_fit_experimental(datadir, datafiles):
+def test_basic_fit_experimental(datadir):
 
     # not sure if it is a good practice
     fit_results = list(datadir.glob("*.npz"))
@@ -125,11 +123,7 @@ def test_basic_fit_experimental(datadir, datafiles):
         image_name = d["image_name"]
         params = d["params"]
         basic = BaSiC(**params)
-        images_path = [
-            f for f in datafiles.listdir() if f.basename == image_name + ".npz"
-        ]
-        assert len(images_path) == 1
-        images = np.load(str(images_path[0]))["images"]
+        images = datasets.fetch(image_name, original=False)
         basic.fit(images)
         assert np.all(np.isclose(basic.flatfield, d["flatfield"], atol=0.05, rtol=0.05))
         tol = 0.2
@@ -243,10 +237,10 @@ def profiles():
 @pytest.fixture
 def model_path(tmp_path, profiles):
     settings_json = """\
-    {"epsilon": 0.2, "estimation_mode": "l0", "get_darkfield": false,
-    "lambda_darkfield": 0.0, "lambda_flatfield": 0.01, "max_iterations": 500,
+    {"epsilon": 0.2, "get_darkfield": false,
+    "smoothness_darkfield": 0.0, "smoothness_flatfield": 0.0, "max_iterations": 500,
     "max_reweight_iterations": 10, "optimization_tol": 1e-06, "reweighting_tol": 0.001,
-    "varying_coeff": true, "working_size": 128}
+    "working_size": 128}
     """
     with open(tmp_path / "settings.json", "w") as fp:
         fp.write(settings_json)
@@ -272,3 +266,8 @@ def test_basic_load_model(model_path: str, raises_error: bool, profiles: np.ndar
 
         # check that settings are not default
         assert basic.epsilon != BaSiC.__fields__["epsilon"].default
+
+
+def test_no_accepting_wrong_argments() -> None:
+    with pytest.raises(ValidationError):
+        _ = BaSiC(novalid=True)
