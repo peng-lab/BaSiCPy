@@ -1,8 +1,7 @@
 """Utilities to support BaSiC."""
 
-from .dct_tools import dct2d, idct2d
+from basicpy.tools import dct_tools
 
 __all__ = [
-    "dct2d",
-    "idct2d",
+    "dct_tools",
 ]
