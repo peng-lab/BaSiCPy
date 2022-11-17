@@ -352,9 +352,9 @@ class BaSiC(BaseModel):
             self._smoothness_darkfield = self.smoothness_darkfield
             self._sparse_cost_darkfield = self.sparse_cost_darkfield
 
-        logger.info(f"lamba_flatfield set to {self._smoothness_flatfield}")
-        logger.info(f"lamba_darkfield set to {self._smoothness_darkfield}")
-        logger.info(f"lamba_darkfield_sparse set to {self._sparse_cost_darkfield}")
+        logger.info(f"_smoothness_flatfield set to {self._smoothness_flatfield}")
+        logger.info(f"_smoothness_darkfield set to {self._smoothness_darkfield}")
+        logger.info(f"_sparse_cost_darkfield set to {self._sparse_cost_darkfield}")
 
         # spectral_norm = jnp.linalg.norm(Im.reshape((Im.shape[0], -1)), ord=2)
         _temp = jnp.linalg.svd(Im2.reshape((Im2.shape[0], -1)), full_matrices=False)
