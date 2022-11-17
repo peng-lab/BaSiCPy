@@ -53,3 +53,18 @@ def docs(session: Session) -> None:
         shutil.rmtree(build_dir)
 
     session.run("sphinx-autobuild", *args)
+
+
+@session(name="docs-build", python=python_versions[0])
+def docs_build(session: Session) -> None:
+    """Build the documentation."""
+    args = session.posargs or ["docs", "docs/_build"]
+    session.install("-e", ".")
+    session.install("-r", "docs/requirements.txt")
+    session.install("sphinx", "sphinx-autobuild")
+
+    build_dir = Path("docs", "_build")
+    if build_dir.exists():
+        shutil.rmtree(build_dir)
+
+    session.run("sphinx-build", *args)
