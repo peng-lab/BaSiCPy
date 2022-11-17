@@ -59,7 +59,7 @@ def docs(session: Session) -> None:
 def docs_build(session: Session) -> None:
     """Build the documentation."""
     args = session.posargs or ["docs", "docs/_build"]
-    session.install("-e", ".")
+    session.install(".")
     session.install("-r", "docs/requirements.txt")
     session.install("sphinx", "sphinx-autobuild")
 
