@@ -36,15 +36,15 @@ class BaseFit(BaseModel):
         1e-6,
         description="Optimization tolerance for update diff.",
     )
-    lambda_darkfield: float = Field(
+    smoothness_darkfield: float = Field(
         0.0,
         description="Darkfield smoothness weight for sparse reguralization.",
     )
-    lambda_darkfield_sparse: float = Field(
+    sparse_cost_darkfield: float = Field(
         0.0,
         description="Darkfield sparseness weight for sparse reguralization.",
     )
-    lambda_flatfield: float = Field(
+    smoothness_flatfield: float = Field(
         0.0,
         description="Flatfield smoothness weight for sparse reguralization.",
     )
@@ -228,7 +228,9 @@ class LadmapFit(BaseFit):
             + jnp.sum(B[:, newax, newax, newax] * (Im - I_B - I_R + Y / mu), axis=0)
             / eta_S
         )
-        S_new = idct3d(_jshrinkage(dct3d(S_new), self.lambda_flatfield / (eta_S * mu)))
+        S_new = idct3d(
+            _jshrinkage(dct3d(S_new), self.smoothness_flatfield / (eta_S * mu))
+        )
         S_new = jnp.where(S_new.min() < 0, S_new - S_new.min(), S_new)
         dS = S_new - S
         S = S_new
@@ -263,10 +265,10 @@ class LadmapFit(BaseFit):
                 Im - BS - D_R[newax, ...] - D_Z - I_R + Y / mu, axis=0
             )
             D_R_new = idct3d(
-                _jshrinkage(dct3d(D_R_new), self.lambda_darkfield / eta_D / mu)
+                _jshrinkage(dct3d(D_R_new), self.smoothness_darkfield / eta_D / mu)
             )
             D_R_new = _jshrinkage(
-                D_R_new, self.lambda_darkfield_sparse * dark_weight / eta_D / mu
+                D_R_new, self.sparse_cost_darkfield * dark_weight / eta_D / mu
             )
             dD_R = D_R_new - D_R
             D_R = D_R_new
@@ -385,7 +387,7 @@ class ApproximateFit(BaseFit):
         #    print(type(temp_W))
         temp_W = jnp.mean(temp_W, axis=0)
         S_hat = S_hat + dct2d(temp_W)
-        S_hat = _jshrinkage(S_hat, self.lambda_flatfield / (self._ent1 * mu))
+        S_hat = _jshrinkage(S_hat, self.smoothness_flatfield / (self._ent1 * mu))
         S = idct2d(S_hat)
         I_B = S[newax, ...] * B[:, newax, newax] + D_R[newax, ...] + D_Z
         I_R = (Im - I_B + Y / mu) / self._ent1
@@ -430,9 +432,9 @@ class ApproximateFit(BaseFit):
 
             # smooth A_offset
             D_R = dct2d(D_R)
-            D_R = _jshrinkage(D_R, self.lambda_darkfield / (self._ent2 * mu))
+            D_R = _jshrinkage(D_R, self.smoothness_darkfield / (self._ent2 * mu))
             D_R = idct2d(D_R)
-            D_R = _jshrinkage(D_R, self.lambda_darkfield_sparse / (self._ent2 * mu))
+            D_R = _jshrinkage(D_R, self.sparse_cost_darkfield / (self._ent2 * mu))
             D_R = D_R + Z
         fit_residual = R - I_B
         Y = Y + mu * fit_residual

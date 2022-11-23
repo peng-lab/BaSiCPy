@@ -115,13 +115,13 @@ class BaSiC(BaseModel):
         False,
         description="When True, will estimate the darkfield shading component.",
     )
-    lambda_flatfield_coef: float = Field(
+    smoothness_flatfield: float = Field(
         1.0, description="Weight of the flatfield term in the Lagrangian."
     )
-    lambda_darkfield_coef: float = Field(
+    smoothness_darkfield: float = Field(
         1.0, description="Weight of the darkfield term in the Lagrangian."
     )
-    lambda_darkfield_sparse_coef: float = Field(
+    sparse_cost_darkfield: float = Field(
         0.01, description="Weight of the darkfield sparse term in the Lagrangian."
     )
     max_iterations: int = Field(
@@ -186,9 +186,9 @@ class BaSiC(BaseModel):
     _B: float = PrivateAttr(None)
     _D_R: float = PrivateAttr(None)
     _D_Z: float = PrivateAttr(None)
-    _lambda_flatfield: float = PrivateAttr(None)
-    _lambda_darkfield: float = PrivateAttr(None)
-    _lambda_darkfield_sparse: float = PrivateAttr(None)
+    _smoothness_flatfield: float = PrivateAttr(None)
+    _smoothness_darkfield: float = PrivateAttr(None)
+    _sparse_cost_darkfield: float = PrivateAttr(None)
 
     _settings_fname = "settings.json"
     _profiles_fname = "profiles.npy"
@@ -338,23 +338,23 @@ class BaSiC(BaseModel):
             mean_image = jnp.mean(Im2, axis=0)
             mean_image = mean_image / jnp.mean(Im2)
             mean_image_dct = JaxDCT.dct3d(mean_image.T)
-            self._lambda_flatfield = (
-                jnp.sum(jnp.abs(mean_image_dct)) / 800 * self.lambda_flatfield_coef
+            self._smoothness_flatfield = (
+                jnp.sum(jnp.abs(mean_image_dct)) / 800 * self.smoothness_flatfield
             )
-            self._lambda_darkfield = (
-                self._lambda_flatfield * self.lambda_darkfield_coef / 2.5
+            self._smoothness_darkfield = (
+                self._smoothness_flatfield * self.smoothness_darkfield / 2.5
             )
-            self._lambda_darkfield_sparse = (
-                self._lambda_flatfield * self.lambda_darkfield_sparse_coef / 2.5 * 100
+            self._sparse_cost_darkfield = (
+                self._smoothness_darkfield * self.sparse_cost_darkfield * 100
             )
         else:
-            self._lambda_flatfield = self.lambda_flatfield_coef
-            self._lambda_darkfield = self.lambda_darkfield_coef
-            self._lambda_darkfield_sparse = self.lambda_darkfield_sparse_coef
+            self._smoothness_flatfield = self.smoothness_flatfield
+            self._smoothness_darkfield = self.smoothness_darkfield
+            self._sparse_cost_darkfield = self.sparse_cost_darkfield
 
-        logger.info(f"lamba_flatfield set to {self._lambda_flatfield}")
-        logger.info(f"lamba_darkfield set to {self._lambda_darkfield}")
-        logger.info(f"lamba_darkfield_sparse set to {self._lambda_darkfield_sparse}")
+        logger.info(f"_smoothness_flatfield set to {self._smoothness_flatfield}")
+        logger.info(f"_smoothness_darkfield set to {self._smoothness_darkfield}")
+        logger.info(f"_sparse_cost_darkfield set to {self._sparse_cost_darkfield}")
 
         # spectral_norm = jnp.linalg.norm(Im.reshape((Im.shape[0], -1)), ord=2)
         _temp = jnp.linalg.svd(Im2.reshape((Im2.shape[0], -1)), full_matrices=False)
@@ -367,9 +367,9 @@ class BaSiC(BaseModel):
         fit_params = self.dict()
         fit_params.update(
             dict(
-                lambda_flatfield=self._lambda_flatfield,
-                lambda_darkfield=self._lambda_darkfield,
-                lambda_darkfield_sparse=self._lambda_darkfield_sparse,
+                smoothness_flatfield=self._smoothness_flatfield,
+                smoothness_darkfield=self._smoothness_darkfield,
+                sparse_cost_darkfield=self._sparse_cost_darkfield,
                 # matrix 2-norm (largest sing. value)
                 init_mu=init_mu,
                 max_mu=init_mu * self.max_mu_coef,
@@ -421,9 +421,9 @@ class BaSiC(BaseModel):
             if not converged:
                 logger.warning("single-step optimization did not converge.")
             if S.max() == 0:
-                logger.error("S is zero. Please try to increase lambda_darkfield_coef.")
+                logger.error("S is zero. Please try to increase smoothness_darkfield.")
                 raise RuntimeError(
-                    "S is zero. Please try to increase lambda_darkfield_coef."
+                    "S is zero. Please try to increase smoothness_darkfield."
                 )
             self._S = S
             self._D_R = D_R
