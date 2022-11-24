@@ -345,7 +345,7 @@ class BaSiC(BaseModel):
                 self._smoothness_flatfield * self.smoothness_darkfield / 2.5
             )
             self._sparse_cost_darkfield = (
-                self._smoothness_flatfield * self.sparse_cost_darkfield / 2.5 * 100
+                self._smoothness_darkfield * self.sparse_cost_darkfield * 100
             )
         else:
             self._smoothness_flatfield = self.smoothness_flatfield
