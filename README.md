@@ -55,12 +55,25 @@ cd BaSiCPy
 pip install .
 ```
 
-### For windows users
+### For Mac users with M1 chip
+
+BaSiCPy requires [`jax`](https://github.com/google/jax/),
+which has potential build issue with M1 chips.
+One easiest solution is using [Miniforge](https://github.com/conda-forge/miniforge)
+as explained [here](https://github.com/google/jax/issues/5501).
+In the Miniforge environment, please try the following:
+```bash
+pip install "jax[cpu]==0.3.22" jaxlib
+pip install basicpy
+```
+
+### For Windows users
 
 BaSiCPy requires [`jax`](https://github.com/google/jax/) which does not support Windows officially.
 However, thanks to [cloudhan/jax-windows-builder](https://github.com/cloudhan/jax-windows-builder), we can install BaSiCPy as follows:
-```
-pip install "jax[cpu]===0.3.14" -f https://whls.blob.core.windows.net/unstable/index.html --use-deprecated legacy-resolver
+
+```bash
+pip install "jax[cpu]==0.3.14" -f https://whls.blob.core.windows.net/unstable/index.html --use-deprecated legacy-resolver
 pip install basicpy
 ```
 For details and latest updates, see [this issue](https://github.com/google/jax/issues/438).
