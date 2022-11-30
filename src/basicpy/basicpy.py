@@ -421,9 +421,9 @@ class BaSiC(BaseModel):
             if not converged:
                 logger.warning("single-step optimization did not converge.")
             if S.max() == 0:
-                logger.error("S is zero. Please try to increase smoothness_darkfield.")
+                logger.error("S is zero. Please try to decrease smoothness_darkfield.")
                 raise RuntimeError(
-                    "S is zero. Please try to increase smoothness_darkfield."
+                    "S is zero. Please try to decrease smoothness_darkfield."
                 )
             self._S = S
             self._D_R = D_R
