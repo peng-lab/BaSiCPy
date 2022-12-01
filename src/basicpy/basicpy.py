@@ -53,13 +53,6 @@ else:
 logger = logging.getLogger(__name__)
 
 
-class Device(Enum):
-
-    cpu: str = "cpu"
-    gpu: str = "gpu"
-    tpu: str = "tpu"
-
-
 class FittingMode(str, Enum):
 
     ladmap: str = "ladmap"
@@ -93,15 +86,9 @@ class BaSiC(BaseModel):
         description="Holds the darkfield component for the shading model.",
         exclude=True,  # Don't dump to output json/yaml
     )
-    device: Device = Field(
-        Device.cpu,
-        description="Must be one of ['cpu','gpu','tpu'].",
-        exclude=True,  # Don't dump to output json/yaml
-    )
     fitting_mode: FittingMode = Field(
         FittingMode.ladmap, description="Must be one of ['ladmap', 'approximate']"
     )
-
     epsilon: float = Field(
         0.1,
         description="Weight regularization term.",
@@ -207,10 +194,6 @@ class BaSiC(BaseModel):
         logger.info(log_str)
 
         super().__init__(**kwargs)
-
-        if self.device is not Device.cpu:
-            # TODO: sanity checks on device selection
-            pass
 
     def __call__(
         self, images: np.ndarray, timelapse: bool = False
