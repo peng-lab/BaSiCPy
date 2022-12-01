@@ -1,13 +1,13 @@
-autodoc_pydantic
+autodoc_pydantic==1.8.0
 enum-tools[sphinx]
-nbsphinx
+nbsphinx==0.8.9
 scanpydoc
-Sphinx
+sphinx==5.3.0
 sphinx-argparse
 sphinx-autobuild
 sphinx-autodoc-typehints
-sphinx-gallery
-sphinx-rtd-theme
+sphinx-gallery==0.10.1
+sphinx-rtd-theme==1.1.1
 
 ipykernel
 matplotlib
