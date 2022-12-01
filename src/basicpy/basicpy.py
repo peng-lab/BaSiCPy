@@ -46,14 +46,6 @@ else:
 logger = logging.getLogger(__name__)
 
 
-class Device(Enum):
-    """Device selection enum."""
-
-    cpu: str = "cpu"
-    gpu: str = "gpu"
-    tpu: str = "tpu"
-
-
 class FittingMode(str, Enum):
     """Fit method enum."""
 
@@ -88,11 +80,6 @@ class BaSiC(BaseModel):
     darkfield: np.ndarray = Field(
         default_factory=lambda: np.zeros((128, 128), dtype=np.float64),
         description="Holds the darkfield component for the shading model.",
-        exclude=True,  # Don't dump to output json/yaml
-    )
-    device: Device = Field(
-        Device.cpu,
-        description="Must be one of ['cpu','gpu','tpu'].",
         exclude=True,  # Don't dump to output json/yaml
     )
     fitting_mode: FittingMode = Field(
