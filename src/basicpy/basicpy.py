@@ -409,9 +409,13 @@ class BaSiC(BaseModel):
             if not converged:
                 logger.debug("single-step optimization did not converge.")
             if S.max() == 0:
-                logger.error("S is zero. Please try to decrease smoothness_darkfield.")
+                logger.error(
+                    "Estimated flatfield is zero. "
+                    + "Please try to decrease smoothness_darkfield."
+                )
                 raise RuntimeError(
-                    "S is zero. Please try to decrease smoothness_darkfield."
+                    "Estimated flatfield is zero. "
+                    + "Please try to decrease smoothness_darkfield."
                 )
             self._S = S
             self._D_R = D_R
