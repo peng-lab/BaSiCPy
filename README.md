@@ -54,6 +54,7 @@ git clone https://github.com/peng-lab/BaSiCPy.git
 cd BaSiCPy
 pip install .
 ```
+For details and latest updates, see [this issue](https://github.com/google/jax/issues/438).
 
 ### For Mac users with M1 chip
 

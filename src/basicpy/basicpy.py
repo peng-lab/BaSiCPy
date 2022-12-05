@@ -1,5 +1,4 @@
-"""Main BaSiC class.
-"""
+"""Main BaSiC class."""
 
 # Core modules
 from __future__ import annotations
@@ -11,7 +10,7 @@ import time
 from enum import Enum
 from multiprocessing import cpu_count
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import jax.numpy as jnp
 
@@ -20,10 +19,7 @@ import numpy as np
 from jax import device_put
 from jax.image import ResizeMethod
 from jax.image import resize as jax_resize
-
-# FIXME change this to jax.xla.XlaRuntimeError
-# when https://github.com/google/jax/pull/10676 gets merged
-from pydantic import BaseModel, Field, PrivateAttr
+from pydantic import BaseModel, Field, PrivateAttr, root_validator
 from skimage.transform import resize as skimage_resize
 
 from basicpy._jax_routines import ApproximateFit, LadmapFit
@@ -33,9 +29,6 @@ from basicpy.tools.dct_tools import JaxDCT
 from basicpy.types import ArrayLike, PathLike
 
 newax = jnp.newaxis
-
-# from basicpy.tools.dct2d_tools import dct2d, idct2d
-# from basicpy.tools.inexact_alm import inexact_alm_rspca_l1
 
 # Get number of available threads to limit CPU thrashing
 # From preadator: https://pypi.org/project/preadator/
@@ -53,20 +46,15 @@ else:
 logger = logging.getLogger(__name__)
 
 
-class Device(Enum):
-
-    cpu: str = "cpu"
-    gpu: str = "gpu"
-    tpu: str = "tpu"
-
-
 class FittingMode(str, Enum):
+    """Fit method enum."""
 
     ladmap: str = "ladmap"
     approximate: str = "approximate"
 
 
 class ResizeMode(str, Enum):
+    """Resize method enum."""
 
     jax: str = "jax"
     skimage: str = "skimage"
@@ -74,12 +62,13 @@ class ResizeMode(str, Enum):
 
 
 class TimelapseTransformMode(str, Enum):
+    """Timelapse transformation enum."""
 
     additive: str = "additive"
     multiplicative: str = "multiplicative"
 
 
-# multiple channels should be handled by creating a `basic` object for each chan
+# multiple channels should be handled by creating a `basic` object for each channel
 class BaSiC(BaseModel):
     """A class for fitting and applying BaSiC illumination correction profiles."""
 
@@ -93,15 +82,9 @@ class BaSiC(BaseModel):
         description="Holds the darkfield component for the shading model.",
         exclude=True,  # Don't dump to output json/yaml
     )
-    device: Device = Field(
-        Device.cpu,
-        description="Must be one of ['cpu','gpu','tpu'].",
-        exclude=True,  # Don't dump to output json/yaml
-    )
     fitting_mode: FittingMode = Field(
         FittingMode.ladmap, description="Must be one of ['ladmap', 'approximate']"
     )
-
     epsilon: float = Field(
         0.1,
         description="Weight regularization term.",
@@ -115,13 +98,13 @@ class BaSiC(BaseModel):
         False,
         description="When True, will estimate the darkfield shading component.",
     )
-    lambda_flatfield_coef: float = Field(
+    smoothness_flatfield: float = Field(
         1.0, description="Weight of the flatfield term in the Lagrangian."
     )
-    lambda_darkfield_coef: float = Field(
+    smoothness_darkfield: float = Field(
         1.0, description="Weight of the darkfield term in the Lagrangian."
     )
-    lambda_darkfield_sparse_coef: float = Field(
+    sparse_cost_darkfield: float = Field(
         0.01, description="Weight of the darkfield sparse term in the Lagrangian."
     )
     max_iterations: int = Field(
@@ -186,37 +169,31 @@ class BaSiC(BaseModel):
     _B: float = PrivateAttr(None)
     _D_R: float = PrivateAttr(None)
     _D_Z: float = PrivateAttr(None)
-    _lambda_flatfield: float = PrivateAttr(None)
-    _lambda_darkfield: float = PrivateAttr(None)
-    _lambda_darkfield_sparse: float = PrivateAttr(None)
+    _smoothness_flatfield: float = PrivateAttr(None)
+    _smoothness_darkfield: float = PrivateAttr(None)
+    _sparse_cost_darkfield: float = PrivateAttr(None)
 
     _settings_fname = "settings.json"
     _profiles_fname = "profiles.npy"
 
     class Config:
+        """Pydantic class configuration."""
 
         arbitrary_types_allowed = True
         extra = "forbid"
 
-    def __init__(self, **kwargs) -> None:
-        """Initialize BaSiC with the provided settings."""
-
-        log_str = f"Initializing BaSiC {id(self)} with parameters: \n"
-        for k, v in kwargs.items():
-            log_str += f"{k}: {v}\n"
-        logger.info(log_str)
-
-        super().__init__(**kwargs)
-
-        if self.device is not Device.cpu:
-            # TODO: sanity checks on device selection
-            pass
+    @root_validator(pre=True)
+    def debug_log_values(cls, values: Dict[str, Any]):
+        """Use a validator to echo input values."""
+        logger.debug("Initializing BaSiC with parameters:")
+        for k, v in values.items():
+            logger.debug(f"{k}: {v}")
+        return values
 
     def __call__(
         self, images: np.ndarray, timelapse: bool = False
     ) -> Union[Tuple[np.ndarray, np.ndarray], np.ndarray]:
-        """Shortcut for BaSiC.transform"""
-
+        """Shortcut for `BaSiC.transform`."""
         return self.transform(images, timelapse)
 
     def _resize(self, Im, target_shape):
@@ -252,9 +229,7 @@ class BaSiC(BaseModel):
             return device_put(Im).astype(jnp.float32)
 
     def _resize_to_working_size(self, Im):
-        """
-        Resize the images to the working size.
-        """
+        """Resize the images to the working size."""
         if self.working_size is not None:
             if np.isscalar(self.working_size):
                 working_shape = [self.working_size] * (Im.ndim - 2)
@@ -273,8 +248,7 @@ class BaSiC(BaseModel):
     def fit(
         self, images: np.ndarray, fitting_weight: Optional[np.ndarray] = None
     ) -> None:
-        """
-        Generate illumination correction profiles from images.
+        """Generate illumination correction profiles from images.
 
         Args:
             images: Input images to fit shading model.
@@ -293,7 +267,6 @@ class BaSiC(BaseModel):
             >>> basic.fit(images)
 
         """
-
         ndim = images.ndim
         if images.ndim == 3:
             images = images[:, np.newaxis, ...]
@@ -338,23 +311,23 @@ class BaSiC(BaseModel):
             mean_image = jnp.mean(Im2, axis=0)
             mean_image = mean_image / jnp.mean(Im2)
             mean_image_dct = JaxDCT.dct3d(mean_image.T)
-            self._lambda_flatfield = (
-                jnp.sum(jnp.abs(mean_image_dct)) / 800 * self.lambda_flatfield_coef
+            self._smoothness_flatfield = (
+                jnp.sum(jnp.abs(mean_image_dct)) / 800 * self.smoothness_flatfield
             )
-            self._lambda_darkfield = (
-                self._lambda_flatfield * self.lambda_darkfield_coef / 2.5
+            self._smoothness_darkfield = (
+                self._smoothness_flatfield * self.smoothness_darkfield / 2.5
             )
-            self._lambda_darkfield_sparse = (
-                self._lambda_flatfield * self.lambda_darkfield_sparse_coef / 2.5 * 100
+            self._sparse_cost_darkfield = (
+                self._smoothness_darkfield * self.sparse_cost_darkfield * 100
             )
         else:
-            self._lambda_flatfield = self.lambda_flatfield_coef
-            self._lambda_darkfield = self.lambda_darkfield_coef
-            self._lambda_darkfield_sparse = self.lambda_darkfield_sparse_coef
+            self._smoothness_flatfield = self.smoothness_flatfield
+            self._smoothness_darkfield = self.smoothness_darkfield
+            self._sparse_cost_darkfield = self.sparse_cost_darkfield
 
-        logger.info(f"lamba_flatfield set to {self._lambda_flatfield}")
-        logger.info(f"lamba_darkfield set to {self._lambda_darkfield}")
-        logger.info(f"lamba_darkfield_sparse set to {self._lambda_darkfield_sparse}")
+        logger.debug(f"_smoothness_flatfield set to {self._smoothness_flatfield}")
+        logger.debug(f"_smoothness_darkfield set to {self._smoothness_darkfield}")
+        logger.debug(f"_sparse_cost_darkfield set to {self._sparse_cost_darkfield}")
 
         # spectral_norm = jnp.linalg.norm(Im.reshape((Im.shape[0], -1)), ord=2)
         _temp = jnp.linalg.svd(Im2.reshape((Im2.shape[0], -1)), full_matrices=False)
@@ -367,9 +340,9 @@ class BaSiC(BaseModel):
         fit_params = self.dict()
         fit_params.update(
             dict(
-                lambda_flatfield=self._lambda_flatfield,
-                lambda_darkfield=self._lambda_darkfield,
-                lambda_darkfield_sparse=self._lambda_darkfield_sparse,
+                smoothness_flatfield=self._smoothness_flatfield,
+                smoothness_darkfield=self._smoothness_darkfield,
+                sparse_cost_darkfield=self._sparse_cost_darkfield,
                 # matrix 2-norm (largest sing. value)
                 init_mu=init_mu,
                 max_mu=init_mu * self.max_mu_coef,
@@ -393,7 +366,7 @@ class BaSiC(BaseModel):
             fitting_step = ApproximateFit(**fit_params)
 
         for i in range(self.max_reweight_iterations):
-            logger.info(f"reweighting iteration {i}")
+            logger.debug(f"reweighting iteration {i}")
             if self.fitting_mode == FittingMode.approximate:
                 S = jnp.zeros(Im2.shape[1:], dtype=jnp.float32)
             else:
@@ -415,15 +388,19 @@ class BaSiC(BaseModel):
                 B,
                 I_R,
             )
-            logger.info(f"single-step optimization score: {norm_ratio}.")
-            logger.info(f"mean of S: {float(jnp.mean(S))}.")
+            logger.debug(f"single-step optimization score: {norm_ratio}.")
+            logger.debug(f"mean of S: {float(jnp.mean(S))}.")
             self._score = norm_ratio
             if not converged:
-                logger.warning("single-step optimization did not converge.")
+                logger.debug("single-step optimization did not converge.")
             if S.max() == 0:
-                logger.error("S is zero. Please try to increase lambda_darkfield_coef.")
+                logger.error(
+                    "Estimated flatfield is zero. "
+                    + "Please try to decrease smoothness_darkfield."
+                )
                 raise RuntimeError(
-                    "S is zero. Please try to increase lambda_darkfield_coef."
+                    "Estimated flatfield is zero. "
+                    + "Please try to decrease smoothness_darkfield."
                 )
             self._S = S
             self._D_R = D_R
@@ -441,7 +418,7 @@ class BaSiC(BaseModel):
             self._weight_dark = W_D
             self._residual = I_R
 
-            logger.info(f"Iteration {i} finished.")
+            logger.debug(f"Iteration {i} finished.")
             if last_S is not None:
                 mad_flatfield = jnp.sum(jnp.abs(S - last_S)) / jnp.sum(np.abs(last_S))
                 if self.get_darkfield:
@@ -451,8 +428,11 @@ class BaSiC(BaseModel):
                     self._reweight_score = max(mad_flatfield, mad_darkfield)
                 else:
                     self._reweight_score = mad_flatfield
-                logger.info(f"reweighting score: {self._reweight_score}")
-                logger.info(f"elapsed time: {time.monotonic() - start_time} seconds")
+                logger.debug(f"reweighting score: {self._reweight_score}")
+                logger.info(
+                    f"Iteration {i} elapsed time: "
+                    + f"{time.monotonic() - start_time} seconds"
+                )
 
                 if self._reweight_score <= self.reweighting_tol:
                     logger.info("Reweighting converged.")
@@ -461,6 +441,12 @@ class BaSiC(BaseModel):
                 logger.warning("Reweighting did not converge.")
             last_S = S
             last_D = D
+
+        if not converged:
+            logger.warning(
+                "Single-step optimization did not converge"
+                + "at the last reweighting step."
+            )
 
         assert S is not None
         assert D is not None
@@ -472,7 +458,7 @@ class BaSiC(BaseModel):
                 if self.fitting_mode == FittingMode.approximate:
                     B = jnp.mean(Im, axis=(1, 2, 3))
                 I_R = jnp.zeros(Im.shape, dtype=jnp.float32)
-                logger.info(f"reweighting iteration for baseline {i}")
+                logger.debug(f"reweighting iteration for baseline {i}")
                 I_R, B, norm_ratio, converged = fitting_step.fit_baseline(
                     Im,
                     W,
@@ -486,7 +472,7 @@ class BaSiC(BaseModel):
                 W = fitting_step.calc_weights_baseline(I_B, I_R) * Ws
                 self._weight = W
                 self._residual = I_R
-                logger.info(f"Iteration {i} finished.")
+                logger.debug(f"Iteration {i} finished.")
 
         self.flatfield = skimage_resize(S, images.shape[1:])
         self.darkfield = skimage_resize(D, images.shape[1:])
@@ -507,7 +493,7 @@ class BaSiC(BaseModel):
             images: input images to correct. See `fit`.
             timelapse: If `True`, corrects the timelapse/photobleaching offsets,
                        assuming that the residual is the product of flatfield and
-                       the object fluorescence. Also accepts "multplicative"
+                       the object fluorescence. Also accepts "multiplicative"
                        (the same as `True`) or "additive" (residual is the object
                        fluorescence).
 
@@ -518,7 +504,6 @@ class BaSiC(BaseModel):
             >>> basic.fit(images)
             >>> corrected = basic.transform(images)
         """
-
         if self.baseline is None:
             raise RuntimeError("BaSiC object is not initialized")
 
@@ -598,12 +583,12 @@ class BaSiC(BaseModel):
 
     @property
     def score(self):
-        """The BaSiC fit final score"""
+        """The BaSiC fit final score."""
         return self._score
 
     @property
     def reweight_score(self):
-        """The BaSiC fit final reweighting score"""
+        """The BaSiC fit final reweighting score."""
         return self._reweight_score
 
     @property
@@ -622,7 +607,8 @@ class BaSiC(BaseModel):
             model_dir: path to model directory
 
         Raises:
-            FileExistsError: if model directory already exists"""
+            FileExistsError: if model directory already exists
+        """
         path = Path(model_dir)
 
         try:

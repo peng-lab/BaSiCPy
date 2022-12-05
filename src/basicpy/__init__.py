@@ -7,7 +7,7 @@ from basicpy import datasets
 from basicpy.basicpy import BaSiC
 
 # Set logger level from environment variable
-logging_level = os.getenv("BASIC_LOG_LEVEL", default="INFO").upper()
+logging_level = os.getenv("BASIC_LOG_LEVEL", default="WARNING").upper()
 logger = logging.getLogger(__name__)
 logger.setLevel(logging_level)
 
