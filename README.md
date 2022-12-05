@@ -39,7 +39,7 @@ See [Read the Docs](https://basicpy.readthedocs.io/en/latest/) for the detailed 
 
 ## Installation
 
-### For Mac, Linux or WSL2 users
+### For Mac (Intel chip), Linux or WSL2 users
 
  Install from PyPI
 
