@@ -202,11 +202,13 @@ class BaSiC(BaseModel):
             resize_params.update(self.resize_params)
             Im = device_put(Im).astype(jnp.float32)
             return jax_resize(Im, target_shape, **resize_params)
+
         elif self.resize_mode == ResizeMode.skimage:
             Im = skimage_resize(
                 Im, target_shape, preserve_range=True, **self.resize_params
             )
             return device_put(Im).astype(jnp.float32)
+
         elif self.resize_mode == ResizeMode.skimage_dask:
             assert np.array_equal(target_shape[:-2], Im.shape[:-2])
             import dask.array as da
