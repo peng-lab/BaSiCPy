@@ -445,7 +445,10 @@ class BaSiC(BaseModel):
             last_D = D
 
         if not converged:
-            logger.warning("Single-step optimization did not converge at the last reweighting step.")
+            logger.warning(
+                "Single-step optimization did not converge"
+                + "at the last reweighting step."
+            )
 
         assert S is not None
         assert D is not None
