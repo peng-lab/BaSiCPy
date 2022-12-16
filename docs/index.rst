@@ -44,17 +44,11 @@ We are happy about any contributions! Before you start, check out our :doc:`cont
    :hidden:
 
    installation
+   tutorials
    api
    release_notes
    contributors
    contributing
-
-.. toctree::
-   :caption: Gallery
-   :maxdepth: 2
-   :hidden:
-
-   tutorials
 
 
 Indices and tables
