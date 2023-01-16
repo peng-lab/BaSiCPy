@@ -260,7 +260,9 @@ class BaSiC(BaseModel):
                     Must be 3-dimensional or 4-dimensional array
                     with dimension of (T,Y,X) or (T,Z,Y,X).
                     T can be either of time or mosaic position.
-            fitting_weight: relative fitting weight for each pixel.
+                    Multichannel images should be
+                    independently corrected for each channel.
+            fitting_weight: Relative fitting weight for each pixel.
                     Higher value means more contribution to fitting.
                     Must has the same shape as images.
             skip_shape_warning: if True, warning for last dimension
