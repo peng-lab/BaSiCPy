@@ -286,18 +286,18 @@ class BaSiC(BaseModel):
                 raise ValueError(
                     "Only 3-dimensional images are accepted for the approximate mode."
                 )
+        else:
+            raise ValueError(
+                "Images must be 3 or 4-dimensional array, "
+                + "with dimension of (T,Y,X) or (T,Z,Y,X)."
+            )
+
         if images.shape[-1] < 10 and not skip_shape_warning:
             logger.warning(
                 "Image last dimension is less than 10. "
                 + "Are you supplying images with the channel dimension?"
                 + "Multichannel images should be "
                 + "independently corrected for each channel."
-            )
-
-        else:
-            raise ValueError(
-                "Images must be 3 or 4-dimensional array, "
-                + "with dimension of (T,Y,X) or (T,Z,Y,X)."
             )
 
         if fitting_weight is not None and fitting_weight.shape != images.shape:
