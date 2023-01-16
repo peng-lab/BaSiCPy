@@ -248,7 +248,10 @@ class BaSiC(BaseModel):
         return Im
 
     def fit(
-        self, images: np.ndarray, fitting_weight: Optional[np.ndarray] = None
+        self,
+        images: np.ndarray,
+        fitting_weight: Optional[np.ndarray] = None,
+        skip_shape_warning=False,
     ) -> None:
         """Generate illumination correction profiles from images.
 
@@ -260,6 +263,8 @@ class BaSiC(BaseModel):
             fitting_weight: relative fitting weight for each pixel.
                     Higher value means more contribution to fitting.
                     Must has the same shape as images.
+            skip_shape_warning: if True, warning for last dimension
+                    less than 10 is suppressed.
 
         Example:
             >>> from basicpy import BaSiC
@@ -279,8 +284,19 @@ class BaSiC(BaseModel):
                 raise ValueError(
                     "Only 3-dimensional images are accepted for the approximate mode."
                 )
+        if images.shape[-1] < 10 and not skip_shape_warning:
+            logger.warning(
+                "Image last dimension is less than 10. "
+                + "Are you supplying images with the channel dimension?"
+                + "Multichannel images should be "
+                + "independently corrected for each channel."
+            )
+
         else:
-            raise ValueError("images must be 3 or 4-dimensional array")
+            raise ValueError(
+                "Images must be 3 or 4-dimensional array, "
+                + "with dimension of (T,Y,X) or (T,Z,Y,X)."
+            )
 
         if fitting_weight is not None and fitting_weight.shape != images.shape:
             raise ValueError("fitting_weight must have the same shape as images.")
@@ -445,7 +461,10 @@ class BaSiC(BaseModel):
             last_D = D
 
         if not converged:
-            logger.warning("Single-step optimization did not converge at the last reweighting step.")
+            logger.warning(
+                "Single-step optimization did not converge "
+                + "at the last reweighting step."
+            )
 
         assert S is not None
         assert D is not None
