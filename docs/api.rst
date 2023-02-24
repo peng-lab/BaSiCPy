@@ -1,5 +1,5 @@
-Usage
-=====
+API Reference
+=============
 
 
 .. Command Line
@@ -13,9 +13,6 @@ Usage
 ..    :ref: basicpy.__main__.get_parser
 ..    :prog: basic
 
-
-API Reference
--------------
 
 BaSiC
 ^^^^^
