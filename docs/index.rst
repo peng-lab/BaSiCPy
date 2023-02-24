@@ -19,7 +19,7 @@ time-lapse microscopy data and thus improve continuous single-cell quantificatio
 
 .. Statement on updated algorith, GPU acceleration when available
 
-.. image:: https://raw.githubusercontent.com/peng-lab/BaSiCPy/main/figures/outline.png
+.. image:: _static/img/outline.png
     :alt: BaSiCPy title figure
     :width: 900px
     :align: center

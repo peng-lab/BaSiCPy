@@ -17,7 +17,7 @@ First, fork the repository on GitHub, then clone your forked repository.
     git clone https://github.com/your-username/BaSiCPy.git
     cd BaSiCPy
 
-Then, create a virtual environment and install the devlopment version of the package.
+Then, create a virtual environment and install the development version of the package.
 
 .. code-block:: bash
 
