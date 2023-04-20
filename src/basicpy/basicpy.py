@@ -625,6 +625,7 @@ class BaSiC(BaseModel):
                     less than 10 is suppressed.
             optimizer: optimizer to use. Defaults to
                     `hyperactive.optimizers.HillClimbingOptimizer`.
+            n_iter: number of iterations for the optimizer. Defaults to 100.
             search_space: search space for the optimizer.
                     Defaults to a reasonable range for each parameter.
             init_params: initial parameters for the optimizer.

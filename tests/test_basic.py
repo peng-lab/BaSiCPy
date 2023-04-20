@@ -141,11 +141,25 @@ def test_basic_autotune():
     images = datasets.wsi_brain()
 
     basic = BaSiC(get_darkfield=True)
-    basic.autotune(images, n_iter=10)
+
+    basic.autotune(
+        images,
+        search_space={
+            "smoothness_flatfield": list(np.logspace(-3, 1, 10)),
+            "smoothness_darkfield": [0] + list(np.logspace(-3, 1, 10)),
+            "sparse_cost_darkfield": [0] + list(np.logspace(-3, 1, 10)),
+        },
+        init_params={
+            "smoothness_flatfield": 0.1,
+            "smoothness_darkfield": 1e-3,
+            "sparse_cost_darkfield": 1e-3,
+        },
+        n_iter=10,
+    )
 
     assert np.isclose(basic.smoothness_flatfield, 0.021544346900318832)
-    assert np.isclose(basic.smoothness_darkfield, 0)
-    assert np.isclose(basic.sparse_cost_darkfield, 0.0027825594022071257)
+    assert np.isclose(basic.smoothness_darkfield, 0.001)
+    assert np.isclose(basic.sparse_cost_darkfield, 0.007742636826811269)
 
 
 # Test BaSiC transform function
