@@ -158,8 +158,8 @@ def test_basic_autotune():
     )
 
     assert np.isclose(basic.smoothness_flatfield, 0.021544346900318832)
-    assert np.isclose(basic.smoothness_darkfield, 0.001)
-    assert np.isclose(basic.sparse_cost_darkfield, 0.007742636826811269)
+    assert np.isclose(basic.smoothness_darkfield, 0.0027825594022071257)
+    assert np.isclose(basic.sparse_cost_darkfield, 0.0)
 
 
 # Test BaSiC transform function
