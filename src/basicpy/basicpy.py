@@ -611,6 +611,7 @@ class BaSiC(BaseModel):
         skip_shape_warning: bool = False,
         *,
         optmizer=None,
+        n_iter=100,
         search_space=None,
         init_params=None,
         timelapse: bool = False,
@@ -669,7 +670,7 @@ class BaSiC(BaseModel):
             fit_and_calc_entropy,
             search_space,
             optimizer=optimizer,
-            n_iter=100,
+            n_iter=n_iter,
             initialize=dict(warm_start=[init_params]),
         )
         hyper.run()

@@ -136,6 +136,18 @@ def test_basic_fit_experimental(datadir):
         assert np.allclose(basic.baseline, d["baseline"], atol=tol, rtol=tol)
 
 
+def test_basic_autotune():
+    np.random.seed(42)  # answer to the meaning of life, should work here too
+    images = datasets.wsi_brain()
+
+    basic = BaSiC(get_darkfield=True)
+    basic.autotune(images, n_iter=10)
+
+    assert np.isclose(basic.smoothness_flatfield, 0.021544346900318832)
+    assert np.isclose(basic.smoothness_darkfield, 0)
+    assert np.isclose(basic.sparse_cost_darkfield, 0.0027825594022071257)
+
+
 # Test BaSiC transform function
 @pytest.mark.parametrize("use_dask", [False, True])
 def test_basic_transform(synthesized_test_data, use_dask):
