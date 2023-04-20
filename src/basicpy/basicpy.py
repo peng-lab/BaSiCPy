@@ -615,6 +615,7 @@ class BaSiC(BaseModel):
         search_space=None,
         init_params=None,
         timelapse: bool = False,
+        random_state: Optional[int] = None,
     ) -> None:
         """Automatically tune the parameters of the model.
 
@@ -630,7 +631,8 @@ class BaSiC(BaseModel):
                     Defaults to a reasonable range for each parameter.
             init_params: initial parameters for the optimizer.
                     Defaults to a reasonable initial value for each parameter.
-            timelapsed: if True, corrects the timelapse/photobleaching offsets.
+            timelapse: if True, corrects the timelapse/photobleaching offsets.
+            random_state: random state for the optimizer.
 
         """
 
@@ -663,7 +665,10 @@ class BaSiC(BaseModel):
 
         if optmizer is None:
             optimizer = HillClimbingOptimizer(
-                epsilon=0.1, distribution="laplace", n_neighbours=4, rand_rest_p=0.1
+                epsilon=0.1,
+                distribution="laplace",
+                n_neighbours=4,
+                rand_rest_p=0.1,
             )
 
         hyper = Hyperactive()
@@ -673,6 +678,7 @@ class BaSiC(BaseModel):
             optimizer=optimizer,
             n_iter=n_iter,
             initialize=dict(warm_start=[init_params]),
+            random_state=random_state,
         )
         hyper.run()
         best_params = hyper.best_para(fit_and_calc_entropy)
