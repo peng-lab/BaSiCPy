@@ -16,6 +16,8 @@ import jax.numpy as jnp
 
 # 3rd party modules
 import numpy as np
+from hyperactive import Hyperactive
+from hyperactive.optimizers import HillClimbingOptimizer
 from jax import device_put
 from jax.image import ResizeMethod
 from jax.image import resize as jax_resize
@@ -23,6 +25,7 @@ from pydantic import BaseModel, Field, PrivateAttr, root_validator
 from skimage.transform import resize as skimage_resize
 
 from basicpy._jax_routines import ApproximateFit, LadmapFit
+from basicpy.metrics import entropy
 from basicpy.tools.dct_tools import JaxDCT
 
 # Package modules
@@ -583,7 +586,7 @@ class BaSiC(BaseModel):
     # REFACTOR large datasets will probably prefer saving corrected images to
     # files directly, a generator may be handy
     def fit_transform(
-        self, images: ArrayLike, timelapse: bool = True
+        self, images: ArrayLike, timelapse: bool = False
     ) -> Union[Tuple[np.ndarray, np.ndarray], np.ndarray]:
         """Fit and transform on data.
 
@@ -600,6 +603,78 @@ class BaSiC(BaseModel):
         corrected = self.transform(images, timelapse)
 
         return corrected
+
+    def autotune(
+        self,
+        images: np.ndarray,
+        fitting_weight: Optional[np.ndarray] = None,
+        skip_shape_warning: bool = False,
+        *,
+        optmizer=None,
+        search_space=None,
+        init_params=None,
+        timelapse: bool = False,
+    ) -> None:
+        """Automatically tune the parameters of the model.
+
+        Args:
+            images: input images to fit and correct. See `fit`.
+            fitting_weight: Relative fitting weight for each pixel. See `fit`.
+            skip_shape_warning: if True, warning for last dimension
+                    less than 10 is suppressed.
+            optimizer: optimizer to use. Defaults to
+                    `hyperactive.optimizers.HillClimbingOptimizer`.
+            search_space: search space for the optimizer.
+                    Defaults to a reasonable range for each parameter.
+            init_params: initial parameters for the optimizer.
+                    Defaults to a reasonable initial value for each parameter.
+            timelapsed: if True, corrects the timelapse/photobleaching offsets.
+
+        """
+
+        if search_space is None:
+            search_space = {
+                "smoothness_flatfield": list(np.logspace(-3, 1, 10)),
+                "smoothness_darkfield": [0] + list(np.logspace(-3, 1, 10)),
+                "sparse_cost_darkfield": [0] + list(np.logspace(-3, 1, 10)),
+            }
+        if init_params is None:
+            init_params = {
+                "smoothness_flatfield": 0.1,
+                "smoothness_darkfield": 1e-3,
+                "sparse_cost_darkfield": 1e-3,
+            }
+
+        def fit_and_calc_entropy(params):
+            try:
+                basic = self.copy(update=params)
+                basic.fit(
+                    images,
+                    fitting_weight=fitting_weight,
+                    skip_shape_warning=skip_shape_warning,
+                )
+                transformed = basic.transform(images, timelapse=timelapse)
+                entropy_value = entropy(transformed)
+                return -entropy_value
+            except RuntimeError:
+                return -np.inf
+
+        if optmizer is None:
+            optimizer = HillClimbingOptimizer(
+                epsilon=0.1, distribution="laplace", n_neighbours=4, rand_rest_p=0.1
+            )
+
+        hyper = Hyperactive()
+        hyper.add_search(
+            fit_and_calc_entropy,
+            search_space,
+            optimizer=optimizer,
+            n_iter=100,
+            initialize=dict(warm_start=[init_params]),
+        )
+        hyper.run()
+        best_params = hyper.best_para(fit_and_calc_entropy)
+        self.__dict__.update(best_params)
 
     @property
     def score(self):
