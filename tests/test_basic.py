@@ -164,7 +164,7 @@ def test_basic_autotune():
     transformed = basic.fit_transform(images, timelapse=False)
     entropy2 = metrics.entropy(transformed)
 
-    assert entropy2 <= entropy1
+    assert entropy2 < entropy1
 
 
 # Test BaSiC transform function
