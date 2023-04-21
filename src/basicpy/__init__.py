@@ -12,4 +12,4 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging_level)
 
 
-__all__ = ["BaSiC", "datasets"]
+__all__ = ["BaSiC", "datasets", "metrics"]

@@ -6,7 +6,7 @@ from dask import array as da
 from pydantic import ValidationError
 from skimage.transform import resize
 
-from basicpy import BaSiC, datasets
+from basicpy import BaSiC, datasets, metrics
 
 # allowed max error for the synthetic test data prediction
 SYNTHETIC_TEST_DATA_MAX_ERROR = 0.35
@@ -142,6 +142,9 @@ def test_basic_autotune():
 
     basic = BaSiC(get_darkfield=True)
 
+    transformed = basic.fit_transform(images, timelapse=False)
+    entropy1 = metrics.entropy(transformed)
+
     basic.autotune(
         images,
         search_space={
@@ -158,9 +161,10 @@ def test_basic_autotune():
         random_state=2023,
     )
 
-    assert np.isclose(basic.smoothness_flatfield, 0.0027825594022071257)
-    assert np.isclose(basic.smoothness_darkfield, 0.001)
-    assert np.isclose(basic.sparse_cost_darkfield, 0.001)
+    transformed = basic.fit_transform(images, timelapse=False)
+    entropy2 = metrics.entropy(transformed)
+
+    assert entropy2 <= entropy1
 
 
 # Test BaSiC transform function

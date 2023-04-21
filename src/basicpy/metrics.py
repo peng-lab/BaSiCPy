@@ -1,7 +1,13 @@
 import numpy as np
 
 
-def entropy(image_float, qmin=0.01, qmax=0.99, ignore_zeros=True, bins=256):
+def entropy(
+    image_float: np.ndarray,
+    qmin: float = 0.01,
+    qmax: float = 0.99,
+    ignore_zeros: bool = True,
+    bins: int = 256,
+):
     """Calculate the entropy of an image.
     Parameters
     ----------
@@ -25,5 +31,5 @@ def entropy(image_float, qmin=0.01, qmax=0.99, ignore_zeros=True, bins=256):
     if ignore_zeros:
         hist = hist[hist > 0]
     hist = hist / hist.sum()
-    entropy = -np.sum(hist * np.log(hist))
+    entropy = -np.sum(hist * np.log(hist)) / bins
     return entropy
