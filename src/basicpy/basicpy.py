@@ -719,6 +719,7 @@ class BaSiC(BaseModel):
         hyper.add_search(
             fit_and_calc_entropy,
             search_space,
+            **params,
         )
         hyper.run()
         best_params = hyper.best_para(fit_and_calc_entropy)
