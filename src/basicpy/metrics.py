@@ -3,8 +3,8 @@ import numpy as np
 
 def entropy(
     image_float: np.ndarray,
-    qmin: float = 0.01,
-    qmax: float = 0.99,
+    vmin: float,
+    vmax: float,
     ignore_zeros: bool = True,
     bins: int = 256,
 ):
@@ -13,10 +13,10 @@ def entropy(
     ----------
     image_float : array
         The image.
-    qmin : float
-        The minimum quantile of the image.
-    qmax : float
-        The maximum quantile of the image.
+    vmin : float
+        The minimum value of the histogram.
+    vmax : float
+        The maximum value of the histogram.
     bins : int
         The number of bins to use for the histogram.
     Returns
@@ -24,7 +24,6 @@ def entropy(
     entropy : float
         The entropy of the image.
     """
-    vmin, vmax = np.quantile(image_float, [qmin, qmax])
     image = (image_float - vmin) / (vmax - vmin)
     image = np.clip(image, 0, 1)
     hist = np.histogram(image, bins=bins, range=(0, 1))[0]

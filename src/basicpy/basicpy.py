@@ -615,6 +615,11 @@ class BaSiC(BaseModel):
         search_space=None,
         init_params=None,
         timelapse: bool = False,
+        histogram_qmin: float = 0.01,
+        histogram_qmax: float = 0.99,
+        histogram_bins: int = 100,
+        early_stop: bool = True,
+        early_stop_torelance: float = 1e-6,
         random_state: Optional[int] = None,
     ) -> None:
         """Automatically tune the parameters of the model.
@@ -649,6 +654,9 @@ class BaSiC(BaseModel):
                 "sparse_cost_darkfield": 1e-3,
             }
 
+        vmin, vmax = np.quantile(images, [histogram_qmin, histogram_qmax])
+        val_range = vmax - vmin  # fix the value range for histogram
+
         def fit_and_calc_entropy(params):
             try:
                 basic = self.copy(update=params)
@@ -658,7 +666,14 @@ class BaSiC(BaseModel):
                     skip_shape_warning=skip_shape_warning,
                 )
                 transformed = basic.transform(images, timelapse=timelapse)
-                entropy_value = entropy(transformed)
+                vmin_new = np.quantile(transformed, histogram_qmin)
+
+                entropy_value = entropy(
+                    transformed,
+                    vmin=vmin_new,
+                    vmax=vmin_new + val_range,
+                    bins=histogram_bins,
+                )
                 return -entropy_value
             except RuntimeError:
                 return -np.inf
@@ -672,13 +687,27 @@ class BaSiC(BaseModel):
             )
 
         hyper = Hyperactive()
-        hyper.add_search(
-            fit_and_calc_entropy,
-            search_space,
+
+        params = dict(
             optimizer=optimizer,
             n_iter=n_iter,
             initialize=dict(warm_start=[init_params]),
             random_state=random_state,
+        )
+
+        if early_stop:
+            params.update(
+                dict(
+                    early_stopping=dict(
+                        n_iter_no_change=2,
+                        tol_abs=early_stop_torelance,
+                    )
+                )
+            )
+
+        hyper.add_search(
+            fit_and_calc_entropy,
+            search_space,
         )
         hyper.run()
         best_params = hyper.best_para(fit_and_calc_entropy)
