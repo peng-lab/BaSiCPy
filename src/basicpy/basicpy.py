@@ -637,6 +637,17 @@ class BaSiC(BaseModel):
             init_params: initial parameters for the optimizer.
                     Defaults to a reasonable initial value for each parameter.
             timelapse: if True, corrects the timelapse/photobleaching offsets.
+            histogram_qmin: the minimum quantile to use for the histogram.
+                    Defaults to 0.01.
+            histogram_qmax: the maximum quantile to use for the histogram.
+                    Defaults to 0.99.
+            histogram_bins: the number of bins to use for the histogram.
+                    Defaults to 100.
+            early_stop: if True, stops the optimization when the change in
+                    entropy is less than `early_stop_torelance`.
+                    Defaults to True.
+            early_stop_torelance: the absolute value torelance
+                    for early stopping.
             random_state: random state for the optimizer.
 
         """
