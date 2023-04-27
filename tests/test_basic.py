@@ -136,7 +136,8 @@ def test_basic_fit_experimental(datadir):
         assert np.allclose(basic.baseline, d["baseline"], atol=tol, rtol=tol)
 
 
-def test_basic_autotune():
+@pytest.mark.parametrize("early_stop", [False, True])
+def test_basic_autotune(early_stop):
     np.random.seed(42)  # answer to the meaning of life, should work here too
     images = datasets.wsi_brain()
 
@@ -159,6 +160,7 @@ def test_basic_autotune():
         },
         n_iter=10,
         random_state=2023,
+        early_stop=early_stop,
     )
 
     transformed = basic.fit_transform(images, timelapse=False)
