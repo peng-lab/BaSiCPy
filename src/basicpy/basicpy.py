@@ -618,6 +618,7 @@ class BaSiC(BaseModel):
         histogram_qmin: float = 0.01,
         histogram_qmax: float = 0.99,
         histogram_bins: int = 100,
+        histogram_use_fitting_weight: bool = True,
         early_stop: bool = True,
         early_stop_torelance: float = 1e-6,
         random_state: Optional[int] = None,
@@ -665,8 +666,21 @@ class BaSiC(BaseModel):
                 "sparse_cost_darkfield": 1e-3,
             }
 
-        vmin, vmax = np.quantile(images, [histogram_qmin, histogram_qmax])
+        # calculate the histogram range
+        basic = self.copy(update=init_params)
+        basic.fit(
+            images,
+            fitting_weight=fitting_weight,
+            skip_shape_warning=skip_shape_warning,
+        )
+        transformed = basic.transform(images, timelapse=timelapse)
+        vmin, vmax = np.quantile(transformed, [histogram_qmin, histogram_qmax])
         val_range = vmax - vmin  # fix the value range for histogram
+
+        if fitting_weight is None or not histogram_use_fitting_weight:
+            weights = None
+        else:
+            weights = fitting_weight
 
         def fit_and_calc_entropy(params):
             try:
@@ -684,6 +698,7 @@ class BaSiC(BaseModel):
                     vmin=vmin_new,
                     vmax=vmin_new + val_range,
                     bins=histogram_bins,
+                    weights=weights,
                 )
                 return -entropy_value
             except RuntimeError:
