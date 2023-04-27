@@ -143,8 +143,10 @@ def test_basic_autotune(early_stop):
 
     basic = BaSiC(get_darkfield=True)
 
+    vmin, vmax = np.percentile(images, [1, 99])
+
     transformed = basic.fit_transform(images, timelapse=False)
-    entropy1 = metrics.entropy(transformed)
+    entropy1 = metrics.entropy(transformed, vmin=vmin, vmax=vmax)
 
     basic.autotune(
         images,
@@ -164,7 +166,7 @@ def test_basic_autotune(early_stop):
     )
 
     transformed = basic.fit_transform(images, timelapse=False)
-    entropy2 = metrics.entropy(transformed)
+    entropy2 = metrics.entropy(transformed, vmin=vmin, vmax=vmax)
 
     assert entropy2 < entropy1
 
