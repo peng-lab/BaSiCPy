@@ -9,6 +9,7 @@ def entropy(
     vmax: float,
     bins: int = 256,
     weights: Optional[np.ndarray] = None,
+    clip: bool = True,
 ):
     """Calculate the entropy of an image.
     Parameters
@@ -25,12 +26,16 @@ def entropy(
         The number of bins to use for the histogram.
     weights:
         The relative weights for the histogram.
+    clip: bool
+        If True, clip the image to the range [vmin, vmax].
 
     Returns
     -------
     entropy : float
         The entropy of the image.
     """
+    if clip:
+        image = image[np.logical_and(image >= vmin, image <= vmax)]
     prob_density, edges = np.histogram(
         image, bins=bins, range=(vmin, vmax), weights=weights, density=True
     )

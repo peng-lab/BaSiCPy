@@ -699,6 +699,7 @@ class BaSiC(BaseModel):
                     vmax=vmin_new + val_range,
                     bins=histogram_bins,
                     weights=weights,
+                    clip=True,
                 )
                 return -entropy_value
             except RuntimeError:
