@@ -4,10 +4,9 @@ import numpy as np
 
 
 def entropy(
-    image_float: np.ndarray,
+    image: np.ndarray,
     vmin: float,
     vmax: float,
-    ignore_zeros: bool = True,
     bins: int = 256,
     weights: Optional[np.ndarray] = None,
 ):
@@ -32,11 +31,13 @@ def entropy(
     entropy : float
         The entropy of the image.
     """
-    image = (image_float - vmin) / (vmax - vmin)
-    image = np.clip(image, 0, 1)
-    hist = np.histogram(image, bins=bins, range=(0, 1), weights=weights)[0]
-    if ignore_zeros:
-        hist = hist[hist > 0]
-    hist = hist / hist.sum()
-    entropy = -np.sum(hist * np.log(hist)) / bins
+    prob_density, edges = np.histogram(
+        image, bins=bins, range=(vmin, vmax), weights=weights, density=True
+    )
+    # density : p(x) ... normalized such that the integral over the range is 1
+    dx = edges[1] - edges[0]
+    assert np.allclose(dx, edges[1:] - edges[:-1])
+    assert np.isclose(np.sum(prob_density) * dx, 1)
+    prob_density = prob_density[prob_density > 0]
+    entropy = -np.sum(prob_density * np.log(prob_density)) * dx
     return entropy
