@@ -620,6 +620,7 @@ class BaSiC(BaseModel):
         histogram_bins: int = 100,
         histogram_use_fitting_weight: bool = True,
         early_stop: bool = True,
+        early_stop_n_iter_no_change: int = 10,
         early_stop_torelance: float = 1e-6,
         random_state: Optional[int] = None,
     ) -> None:
@@ -647,6 +648,8 @@ class BaSiC(BaseModel):
             early_stop: if True, stops the optimization when the change in
                     entropy is less than `early_stop_torelance`.
                     Defaults to True.
+            early_stop_n_iter_no_change: the number of iterations for early
+                    stopping. Defaults to 10.
             early_stop_torelance: the absolute value torelance
                     for early stopping.
             random_state: random state for the optimizer.
@@ -726,7 +729,7 @@ class BaSiC(BaseModel):
             params.update(
                 dict(
                     early_stopping=dict(
-                        n_iter_no_change=2,
+                        n_iter_no_change=early_stop_n_iter_no_change,
                         tol_abs=early_stop_torelance,
                     )
                 )
