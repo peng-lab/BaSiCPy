@@ -76,6 +76,14 @@ However, thanks to [cloudhan/jax-windows-builder](https://github.com/cloudhan/ja
 pip install "jax[cpu]==0.3.14" -f https://whls.blob.core.windows.net/unstable/index.html --use-deprecated legacy-resolver
 pip install basicpy
 ```
+
+One may need to add 
+```python
+import jax
+jax.config.update('jax_platform_name', 'cpu')
+```
+at the top of the script to ensure that JAX uses CPU.
+
 For details and latest updates, see [this issue](https://github.com/google/jax/issues/438).
 
 ### Install with dev dependencies
