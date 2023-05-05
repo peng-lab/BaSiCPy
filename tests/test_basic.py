@@ -6,7 +6,7 @@ from dask import array as da
 from pydantic import ValidationError
 from skimage.transform import resize
 
-from basicpy import BaSiC, datasets
+from basicpy import BaSiC, datasets, metrics
 
 # allowed max error for the synthetic test data prediction
 SYNTHETIC_TEST_DATA_MAX_ERROR = 0.35
@@ -134,6 +134,41 @@ def test_basic_fit_experimental(datadir):
             rtol=tol,
         )
         assert np.allclose(basic.baseline, d["baseline"], atol=tol, rtol=tol)
+
+
+@pytest.mark.parametrize("early_stop", [False, True])
+def test_basic_autotune(early_stop):
+    np.random.seed(42)  # answer to the meaning of life, should work here too
+    images = datasets.wsi_brain()
+
+    basic = BaSiC(get_darkfield=True)
+
+    vmin, vmax = np.percentile(images, [1, 99])
+
+    transformed = basic.fit_transform(images, timelapse=False)
+    entropy1 = metrics.entropy(transformed, vmin=vmin, vmax=vmax)
+
+    basic.autotune(
+        images,
+        search_space={
+            "smoothness_flatfield": list(np.logspace(-3, 1, 10)),
+            "smoothness_darkfield": [0] + list(np.logspace(-3, 1, 10)),
+            "sparse_cost_darkfield": [0] + list(np.logspace(-3, 1, 10)),
+        },
+        init_params={
+            "smoothness_flatfield": 0.1,
+            "smoothness_darkfield": 1e-3,
+            "sparse_cost_darkfield": 1e-3,
+        },
+        n_iter=10,
+        random_state=2023,
+        early_stop=early_stop,
+    )
+
+    transformed = basic.fit_transform(images, timelapse=False)
+    entropy2 = metrics.entropy(transformed, vmin=vmin, vmax=vmax)
+
+    assert entropy2 < entropy1
 
 
 # Test BaSiC transform function

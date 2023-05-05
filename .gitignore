@@ -156,3 +156,8 @@ cython_debug/
 scratch/
 node_modules/
 package-lock.json
+
+
+misc_notebooks/wsi_conditions_df.csv
+misc_notebooks/wsi_darkfields.npy
+misc_notebooks/wsi_flatfields.npy

@@ -16,6 +16,8 @@ import jax.numpy as jnp
 
 # 3rd party modules
 import numpy as np
+from hyperactive import Hyperactive
+from hyperactive.optimizers import HillClimbingOptimizer
 from jax import device_put
 from jax.image import ResizeMethod
 from jax.image import resize as jax_resize
@@ -23,6 +25,7 @@ from pydantic import BaseModel, Field, PrivateAttr, root_validator
 from skimage.transform import resize as skimage_resize
 
 from basicpy._jax_routines import ApproximateFit, LadmapFit
+from basicpy.metrics import entropy
 from basicpy.tools.dct_tools import JaxDCT
 
 # Package modules
@@ -583,7 +586,7 @@ class BaSiC(BaseModel):
     # REFACTOR large datasets will probably prefer saving corrected images to
     # files directly, a generator may be handy
     def fit_transform(
-        self, images: ArrayLike, timelapse: bool = True
+        self, images: ArrayLike, timelapse: bool = False
     ) -> Union[Tuple[np.ndarray, np.ndarray], np.ndarray]:
         """Fit and transform on data.
 
@@ -600,6 +603,146 @@ class BaSiC(BaseModel):
         corrected = self.transform(images, timelapse)
 
         return corrected
+
+    def autotune(
+        self,
+        images: np.ndarray,
+        fitting_weight: Optional[np.ndarray] = None,
+        skip_shape_warning: bool = False,
+        *,
+        optmizer=None,
+        n_iter=100,
+        search_space=None,
+        init_params=None,
+        timelapse: bool = False,
+        histogram_qmin: float = 0.01,
+        histogram_qmax: float = 0.99,
+        histogram_bins: int = 100,
+        histogram_use_fitting_weight: bool = True,
+        early_stop: bool = True,
+        early_stop_n_iter_no_change: int = 10,
+        early_stop_torelance: float = 1e-6,
+        random_state: Optional[int] = None,
+    ) -> None:
+        """Automatically tune the parameters of the model.
+
+        Args:
+            images: input images to fit and correct. See `fit`.
+            fitting_weight: Relative fitting weight for each pixel. See `fit`.
+            skip_shape_warning: if True, warning for last dimension
+                    less than 10 is suppressed.
+            optimizer: optimizer to use. Defaults to
+                    `hyperactive.optimizers.HillClimbingOptimizer`.
+            n_iter: number of iterations for the optimizer. Defaults to 100.
+            search_space: search space for the optimizer.
+                    Defaults to a reasonable range for each parameter.
+            init_params: initial parameters for the optimizer.
+                    Defaults to a reasonable initial value for each parameter.
+            timelapse: if True, corrects the timelapse/photobleaching offsets.
+            histogram_qmin: the minimum quantile to use for the histogram.
+                    Defaults to 0.01.
+            histogram_qmax: the maximum quantile to use for the histogram.
+                    Defaults to 0.99.
+            histogram_bins: the number of bins to use for the histogram.
+                    Defaults to 100.
+            early_stop: if True, stops the optimization when the change in
+                    entropy is less than `early_stop_torelance`.
+                    Defaults to True.
+            early_stop_n_iter_no_change: the number of iterations for early
+                    stopping. Defaults to 10.
+            early_stop_torelance: the absolute value torelance
+                    for early stopping.
+            random_state: random state for the optimizer.
+
+        """
+
+        if search_space is None:
+            search_space = {
+                "smoothness_flatfield": list(np.logspace(-3, 1, 20)),
+                "smoothness_darkfield": [0] + list(np.logspace(-3, 1, 20)),
+                "sparse_cost_darkfield": [0] + list(np.logspace(-3, 1, 20)),
+            }
+        if init_params is None:
+            init_params = {
+                "smoothness_flatfield": 0.1,
+                "smoothness_darkfield": 1e-3,
+                "sparse_cost_darkfield": 1e-3,
+            }
+
+        # calculate the histogram range
+        basic = self.copy(update=init_params)
+        basic.fit(
+            images,
+            fitting_weight=fitting_weight,
+            skip_shape_warning=skip_shape_warning,
+        )
+        transformed = basic.transform(images, timelapse=timelapse)
+        vmin, vmax = np.quantile(transformed, [histogram_qmin, histogram_qmax])
+        val_range = vmax - vmin  # fix the value range for histogram
+
+        if fitting_weight is None or not histogram_use_fitting_weight:
+            weights = None
+        else:
+            weights = fitting_weight
+
+        def fit_and_calc_entropy(params):
+            try:
+                basic = self.copy(update=params)
+                basic.fit(
+                    images,
+                    fitting_weight=fitting_weight,
+                    skip_shape_warning=skip_shape_warning,
+                )
+                transformed = basic.transform(images, timelapse=timelapse)
+                vmin_new = np.quantile(transformed, histogram_qmin)
+
+                entropy_value = entropy(
+                    transformed,
+                    vmin=vmin_new,
+                    vmax=vmin_new + val_range,
+                    bins=histogram_bins,
+                    weights=weights,
+                    clip=True,
+                )
+                return -entropy_value
+            except RuntimeError:
+                return -np.inf
+
+        if optmizer is None:
+            optimizer = HillClimbingOptimizer(
+                epsilon=0.1,
+                distribution="laplace",
+                n_neighbours=4,
+                rand_rest_p=0.1,
+            )
+
+        hyper = Hyperactive()
+
+        params = dict(
+            optimizer=optimizer,
+            n_iter=n_iter,
+            initialize=dict(warm_start=[init_params]),
+            random_state=random_state,
+        )
+
+        if early_stop:
+            params.update(
+                dict(
+                    early_stopping=dict(
+                        n_iter_no_change=early_stop_n_iter_no_change,
+                        tol_abs=early_stop_torelance,
+                    )
+                )
+            )
+
+        hyper.add_search(
+            fit_and_calc_entropy,
+            search_space,
+            **params,
+        )
+        hyper.run()
+        best_params = hyper.best_para(fit_and_calc_entropy)
+        self.__dict__.update(best_params)
 
     @property
     def score(self):
