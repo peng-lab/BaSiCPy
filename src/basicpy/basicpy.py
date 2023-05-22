@@ -10,7 +10,7 @@ import time
 from enum import Enum
 from multiprocessing import cpu_count
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import jax.numpy as jnp
 
@@ -22,6 +22,7 @@ from jax import device_put
 from jax.image import ResizeMethod
 from jax.image import resize as jax_resize
 from pydantic import BaseModel, Field, PrivateAttr, root_validator
+from skimage.filters import threshold_otsu
 from skimage.transform import resize as skimage_resize
 
 from basicpy._jax_routines import ApproximateFit, LadmapFit
@@ -109,6 +110,13 @@ class BaSiC(BaseModel):
     )
     sparse_cost_darkfield: float = Field(
         0.01, description="Weight of the darkfield sparse term in the Lagrangian."
+    )
+    autosegment: Union[bool, Callable[[np.ndarray], np.ndarray]] = Field(
+        False,
+        description="When not False, automatically segment the image before fitting."
+        "When True, `threshold_otsu` from `scikit-image` is used "
+        "and the brighter pixels are taken."
+        "When a callable is given, it is used as the segmentation function.",
     )
     max_iterations: int = Field(
         500,
@@ -250,6 +258,16 @@ class BaSiC(BaseModel):
 
         return Im
 
+    def _perform_segmentation(self, Im):
+        """Perform segmentation on the images."""
+        if not self.autosegment:
+            return np.ones_like(Im, dtype=bool)
+        elif self.autosegment is True:
+            th = threshold_otsu(Im)
+            return Im > th
+        else:
+            return self.autosegment(Im)
+
     def fit(
         self,
         images: np.ndarray,
@@ -320,6 +338,8 @@ class BaSiC(BaseModel):
             Ws = (Ws - Ws_min) / (Ws_max - Ws_min)
         else:
             Ws = jnp.ones_like(Im)
+
+        Ws = Ws * self._perform_segmentation(Im)
 
         # Im2 and Ws2 will possibly be sorted
         if self.sort_intensity:
