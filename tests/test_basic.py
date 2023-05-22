@@ -4,6 +4,7 @@ import numpy as np
 import pytest
 from dask import array as da
 from pydantic import ValidationError
+from skimage.filters import threshold_otsu
 from skimage.transform import resize
 
 from basicpy import BaSiC, datasets, metrics
@@ -169,6 +170,32 @@ def test_basic_autotune(early_stop):
     entropy2 = metrics.entropy(transformed, vmin=vmin, vmax=vmax)
 
     assert entropy2 < entropy1
+
+
+@pytest.mark.parametrize("autosegment", [True, lambda Im: Im < threshold_otsu(Im)])
+def test_basic_autosegment(autosegment):
+    np.random.seed(42)  # answer to the meaning of life, should work here too
+    images = datasets.wsi_brain()
+    basic = BaSiC(
+        get_darkfield=True,
+        autosegment=autosegment,
+    )
+    basic.fit(images)
+
+    if autosegment is True:
+        Ws = images > threshold_otsu(images)
+    else:
+        Ws = autosegment(images)
+
+    basic2 = BaSiC(
+        get_darkfield=True,
+        autosegment=False,
+    )
+    basic2.fit(images, fitting_weight=Ws)
+
+    assert np.allclose(basic.flatfield, basic2.flatfield, rtol=0.01, atol=0.01)
+    assert np.allclose(basic.darkfield, basic2.darkfield, rtol=0.01, atol=0.01)
+    assert np.allclose(basic.baseline, basic2.baseline, rtol=0.01, atol=10)
 
 
 # Test BaSiC transform function
