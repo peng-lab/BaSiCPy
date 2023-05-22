@@ -179,6 +179,7 @@ def test_basic_autosegment(autosegment):
     basic = BaSiC(
         get_darkfield=True,
         autosegment=autosegment,
+        working_size=None,
     )
     basic.fit(images)
 
@@ -190,12 +191,13 @@ def test_basic_autosegment(autosegment):
     basic2 = BaSiC(
         get_darkfield=True,
         autosegment=False,
+        working_size=None,
     )
     basic2.fit(images, fitting_weight=Ws)
 
     assert np.allclose(basic.flatfield, basic2.flatfield, rtol=0.01, atol=0.01)
     assert np.allclose(basic.darkfield, basic2.darkfield, rtol=0.01, atol=0.01)
-    assert np.allclose(basic.baseline, basic2.baseline, rtol=0.1, atol=1)
+    assert np.allclose(basic.baseline, basic2.baseline, rtol=0.01, atol=0.01)
 
 
 # Test BaSiC transform function
