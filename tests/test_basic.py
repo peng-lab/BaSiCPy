@@ -71,7 +71,7 @@ def test_basic_resize(synthesized_test_data, resize_mode):
     )
     basic = BaSiC(resize_mode=resize_mode)
     if resize_mode != "jax":
-        images = da.array(images)
+        images = da.from_array(images)
     resized2 = basic._resize(images, target_size)
     assert np.allclose(resized, resized2, rtol=0.1, atol=10)
 
