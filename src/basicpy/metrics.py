@@ -41,8 +41,6 @@ def entropy(
     )
     # density : p(x) ... normalized such that the integral over the range is 1
     dx = edges[1] - edges[0]
-    print(dx)
-    print(np.max(edges[1:] - edges[:-1] - dx))
     assert np.allclose(dx, edges[1:] - edges[:-1], atol=np.max(edges) * 0.01, rtol=0.01)
     assert np.isclose(np.sum(prob_density) * dx, 1)
     prob_density = prob_density[prob_density > 0]
