@@ -216,7 +216,7 @@ class BaSiC(BaseModel):
 
         elif self.resize_mode == ResizeMode.skimage:
             Im = skimage_resize(
-                Im, target_shape, preserve_range=True, **self.resize_params
+                np.array(Im), target_shape, preserve_range=True, **self.resize_params
             )
             return device_put(Im).astype(jnp.float32)
 
@@ -228,7 +228,7 @@ class BaSiC(BaseModel):
                 da.from_array(
                     [
                         skimage_resize(
-                            Im[tuple(inds)],
+                            np.array(Im[tuple(inds)]),
                             target_shape[-2:],
                             preserve_range=True,
                             **self.resize_params,
