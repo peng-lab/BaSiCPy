@@ -26,7 +26,7 @@ from skimage.filters import threshold_otsu
 from skimage.transform import resize as skimage_resize
 
 from basicpy._jax_routines import ApproximateFit, LadmapFit
-from basicpy.metrics import entropy
+from basicpy.metrics import entropy, fourier_L0_norm
 from basicpy.tools.dct_tools import JaxDCT
 
 # Package modules
@@ -639,6 +639,10 @@ class BaSiC(BaseModel):
         histogram_qmax: float = 0.99,
         histogram_bins: int = 100,
         histogram_use_fitting_weight: bool = True,
+        fourier_l0_norm_image_threshold: float = 1.0,
+        fourier_l0_norm_fourier_radius=10,
+        fourier_l0_norm_threshold=1e-3,
+        fourier_l0_norm_cost_coef=1e3,
         early_stop: bool = True,
         early_stop_n_iter_no_change: int = 10,
         early_stop_torelance: float = 1e-6,
@@ -724,7 +728,21 @@ class BaSiC(BaseModel):
                     weights=weights,
                     clip=True,
                 )
-                return -entropy_value
+
+                n = fourier_L0_norm(
+                    basic.flatfield,
+                    fourier_l0_norm_image_threshold,
+                    fourier_l0_norm_fourier_radius,
+                )
+
+                if n < fourier_l0_norm_threshold:
+                    fourier_L0_norm_cost = 0
+                else:
+                    fourier_L0_norm_cost = (
+                        n - fourier_l0_norm_threshold
+                    ) * fourier_l0_norm_cost_coef
+
+                return -entropy_value + fourier_L0_norm_cost
             except RuntimeError:
                 return -np.inf
 

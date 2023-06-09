@@ -1,6 +1,7 @@
 from typing import Optional
 
 import numpy as np
+from scipy.fft import dctn
 
 
 def entropy(
@@ -48,3 +49,15 @@ def entropy(
     prob_density = prob_density[prob_density > 0]
     entropy = -np.sum(prob_density * np.log(prob_density)) * dx
     return entropy
+
+
+def fourier_L0_norm(
+    image: np.ndarray,
+    threshold: float = 1.0,
+    fourier_radius=10,
+):
+    SF = dctn(image)
+    xy = np.meshgrid(*[range(x) for x in image.shape])
+    outside_radius = np.sum(np.array(xy) ** 2, axis=0) > fourier_radius**2
+    L0_norm = np.sum(SF[outside_radius] > threshold) / np.sum(outside_radius)
+    return L0_norm
