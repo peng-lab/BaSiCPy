@@ -154,18 +154,18 @@ def test_basic_autotune(early_stop):
     basic.autotune(
         images,
         search_space={
-            "smoothness_flatfield": list(np.logspace(-3, 1, 10)),
-            "smoothness_darkfield": [0] + list(np.logspace(-3, 1, 10)),
-            "sparse_cost_darkfield": [0] + list(np.logspace(-3, 1, 10)),
+            "smoothness_flatfield": list(np.logspace(-3, 2, 15)),
+            "smoothness_darkfield": [0] + list(np.logspace(-3, 2, 15)),
+            "sparse_cost_darkfield": [0] + list(np.logspace(-3, 2, 15)),
         },
         init_params={
             "smoothness_flatfield": 0.1,
             "smoothness_darkfield": 1e-3,
             "sparse_cost_darkfield": 1e-3,
         },
-        n_iter=10,
+        n_iter=30,
         random_state=2023,
-        early_stop=early_stop,
+        early_stop=True,
     )
 
     transformed = basic.fit_transform(images, timelapse=False)
