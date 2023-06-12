@@ -692,13 +692,13 @@ class BaSiC(BaseModel):
 
         if search_space is None:
             search_space = {
-                "smoothness_flatfield": list(np.logspace(-3, 2, 20)),
+                "smoothness_flatfield": list(np.logspace(-3, 1, 15)),
             }
             if self.get_darkfield:
                 search_space.update(
                     {
-                        "smoothness_darkfield": [0] + list(np.logspace(-3, 2, 20)),
-                        "sparse_cost_darkfield": [0] + list(np.logspace(-3, 2, 20)),
+                        "smoothness_darkfield": [0] + list(np.logspace(-3, 1, 15)),
+                        "sparse_cost_darkfield": [0] + list(np.logspace(-3, 1, 15)),
                     }
                 )
         if init_params is None:
