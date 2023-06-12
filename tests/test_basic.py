@@ -147,7 +147,9 @@ def test_basic_autotune(early_stop):
     vmin, vmax = np.percentile(images, [1, 99])
 
     transformed = basic.fit_transform(images, timelapse=False)
-    entropy1 = metrics.entropy(transformed, vmin=vmin, vmax=vmax)
+    cost1 = metrics.autotune_cost(
+        transformed, basic.flatfield, entropy_vmin=vmin, entropy_vmax=vmax
+    )
 
     basic.autotune(
         images,
@@ -167,9 +169,11 @@ def test_basic_autotune(early_stop):
     )
 
     transformed = basic.fit_transform(images, timelapse=False)
-    entropy2 = metrics.entropy(transformed, vmin=vmin, vmax=vmax)
+    cost2 = metrics.autotune_cost(
+        transformed, basic.flatfield, entropy_vmin=vmin, entropy_vmax=vmax
+    )
 
-    assert entropy2 < entropy1
+    assert cost2 < cost1
 
 
 @pytest.mark.parametrize("autosegment", [True, lambda Im: Im < threshold_otsu(Im)])

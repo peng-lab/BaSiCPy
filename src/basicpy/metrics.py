@@ -69,11 +69,11 @@ def autotune_cost(
     flatfield: np.ndarray,
     entropy_vmin: float,
     entropy_vmax: float,
-    histogram_bins: int,
+    histogram_bins: int = 100,
     fourier_l0_norm_image_threshold: float = 1.0,
     fourier_l0_norm_fourier_radius: float = 10,
     fourier_l0_norm_threshold: float = 1e-3,
-    fourier_l0_norm_cost_coef: float = 1e-3,
+    fourier_l0_norm_cost_coef: float = 1e4,
     weights: Optional[np.ndarray] = None,
 ):
     """Calculate the cost function for autotuning.

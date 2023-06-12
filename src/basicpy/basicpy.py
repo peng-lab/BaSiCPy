@@ -642,7 +642,7 @@ class BaSiC(BaseModel):
         fourier_l0_norm_image_threshold: float = 1.0,
         fourier_l0_norm_fourier_radius=10,
         fourier_l0_norm_threshold=1e-3,
-        fourier_l0_norm_cost_coef=1e3,
+        fourier_l0_norm_cost_coef=1e4,
         early_stop: bool = True,
         early_stop_n_iter_no_change: int = 10,
         early_stop_torelance: float = 1e-6,
@@ -693,15 +693,25 @@ class BaSiC(BaseModel):
         if search_space is None:
             search_space = {
                 "smoothness_flatfield": list(np.logspace(-3, 1, 20)),
-                "smoothness_darkfield": [0] + list(np.logspace(-3, 1, 20)),
-                "sparse_cost_darkfield": [0] + list(np.logspace(-3, 1, 20)),
             }
+            if self.get_darkfield:
+                search_space.update(
+                    {
+                        "smoothness_darkfield": [0] + list(np.logspace(-3, 1, 20)),
+                        "sparse_cost_darkfield": [0] + list(np.logspace(-3, 1, 20)),
+                    }
+                )
         if init_params is None:
             init_params = {
                 "smoothness_flatfield": 0.1,
-                "smoothness_darkfield": 1e-3,
-                "sparse_cost_darkfield": 1e-3,
             }
+            if self.get_darkfield:
+                init_params.update(
+                    {
+                        "smoothness_darkfield": 1e-3,
+                        "sparse_cost_darkfield": 1e-3,
+                    }
+                )
 
         # calculate the histogram range
         basic = self.copy(update=init_params)
@@ -730,7 +740,7 @@ class BaSiC(BaseModel):
                 transformed = basic.transform(images, timelapse=timelapse)
                 vmin_new = np.quantile(transformed, histogram_qmin)
 
-                return -1 * autotune_cost(
+                return -1.0 * autotune_cost(
                     transformed,
                     basic.flatfield,
                     entropy_vmin=vmin_new,
