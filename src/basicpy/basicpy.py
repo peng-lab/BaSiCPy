@@ -26,7 +26,7 @@ from skimage.filters import threshold_otsu
 from skimage.transform import resize as skimage_resize
 
 from basicpy._jax_routines import ApproximateFit, LadmapFit
-from basicpy.metrics import entropy, fourier_L0_norm
+from basicpy.metrics import autotune_cost
 from basicpy.tools.dct_tools import JaxDCT
 
 # Package modules
@@ -669,6 +669,16 @@ class BaSiC(BaseModel):
                     Defaults to 0.99.
             histogram_bins: the number of bins to use for the histogram.
                     Defaults to 100.
+            hisogram_use_fitting_weight: if True, uses the weight for the histogram.
+                    Defaults to True.
+            fourier_l0_norm_image_threshold : float
+                The threshold for image values for the fourier L0 norm calculation.
+            fourier_l0_norm_fourier_radius : float
+                The Fourier radius for the fourier L0 norm calculation.
+            fourier_l0_norm_threshold : float
+                The maximum preferred value for the fourier L0 norm.
+            fourier_l0_norm_cost_coef : float
+                The cost coefficient for the fourier L0 norm.
             early_stop: if True, stops the optimization when the change in
                     entropy is less than `early_stop_torelance`.
                     Defaults to True.
@@ -720,29 +730,18 @@ class BaSiC(BaseModel):
                 transformed = basic.transform(images, timelapse=timelapse)
                 vmin_new = np.quantile(transformed, histogram_qmin)
 
-                entropy_value = entropy(
+                return -1 * autotune_cost(
                     transformed,
-                    vmin=vmin_new,
-                    vmax=vmin_new + val_range,
-                    bins=histogram_bins,
-                    weights=weights,
-                    clip=True,
-                )
-
-                n = fourier_L0_norm(
                     basic.flatfield,
-                    fourier_l0_norm_image_threshold,
-                    fourier_l0_norm_fourier_radius,
+                    entropy_vmin=vmin_new,
+                    entropy_vmax=vmin_new + val_range,
+                    histogram_bins=histogram_bins,
+                    fourier_l0_norm_cost_coef=fourier_l0_norm_cost_coef,
+                    fourier_l0_norm_image_threshold=fourier_l0_norm_image_threshold,
+                    fourier_l0_norm_fourier_radius=fourier_l0_norm_fourier_radius,
+                    fourier_l0_norm_threshold=fourier_l0_norm_threshold,
+                    weights=weights,
                 )
-
-                if n < fourier_l0_norm_threshold:
-                    fourier_L0_norm_cost = 0
-                else:
-                    fourier_L0_norm_cost = (
-                        n - fourier_l0_norm_threshold
-                    ) * fourier_l0_norm_cost_coef
-
-                return -entropy_value + fourier_L0_norm_cost
             except RuntimeError:
                 return -np.inf
 
