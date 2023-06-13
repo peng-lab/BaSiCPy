@@ -641,7 +641,7 @@ class BaSiC(BaseModel):
         vrange_factor: float = 1.5,
         histogram_bins: int = 1000,
         histogram_use_fitting_weight: bool = True,
-        fourier_l0_norm_image_threshold: float = 1.0,
+        fourier_l0_norm_image_threshold: float = 0.1,
         fourier_l0_norm_fourier_radius=10,
         fourier_l0_norm_threshold=1e-3,
         fourier_l0_norm_cost_coef=1e4,
