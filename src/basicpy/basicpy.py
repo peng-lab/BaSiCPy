@@ -646,7 +646,7 @@ class BaSiC(BaseModel):
         fourier_l0_norm_threshold=1e-3,
         fourier_l0_norm_cost_coef=1e4,
         early_stop: bool = True,
-        early_stop_n_iter_no_change: int = 10,
+        early_stop_n_iter_no_change: int = 15,
         early_stop_torelance: float = 1e-6,
         random_state: Optional[int] = None,
     ) -> None:
