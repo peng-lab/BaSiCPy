@@ -167,7 +167,7 @@ def test_basic_autotune(early_stop):
         },
         n_iter=30,
         random_state=2023,
-        early_stop=True,
+        early_stop=early_stop,
     )
 
     transformed = basic.fit_transform(images, timelapse=False)
