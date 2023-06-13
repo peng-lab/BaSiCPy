@@ -157,7 +157,6 @@ def test_basic_autotune(early_stop):
         basic.flatfield,
         entropy_vmin=vmin * vmin_factor,
         entropy_vmax=vmin * vmin_factor + vrange,
-        histogram_bins=1000,
     )
 
     basic.autotune(
@@ -177,7 +176,6 @@ def test_basic_autotune(early_stop):
         early_stop=early_stop,
         vmin_factor=vmin_factor,
         vrange_factor=vrange_factor,
-        histogram_bins=1000,
     )
 
     transformed = basic.fit_transform(images, timelapse=False)
@@ -188,7 +186,6 @@ def test_basic_autotune(early_stop):
         basic.flatfield,
         entropy_vmin=vmin * vmin_factor,
         entropy_vmax=vmin * vmin_factor + vrange,
-        histogram_bins=1000,
     )
 
     assert cost2 < cost1
