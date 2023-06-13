@@ -140,20 +140,23 @@ def test_basic_fit_experimental(datadir):
 @pytest.mark.parametrize("early_stop", [False, True])
 def test_basic_autotune(early_stop):
     np.random.seed(42)  # answer to the meaning of life, should work here too
+    vmin_factor = 0.6
+    vrange_factor = 1.5
     images = datasets.wsi_brain()
 
     basic = BaSiC(get_darkfield=True)
 
     vmin, vmax = np.percentile(images, [1, 99])
-    vmin = vmin * 0.6  # take the range larger than to avoid clipping issue
-    vmax = vmin + (vmax - vmin) * 1.5
+    vrange = (
+        vmax - vmin * vmin_factor
+    ) * vrange_factor  # take the range larger than to avoid clipping issue
 
     transformed = basic.fit_transform(images, timelapse=False)
     cost1 = metrics.autotune_cost(
         transformed,
         basic.flatfield,
-        entropy_vmin=vmin,
-        entropy_vmax=vmax,
+        entropy_vmin=vmin * vmin_factor,
+        entropy_vmax=vmin * vmin_factor + vrange,
         histogram_bins=1000,
     )
 
@@ -172,14 +175,19 @@ def test_basic_autotune(early_stop):
         n_iter=30,
         random_state=2023,
         early_stop=early_stop,
+        vmin_factor=vmin_factor,
+        vrange_factor=vrange_factor,
+        histogram_bins=1000,
     )
 
     transformed = basic.fit_transform(images, timelapse=False)
+    vmin, vmax = np.percentile(images, [1, 99])
+
     cost2 = metrics.autotune_cost(
         transformed,
         basic.flatfield,
-        entropy_vmin=vmin,
-        entropy_vmax=vmax,
+        entropy_vmin=vmin * vmin_factor,
+        entropy_vmax=vmin * vmin_factor + vrange,
         histogram_bins=1000,
     )
 
