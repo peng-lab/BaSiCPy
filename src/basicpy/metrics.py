@@ -69,7 +69,7 @@ def autotune_cost(
     flatfield: np.ndarray,
     entropy_vmin: float,
     entropy_vmax: float,
-    histogram_bins: int = 100,
+    histogram_bins: int = 1000,
     fourier_l0_norm_image_threshold: float = 1.0,
     fourier_l0_norm_fourier_radius: float = 10,
     fourier_l0_norm_threshold: float = 1e-3,

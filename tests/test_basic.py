@@ -150,7 +150,11 @@ def test_basic_autotune(early_stop):
 
     transformed = basic.fit_transform(images, timelapse=False)
     cost1 = metrics.autotune_cost(
-        transformed, basic.flatfield, entropy_vmin=vmin, entropy_vmax=vmax
+        transformed,
+        basic.flatfield,
+        entropy_vmin=vmin,
+        entropy_vmax=vmax,
+        histogram_bins=1000,
     )
 
     basic.autotune(
@@ -172,7 +176,11 @@ def test_basic_autotune(early_stop):
 
     transformed = basic.fit_transform(images, timelapse=False)
     cost2 = metrics.autotune_cost(
-        transformed, basic.flatfield, entropy_vmin=vmin, entropy_vmax=vmax
+        transformed,
+        basic.flatfield,
+        entropy_vmin=vmin,
+        entropy_vmax=vmax,
+        histogram_bins=1000,
     )
 
     assert cost2 < cost1
