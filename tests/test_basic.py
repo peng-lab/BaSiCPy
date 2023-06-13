@@ -145,6 +145,8 @@ def test_basic_autotune(early_stop):
     basic = BaSiC(get_darkfield=True)
 
     vmin, vmax = np.percentile(images, [1, 99])
+    vmin = vmin * 0.6  # take the range larger than to avoid clipping issue
+    vmax = vmin + (vmax - vmin) * 1.5
 
     transformed = basic.fit_transform(images, timelapse=False)
     cost1 = metrics.autotune_cost(
@@ -154,9 +156,9 @@ def test_basic_autotune(early_stop):
     basic.autotune(
         images,
         search_space={
-            "smoothness_flatfield": list(np.logspace(-3, 2, 15)),
-            "smoothness_darkfield": [0] + list(np.logspace(-3, 2, 15)),
-            "sparse_cost_darkfield": [0] + list(np.logspace(-3, 2, 15)),
+            "smoothness_flatfield": list(np.logspace(-3, 1, 15)),
+            "smoothness_darkfield": [0] + list(np.logspace(-3, 1, 15)),
+            "sparse_cost_darkfield": [0] + list(np.logspace(-3, 1, 15)),
         },
         init_params={
             "smoothness_flatfield": 0.1,

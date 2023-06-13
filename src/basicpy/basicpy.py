@@ -637,7 +637,9 @@ class BaSiC(BaseModel):
         timelapse: bool = False,
         histogram_qmin: float = 0.01,
         histogram_qmax: float = 0.99,
-        histogram_bins: int = 100,
+        vmin_factor: float = 0.6,
+        vrange_factor: float = 1.5,
+        histogram_bins: int = 1000,
         histogram_use_fitting_weight: bool = True,
         fourier_l0_norm_image_threshold: float = 1.0,
         fourier_l0_norm_fourier_radius=10,
@@ -722,7 +724,9 @@ class BaSiC(BaseModel):
         )
         transformed = basic.transform(images, timelapse=timelapse)
         vmin, vmax = np.quantile(transformed, [histogram_qmin, histogram_qmax])
-        val_range = vmax - vmin  # fix the value range for histogram
+        val_range = (
+            vmax - vmin * vmin_factor
+        ) * vrange_factor  # fix the value range for histogram
 
         if fitting_weight is None or not histogram_use_fitting_weight:
             weights = None
@@ -738,7 +742,7 @@ class BaSiC(BaseModel):
                     skip_shape_warning=skip_shape_warning,
                 )
                 transformed = basic.transform(images, timelapse=timelapse)
-                vmin_new = np.quantile(transformed, histogram_qmin)
+                vmin_new = np.quantile(transformed, histogram_qmin) * vmin_factor
 
                 return -1.0 * autotune_cost(
                     transformed,
