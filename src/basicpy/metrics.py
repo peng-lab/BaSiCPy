@@ -37,7 +37,11 @@ def entropy(
         The entropy of the image.
     """
     if clip:
-        image = image[np.logical_and(image >= vmin, image <= vmax)]
+        ind = np.logical_and(image >= vmin, image <= vmax)
+        image = image[ind]
+        if weights is not None:
+            weights = weights[ind]
+
     prob_density, edges = np.histogram(
         image, bins=bins, range=(vmin, vmax), weights=weights, density=True
     )
