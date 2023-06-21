@@ -138,7 +138,8 @@ def test_basic_fit_experimental(datadir):
 
 
 @pytest.mark.parametrize("early_stop", [False, True])
-def test_basic_autotune(early_stop):
+@pytest.mark.parametrize("fitting_weight", [False, True])
+def test_basic_autotune(early_stop, fitting_weight):
     np.random.seed(42)  # answer to the meaning of life, should work here too
     vmin_factor = 0.6
     vrange_factor = 1.5
@@ -159,8 +160,10 @@ def test_basic_autotune(early_stop):
         entropy_vmax=vmin * vmin_factor + vrange,
     )
 
+    Ws = images > threshold_otsu(images)
     basic.autotune(
         images,
+        fitting_weight=Ws if fitting_weight else None,
         search_space={
             "smoothness_flatfield": list(np.logspace(-3, 1, 15)),
             "smoothness_darkfield": [0] + list(np.logspace(-3, 1, 15)),
