@@ -148,13 +148,13 @@ def test_basic_autotune(early_stop, fitting_weight):
 
     basic = BaSiC(get_darkfield=True)
 
+    transformed = basic.fit_transform(images, fitting_weight=weights, timelapse=False)
+    _transformed = transformed[weights > 0] if fitting_weight else transformed
+    vmin, vmax = np.percentile(_transformed, [1, 99])
     vrange = (
         vmax - vmin * vmin_factor
     ) * vrange_factor  # take the range larger than to avoid clipping issue
 
-    transformed = basic.fit_transform(images, fitting_weight=weights, timelapse=False)
-    _transformed = transformed[weights > 0] if fitting_weight else transformed
-    vmin, vmax = np.percentile(_transformed, [1, 99])
     cost1 = metrics.autotune_cost(
         transformed,
         basic.flatfield,
