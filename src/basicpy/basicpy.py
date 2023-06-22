@@ -606,7 +606,11 @@ class BaSiC(BaseModel):
     # REFACTOR large datasets will probably prefer saving corrected images to
     # files directly, a generator may be handy
     def fit_transform(
-        self, images: ArrayLike, timelapse: bool = False
+        self,
+        images: ArrayLike,
+        fitting_weight: Optional[np.ndarray] = None,
+        skip_shape_warning=False,
+        timelapse: bool = False,
     ) -> Union[Tuple[np.ndarray, np.ndarray], np.ndarray]:
         """Fit and transform on data.
 
@@ -619,7 +623,9 @@ class BaSiC(BaseModel):
         Example:
             >>> corrected = basic.fit_transform(images)
         """
-        self.fit(images)
+        self.fit(
+            images, fitting_weight=fitting_weight, skip_shape_warning=skip_shape_warning
+        )
         corrected = self.transform(images, timelapse)
 
         return corrected

@@ -144,26 +144,28 @@ def test_basic_autotune(early_stop, fitting_weight):
     vmin_factor = 0.6
     vrange_factor = 1.5
     images = datasets.wsi_brain()
+    weights = images > threshold_otsu(images) if fitting_weight else None
 
     basic = BaSiC(get_darkfield=True)
 
-    vmin, vmax = np.percentile(images, [1, 99])
     vrange = (
         vmax - vmin * vmin_factor
     ) * vrange_factor  # take the range larger than to avoid clipping issue
 
-    transformed = basic.fit_transform(images, timelapse=False)
+    transformed = basic.fit_transform(images, fitting_weight=weights, timelapse=False)
+    _transformed = transformed[weights > 0] if fitting_weight else transformed
+    vmin, vmax = np.percentile(_transformed, [1, 99])
     cost1 = metrics.autotune_cost(
         transformed,
         basic.flatfield,
         entropy_vmin=vmin * vmin_factor,
         entropy_vmax=vmin * vmin_factor + vrange,
+        weights=weights,
     )
 
-    Ws = images > threshold_otsu(images)
     basic.autotune(
         images,
-        fitting_weight=Ws if fitting_weight else None,
+        fitting_weight=weights,
         search_space={
             "smoothness_flatfield": list(np.logspace(-3, 1, 15)),
             "smoothness_darkfield": [0] + list(np.logspace(-3, 1, 15)),
@@ -181,14 +183,16 @@ def test_basic_autotune(early_stop, fitting_weight):
         vrange_factor=vrange_factor,
     )
 
-    transformed = basic.fit_transform(images, timelapse=False)
-    vmin, vmax = np.percentile(images, [1, 99])
+    transformed = basic.fit_transform(images, fitting_weight=weights, timelapse=False)
+    _transformed = transformed[weights > 0] if fitting_weight else transformed
+    vmin, vmax = np.percentile(_transformed, [1, 99])
 
     cost2 = metrics.autotune_cost(
         transformed,
         basic.flatfield,
         entropy_vmin=vmin * vmin_factor,
         entropy_vmax=vmin * vmin_factor + vrange,
+        weights=weights,
     )
 
     assert cost2 < cost1
