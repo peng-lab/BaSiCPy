@@ -862,7 +862,7 @@ class BaSiC(BaseModel):
         with open(path / str(cls._settings_fname)) as fp:
             model = json.load(fp)
 
-        profiles = np.load(path / cls._profiles_fname)
+        profiles = np.load(path / str(cls._profiles_fname))
         model["flatfield"] = profiles[0]
         model["darkfield"] = profiles[1]
 
