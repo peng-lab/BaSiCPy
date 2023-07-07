@@ -23,7 +23,7 @@ from jax.image import ResizeMethod
 from jax.image import resize as jax_resize
 from pydantic import BaseModel, Field, PrivateAttr, root_validator
 from skimage.filters import threshold_otsu
-from skimage.morphology import binary_erosion, disk
+from skimage.morphology import ball, binary_erosion
 from skimage.transform import resize as skimage_resize
 
 from basicpy._jax_routines import ApproximateFit, LadmapFit
@@ -270,7 +270,9 @@ class BaSiC(BaseModel):
         elif self.autosegment is True:
             th = threshold_otsu(Im)
             mask = Im < th
-            return binary_erosion(mask, disk(self.autosegment_margin))
+            return np.array(
+                [binary_erosion(m, ball(self.autosegment_margin)) for m in mask]
+            )
         else:
             return self.autosegment(Im)
 
@@ -311,7 +313,7 @@ class BaSiC(BaseModel):
         elif images.ndim == 4:
             if self.fitting_mode == FittingMode.approximate:
                 raise ValueError(
-                    "Only 3-dimensional images are accepted for the approximate mode."
+                    "Only 2-dimensional images are accepted for the approximate mode."
                 )
         else:
             raise ValueError(
