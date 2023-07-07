@@ -205,12 +205,13 @@ def test_basic_autosegment(autosegment):
     basic = BaSiC(
         get_darkfield=True,
         autosegment=autosegment,
+        autosegment_margin=0,
         working_size=None,
     )
     basic.fit(images)
 
     if autosegment is True:
-        Ws = images > threshold_otsu(images)
+        Ws = images < threshold_otsu(images)
     else:
         Ws = autosegment(images)
 
@@ -224,6 +225,14 @@ def test_basic_autosegment(autosegment):
     assert np.allclose(basic.flatfield, basic2.flatfield, rtol=0.01, atol=0.01)
     assert np.allclose(basic.darkfield, basic2.darkfield, rtol=0.01, atol=0.01)
     assert np.allclose(basic.baseline, basic2.baseline, rtol=0.01, atol=0.01)
+
+    basic = BaSiC(
+        get_darkfield=True,
+        autosegment=autosegment,
+        autosegment_margin=10,
+        working_size=None,
+    )
+    basic.fit(images)
 
 
 # Test BaSiC transform function
