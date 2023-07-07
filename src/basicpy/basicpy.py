@@ -848,7 +848,7 @@ class BaSiC(BaseModel):
         # save settings
         with open(path / self._settings_fname, "w") as fp:
             # see pydantic docs for output options
-            fp.write(self.json())
+            fp.write(self.model_dump_json())
 
         # NOTE emit warning if profiles are all zeros? fit probably not run
         # save profiles
