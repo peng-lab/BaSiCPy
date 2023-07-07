@@ -73,6 +73,10 @@ class TimelapseTransformMode(str, Enum):
     multiplicative: str = "multiplicative"
 
 
+_SETTINGS_FNAME = "settings.json"
+_PROFILES_FNAME = "profiles.npy"
+
+
 # multiple channels should be handled by creating a `basic` object for each channel
 class BaSiC(BaseModel):
     """A class for fitting and applying BaSiC illumination correction profiles."""
@@ -189,8 +193,6 @@ class BaSiC(BaseModel):
     _smoothness_darkfield: float = PrivateAttr(None)
     _sparse_cost_darkfield: float = PrivateAttr(None)
 
-    _settings_fname = "settings.json"
-    _profiles_fname = "profiles.npy"
     model_config = ConfigDict(arbitrary_types_allowed=True, extra="forbid")
 
     @model_validator(mode="before")
@@ -842,14 +844,14 @@ class BaSiC(BaseModel):
                 raise FileExistsError("Model folder already exists.")
 
         # save settings
-        with open(path / self._settings_fname, "w") as fp:
+        with open(path / _SETTINGS_FNAME, "w") as fp:
             # see pydantic docs for output options
             fp.write(self.model_dump_json())
 
         # NOTE emit warning if profiles are all zeros? fit probably not run
         # save profiles
         profiles = np.array((self.flatfield, self.darkfield))
-        np.save(path / str(self._profiles_fname), profiles)
+        np.save(path / _PROFILES_FNAME, profiles)
 
     @classmethod
     def load_model(cls, model_dir: PathLike) -> BaSiC:
@@ -859,10 +861,10 @@ class BaSiC(BaseModel):
         if not path.exists():
             raise FileNotFoundError("Model directory not found.")
 
-        with open(path / str(cls._settings_fname)) as fp:
+        with open(path / _SETTINGS_FNAME) as fp:
             model = json.load(fp)
 
-        profiles = np.load(path / str(cls._profiles_fname))
+        profiles = np.load(path / _PROFILES_FNAME)
         model["flatfield"] = profiles[0]
         model["darkfield"] = profiles[1]
 
