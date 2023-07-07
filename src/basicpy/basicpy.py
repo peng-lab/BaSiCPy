@@ -853,7 +853,7 @@ class BaSiC(BaseModel):
         # NOTE emit warning if profiles are all zeros? fit probably not run
         # save profiles
         profiles = np.array((self.flatfield, self.darkfield))
-        np.save(path / self._profiles_fname, profiles)
+        np.save(path / str(self._profiles_fname), profiles)
 
     @classmethod
     def load_model(cls, model_dir: PathLike) -> BaSiC:
