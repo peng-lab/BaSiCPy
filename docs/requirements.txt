@@ -1,4 +1,5 @@
 autodoc_pydantic==1.8.0
+pydantic-settings
 enum-tools[sphinx]
 nbsphinx==0.8.9
 scanpydoc
