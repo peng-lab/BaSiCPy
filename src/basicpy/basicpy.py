@@ -23,6 +23,7 @@ from jax.image import ResizeMethod
 from jax.image import resize as jax_resize
 from pydantic import BaseModel, Field, PrivateAttr, root_validator
 from skimage.filters import threshold_otsu
+from skimage.morphology import binary_erosion, disk
 from skimage.transform import resize as skimage_resize
 
 from basicpy._jax_routines import ApproximateFit, LadmapFit
@@ -117,6 +118,10 @@ class BaSiC(BaseModel):
         "When True, `threshold_otsu` from `scikit-image` is used "
         "and the brighter pixels are taken."
         "When a callable is given, it is used as the segmentation function.",
+    )
+    autosegment_margin: int = Field(
+        10,
+        description="Margin of the segmentation mask to the thresholded region.",
     )
     max_iterations: int = Field(
         500,
@@ -264,7 +269,8 @@ class BaSiC(BaseModel):
             return np.ones_like(Im, dtype=bool)
         elif self.autosegment is True:
             th = threshold_otsu(Im)
-            return Im > th
+            mask = Im < th
+            return binary_erosion(mask, disk(self.autosegment_margin))
         else:
             return self.autosegment(Im)
 
