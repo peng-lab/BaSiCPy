@@ -21,7 +21,7 @@ from hyperactive.optimizers import HillClimbingOptimizer
 from jax import device_put
 from jax.image import ResizeMethod
 from jax.image import resize as jax_resize
-from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, model_validator
+from pydantic import BaseModel, Field, PrivateAttr, root_validator
 from skimage.filters import threshold_otsu
 from skimage.morphology import ball, binary_erosion
 from skimage.transform import resize as skimage_resize
@@ -193,10 +193,13 @@ class BaSiC(BaseModel):
     _smoothness_darkfield: float = PrivateAttr(None)
     _sparse_cost_darkfield: float = PrivateAttr(None)
 
-    model_config = ConfigDict(arbitrary_types_allowed=True, extra="forbid")
+    class Config:
+        """Pydantic class configuration."""
 
-    @model_validator(mode="before")
-    @classmethod
+        arbitrary_types_allowed = True
+        extra = "forbid"
+
+    @root_validator(pre=True)
     def debug_log_values(cls, values: Dict[str, Any]):
         """Use a validator to echo input values."""
         logger.debug("Initializing BaSiC with parameters:")
@@ -385,7 +388,7 @@ class BaSiC(BaseModel):
         if self.fitting_mode == FittingMode.approximate:
             init_mu = self.mu_coef / spectral_norm
         else:
-            init_mu = self.mu_coef / spectral_norm / np.prod(Im2.shape)
+            init_mu = self.mu_coef / spectral_norm / np.product(Im2.shape)
         fit_params = self.dict()
         fit_params.update(
             dict(
