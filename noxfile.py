@@ -55,7 +55,7 @@ def docs(session: Session) -> None:
     session.run("sphinx-autobuild", *args)
 
 
-@session(name="docs-build", python="3.10")
+@session(name="docs-build", python=python_versions[0])
 def docs_build(session: Session) -> None:
     """Build the documentation."""
     args = session.posargs or ["docs", "docs/_build"]
