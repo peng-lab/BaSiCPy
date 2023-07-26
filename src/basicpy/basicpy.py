@@ -759,6 +759,9 @@ class BaSiC(BaseModel):
                 transformed = basic.transform(images, timelapse=timelapse)
                 vmin_new = np.quantile(transformed, histogram_qmin) * vmin_factor
 
+                if np.allclose(basic.flatfield, np.ones_like(basic.flatfield)):
+                    return -np.inf  # discard the case where flatfield is all ones
+
                 return -1.0 * autotune_cost(
                     transformed,
                     basic.flatfield,
