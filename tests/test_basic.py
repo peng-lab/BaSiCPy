@@ -198,7 +198,7 @@ def test_basic_autotune(early_stop, fitting_weight):
     assert cost2 < cost1
 
 
-@pytest.mark.parametrize("autosegment", [True, lambda Im: Im < threshold_otsu(Im)])
+@pytest.mark.parametrize("autosegment", [True])
 def test_basic_autosegment(autosegment):
     np.random.seed(42)  # answer to the meaning of life, should work here too
     images = datasets.wsi_brain()

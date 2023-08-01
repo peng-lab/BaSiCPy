@@ -10,7 +10,7 @@ import time
 from enum import Enum
 from multiprocessing import cpu_count
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import jax.numpy as jnp
 
@@ -116,7 +116,7 @@ class BaSiC(BaseModel):
     sparse_cost_darkfield: float = Field(
         0.01, description="Weight of the darkfield sparse term in the Lagrangian."
     )
-    autosegment: Union[bool, Callable[[np.ndarray], np.ndarray]] = Field(
+    autosegment: bool = Field(
         False,
         description="When not False, automatically segment the image before fitting."
         "When True, `threshold_otsu` from `scikit-image` is used "
