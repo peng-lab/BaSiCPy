@@ -404,7 +404,7 @@ class BaSiC(BaseModel):
         )
 
         # Initialize variables
-        W = jnp.ones_like(Im2, dtype=jnp.float32)
+        W = jnp.ones_like(Im2, dtype=jnp.float32) * Ws2
         W_D = jnp.ones(Im2.shape[1:], dtype=jnp.float32)
         last_S = None
         last_D = None
