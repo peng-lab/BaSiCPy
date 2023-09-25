@@ -798,7 +798,7 @@ class BaSiC(BaseModel):
         if not path.exists():
             raise FileNotFoundError("Model directory not found.")
 
-        with open(path / cls._settings_fname) as fp:
+        with open(path / cls._settings_fname.default) as fp:
             model = json.load(fp)
 
         profiles = np.load(path / cls._profiles_fname.default)
