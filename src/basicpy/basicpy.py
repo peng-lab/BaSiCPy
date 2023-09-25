@@ -801,7 +801,7 @@ class BaSiC(BaseModel):
         with open(path / cls._settings_fname) as fp:
             model = json.load(fp)
 
-        profiles = np.load(path / cls._profiles_fname)
+        profiles = np.load(path / cls._profiles_fname.default)
         model["flatfield"] = profiles[0]
         model["darkfield"] = profiles[1]
 
