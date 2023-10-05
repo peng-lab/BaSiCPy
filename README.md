@@ -73,11 +73,11 @@ BaSiCPy requires [`jax`](https://github.com/google/jax/) which does not support 
 However, thanks to [cloudhan/jax-windows-builder](https://github.com/cloudhan/jax-windows-builder), we can install BaSiCPy as follows:
 
 ```bash
-pip install "jax[cpu]==0.3.14" -f https://whls.blob.core.windows.net/unstable/index.html --use-deprecated legacy-resolver
+pip install "jax[cpu]==0.4.11" -f https://whls.blob.core.windows.net/unstable/index.html --use-deprecated legacy-resolver
 pip install basicpy
 ```
 
-One may need to add 
+One may need to add
 ```python
 import jax
 jax.config.update('jax_platform_name', 'cpu')
