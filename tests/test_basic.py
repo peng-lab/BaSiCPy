@@ -4,6 +4,7 @@ import numpy as np
 import pytest
 from dask import array as da
 from pydantic import ValidationError
+from skimage.filters import threshold_otsu
 from skimage.transform import resize
 
 from basicpy import BaSiC, datasets, metrics
@@ -70,7 +71,7 @@ def test_basic_resize(synthesized_test_data, resize_mode):
     )
     basic = BaSiC(resize_mode=resize_mode)
     if resize_mode != "jax":
-        images = da.array(images)
+        images = da.from_array(images)
     resized2 = basic._resize(images, target_size)
     assert np.allclose(resized, resized2, rtol=0.1, atol=10)
 
@@ -137,38 +138,101 @@ def test_basic_fit_experimental(datadir):
 
 
 @pytest.mark.parametrize("early_stop", [False, True])
-def test_basic_autotune(early_stop):
+@pytest.mark.parametrize("fitting_weight", [False, True])
+def test_basic_autotune(early_stop, fitting_weight):
     np.random.seed(42)  # answer to the meaning of life, should work here too
+    vmin_factor = 0.6
+    vrange_factor = 1.5
     images = datasets.wsi_brain()
+    weights = images > threshold_otsu(images) if fitting_weight else None
 
     basic = BaSiC(get_darkfield=True)
 
-    vmin, vmax = np.percentile(images, [1, 99])
+    transformed = basic.fit_transform(images, fitting_weight=weights, timelapse=False)
+    _transformed = transformed[weights > 0] if fitting_weight else transformed
+    vmin, vmax = np.percentile(_transformed, [1, 99])
+    vrange = (
+        vmax - vmin * vmin_factor
+    ) * vrange_factor  # take the range larger than to avoid clipping issue
 
-    transformed = basic.fit_transform(images, timelapse=False)
-    entropy1 = metrics.entropy(transformed, vmin=vmin, vmax=vmax)
+    cost1 = metrics.autotune_cost(
+        transformed,
+        basic.flatfield,
+        entropy_vmin=vmin * vmin_factor,
+        entropy_vmax=vmin * vmin_factor + vrange,
+        weights=weights,
+    )
 
     basic.autotune(
         images,
+        fitting_weight=weights,
         search_space={
-            "smoothness_flatfield": list(np.logspace(-3, 1, 10)),
-            "smoothness_darkfield": [0] + list(np.logspace(-3, 1, 10)),
-            "sparse_cost_darkfield": [0] + list(np.logspace(-3, 1, 10)),
+            "smoothness_flatfield": list(np.logspace(-3, 1, 15)),
+            "smoothness_darkfield": [0] + list(np.logspace(-3, 1, 15)),
+            "sparse_cost_darkfield": [0] + list(np.logspace(-3, 1, 15)),
         },
         init_params={
             "smoothness_flatfield": 0.1,
             "smoothness_darkfield": 1e-3,
             "sparse_cost_darkfield": 1e-3,
         },
-        n_iter=10,
+        n_iter=30,
         random_state=2023,
         early_stop=early_stop,
+        vmin_factor=vmin_factor,
+        vrange_factor=vrange_factor,
     )
 
-    transformed = basic.fit_transform(images, timelapse=False)
-    entropy2 = metrics.entropy(transformed, vmin=vmin, vmax=vmax)
+    transformed = basic.fit_transform(images, fitting_weight=weights, timelapse=False)
+    _transformed = transformed[weights > 0] if fitting_weight else transformed
+    vmin, vmax = np.percentile(_transformed, [1, 99])
 
-    assert entropy2 < entropy1
+    cost2 = metrics.autotune_cost(
+        transformed,
+        basic.flatfield,
+        entropy_vmin=vmin * vmin_factor,
+        entropy_vmax=vmin * vmin_factor + vrange,
+        weights=weights,
+    )
+
+    assert cost2 < cost1
+
+
+@pytest.mark.parametrize("autosegment", [True])
+def test_basic_autosegment(autosegment):
+    np.random.seed(42)  # answer to the meaning of life, should work here too
+    images = datasets.wsi_brain()
+    basic = BaSiC(
+        get_darkfield=True,
+        autosegment=autosegment,
+        autosegment_margin=0,
+        working_size=None,
+    )
+    basic.fit(images)
+
+    if autosegment is True:
+        Ws = images < threshold_otsu(images)
+    else:
+        Ws = autosegment(images)
+
+    basic2 = BaSiC(
+        get_darkfield=True,
+        autosegment=False,
+        working_size=None,
+    )
+    basic2.fit(images, fitting_weight=Ws)
+
+    assert np.allclose(basic.flatfield, basic2.flatfield, rtol=0.01, atol=0.01)
+    assert np.allclose(basic.darkfield, basic2.darkfield, rtol=0.01, atol=0.01)
+    assert np.allclose(basic.baseline, basic2.baseline, rtol=0.01, atol=0.01)
+
+    basic = BaSiC(
+        get_darkfield=True,
+        autosegment=autosegment,
+        autosegment_margin=10,
+        working_size=None,
+    )
+    basic.fit(images)
 
 
 # Test BaSiC transform function

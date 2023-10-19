@@ -1,6 +1,6 @@
 import numpy as np
 
-from basicpy.metrics import entropy
+from basicpy.metrics import entropy, fourier_L0_norm
 
 
 def test_entropy():
@@ -10,3 +10,9 @@ def test_entropy():
     rand_vals = np.random.normal(scale=1.5, size=1000000)
     entropy_val = entropy(rand_vals, -10, 10, bins=1000)
     assert np.isclose(entropy_val, 0.5 * (np.log(2 * np.pi * 1.5**2) + 1), atol=0.01)
+
+
+def test_fourier_L0_norm():
+    for shape in [(128, 128), (100, 200)]:
+        img = np.random.rand(*shape)
+        l0_norm = fourier_L0_norm(img)
