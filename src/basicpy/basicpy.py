@@ -10,7 +10,7 @@ import time
 from enum import Enum
 from multiprocessing import cpu_count
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
 import jax.numpy as jnp
 
@@ -508,7 +508,10 @@ class BaSiC(BaseModel):
         )
 
     def transform(
-        self, images: np.ndarray, timelapse: Union[bool, TimelapseTransformMode] = False
+        self,
+        images: np.ndarray,
+        timelapse: Union[bool, TimelapseTransformMode] = False,
+        frames: Optional[Sequence[Union[int, np.int_]]] = None,
     ) -> Union[Tuple[np.ndarray, np.ndarray], np.ndarray]:
         """Apply profile to images.
 
@@ -519,6 +522,7 @@ class BaSiC(BaseModel):
                        the object fluorescence. Also accepts "multiplicative"
                        (the same as `True`) or "additive" (residual is the object
                        fluorescence).
+            frames: Frames to use for transformation. Defaults to None (all frames).
 
         Returns:
             corrected images
@@ -559,8 +563,11 @@ class BaSiC(BaseModel):
         if timelapse:
             if timelapse is True:
                 timelapse = TimelapseTransformMode.multiplicative
-
-            baseline_inds = tuple([slice(None)] + ([np.newaxis] * (im_float.ndim - 1)))
+            if frames is None:
+                _frames = slice(None)
+            else:
+                _frames = np.array(frames)
+            baseline_inds = tuple([_frames] + ([np.newaxis] * (im_float.ndim - 1)))
             if timelapse == TimelapseTransformMode.multiplicative:
                 output = (im_float - self.darkfield[np.newaxis]) / self.flatfield[
                     np.newaxis
