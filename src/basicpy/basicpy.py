@@ -359,7 +359,7 @@ class BaSiC(BaseModel):
         if self.fitting_mode == FittingMode.approximate:
             init_mu = self.mu_coef / spectral_norm
         else:
-            init_mu = self.mu_coef / spectral_norm / np.product(Im2.shape)
+            init_mu = self.mu_coef / spectral_norm / np.prod(Im2.shape)
         fit_params = self.dict()
         fit_params.update(
             dict(
