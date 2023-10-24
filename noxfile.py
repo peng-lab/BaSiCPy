@@ -14,7 +14,7 @@ def tests(session: Session) -> None:
     """Run the test suite."""
     if platform.system() == "Windows":
         session.install(
-            "jax[cpu]===0.3.14",
+            "jax[cpu]",
             "-f",
             "https://whls.blob.core.windows.net/unstable/index.html",
             "--use-deprecated",
