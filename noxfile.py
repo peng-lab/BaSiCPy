@@ -6,7 +6,7 @@ from pathlib import Path
 
 from nox import Session, session
 
-python_versions = ["3.10", "3.9", "3.8", "3.7"]
+python_versions = ["3.11", "3.10", "3.9", "3.8"]
 
 
 @session(python=python_versions)
@@ -55,7 +55,7 @@ def docs(session: Session) -> None:
     session.run("sphinx-autobuild", *args)
 
 
-@session(name="docs-build", python="3.10")
+@session(name="docs-build", python=python_versions[0])
 def docs_build(session: Session) -> None:
     """Build the documentation."""
     args = session.posargs or ["docs", "docs/_build"]
