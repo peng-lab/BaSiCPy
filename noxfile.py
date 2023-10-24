@@ -14,12 +14,13 @@ def tests(session: Session) -> None:
     """Run the test suite."""
     if platform.system() == "Windows":
         session.install(
-            "jax[cpu]",
+            "jax[cpu]==0.4.11",
             "-f",
             "https://whls.blob.core.windows.net/unstable/index.html",
             "--use-deprecated",
             "legacy-resolver",
         )
+        session.install("ml-dtypes==0.2.0")
     session.install(".")
     session.install(
         "dask",
