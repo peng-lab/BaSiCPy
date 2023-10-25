@@ -331,11 +331,11 @@ def test_basic_save_load_model(tmp_path: Path, basic_object):
 @pytest.fixture
 def profiles():
     # create and write mock profiles to file
-    profiles = np.zeros((2, 128, 128), dtype=np.float64)
+    flatfield = np.zeros((128, 128), dtype=np.float64)
+    darkfield = np.zeros((128, 128), dtype=np.float64)
     # unique profiles to check that they are in proper place
-    profiles[0] = 1
-    profiles[1] = 2
-    return profiles
+    baseline = np.ones(100, dtype=np.float64)
+    return flatfield, darkfield, baseline
 
 
 @pytest.fixture
@@ -348,12 +348,17 @@ def model_path(tmp_path, profiles):
     """
     with open(tmp_path / "settings.json", "w") as fp:
         fp.write(settings_json)
-    np.save(tmp_path / "profiles.npy", profiles)
+    np.savez(
+        tmp_path / "profiles.npz",
+        flatfield=profiles[0],
+        darkfield=profiles[1],
+        baseline=profiles[2],
+    )
     return str(tmp_path)
 
 
 @pytest.mark.parametrize("raises_error", [(True), (False)], ids=["no_model", "model"])
-def test_basic_load_model(model_path: str, raises_error: bool, profiles: np.ndarray):
+def test_basic_load_model(model_path: str, raises_error: bool, profiles):
     if raises_error:
         with pytest.raises(FileNotFoundError):
             basic = BaSiC.load_model("/not/a/real/path")
@@ -367,6 +372,7 @@ def test_basic_load_model(model_path: str, raises_error: bool, profiles: np.ndar
         # check that the profiles are in the right places
         assert np.array_equal(basic.flatfield, profiles[0])
         assert np.array_equal(basic.darkfield, profiles[1])
+        assert np.array_equal(basic.baseline, profiles[2])
 
         # check that settings are not default
         assert basic.epsilon != BaSiC.__fields__["epsilon"].default
