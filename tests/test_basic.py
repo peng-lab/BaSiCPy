@@ -273,6 +273,7 @@ def basic_object(request):
     # set profiles
     basic.flatfield = np.full((128,) * dim, 1, dtype=np.float64)
     basic.darkfield = np.full((128,) * dim, 2, dtype=np.float64)
+    basic.baseline = np.ones(100, dtype=np.float64)
     return basic
 
 
@@ -284,18 +285,19 @@ def test_basic_save_model(tmp_path: Path, basic_object):
 
     # check that the files exists
     assert (model_dir / "settings.json").exists()
-    assert (model_dir / "profiles.npy").exists()
+    assert (model_dir / "profiles.npz").exists()
 
     # load files and check for expected content
-    saved_profiles = np.load(model_dir / "profiles.npy")
-    profiles = np.array((basic_object.flatfield, basic_object.darkfield))
-    assert np.array_equal(saved_profiles, profiles)
+    saved_profiles = np.load(model_dir / "profiles.npz")
+    assert np.array_equal(saved_profiles["flatfield"], basic_object.flatfield)
+    assert np.array_equal(saved_profiles["darkfield"], basic_object.darkfield)
+    assert np.array_equal(saved_profiles["baseline"], basic_object.baseline)
 
     # TODO check settings contents
 
     # remove files but not the folder to check for overwriting
     (model_dir / "settings.json").unlink()
-    (model_dir / "profiles.npy").unlink()
+    (model_dir / "profiles.npz").unlink()
     # assert not (model_dir / "settings.json").exists()
     # assert not (model_dir / "profiles.npy").exists()
 
@@ -306,7 +308,7 @@ def test_basic_save_model(tmp_path: Path, basic_object):
     # overwrites if specified
     basic_object.save_model(model_dir, overwrite=True)
     assert (model_dir / "settings.json").exists()
-    assert (model_dir / "profiles.npy").exists()
+    assert (model_dir / "profiles.npz").exists()
 
 
 def test_basic_save_load_model(tmp_path: Path, basic_object):
@@ -321,6 +323,9 @@ def test_basic_save_load_model(tmp_path: Path, basic_object):
     assert np.allclose(basic2.flatfield, flatfield)
     assert np.allclose(basic2.darkfield, darkfield)
     assert basic_object.dict() == basic2.dict()
+
+    images = datasets.wsi_brain()
+    basic_object.fit(images)
 
 
 @pytest.fixture

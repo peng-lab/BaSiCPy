@@ -74,7 +74,7 @@ class TimelapseTransformMode(str, Enum):
 
 
 _SETTINGS_FNAME = "settings.json"
-_PROFILES_FNAME = "profiles.npy"
+_PROFILES_FNAME = "profiles.npz"
 
 
 # multiple channels should be handled by creating a `basic` object for each channel
@@ -856,8 +856,12 @@ class BaSiC(BaseModel):
 
         # NOTE emit warning if profiles are all zeros? fit probably not run
         # save profiles
-        profiles = np.array((self.flatfield, self.darkfield))
-        np.save(path / _PROFILES_FNAME, profiles)
+        np.savez(
+            path / _PROFILES_FNAME,
+            flatfield=np.array(self.flatfield),
+            darkfield=np.array(self.darkfield),
+            baseline=np.array(self.baseline),
+        )
 
     @classmethod
     def load_model(cls, model_dir: PathLike) -> BaSiC:
@@ -871,7 +875,8 @@ class BaSiC(BaseModel):
             model = json.load(fp)
 
         profiles = np.load(path / _PROFILES_FNAME)
-        model["flatfield"] = profiles[0]
-        model["darkfield"] = profiles[1]
+        model["flatfield"] = profiles["flatfield"]
+        model["darkfield"] = profiles["darkfield"]
+        model["baseline"] = profiles["baseline"]
 
         return BaSiC(**model)
