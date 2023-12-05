@@ -1,0 +1,4 @@
+*.pickle
+*.npy
+*.tif
+*.java
