@@ -310,7 +310,8 @@ def test_basic_save_model(tmp_path_factory, basic_object):
     assert (model_dir / "profiles.npz").exists()
 
 
-def test_basic_save_load_model(tmp_path: Path, basic_object):
+def test_basic_save_load_model(tmp_path_factory, basic_object):
+    tmp_path = Path(tmp_path_factory.mktemp("data"))
     model_dir = tmp_path / "test_model"
     flatfield = basic_object.flatfield.copy()
     darkfield = basic_object.darkfield.copy()
@@ -338,7 +339,8 @@ def profiles():
 
 
 @pytest.fixture
-def model_path(tmp_path, profiles):
+def model_path(tmp_path_factory, profiles):
+    tmp_path = Path(tmp_path_factory.mktemp("data"))
     settings_json = """\
     {"epsilon": 0.2, "get_darkfield": false,
     "smoothness_darkfield": 0.0, "smoothness_flatfield": 0.0, "max_iterations": 500,
