@@ -38,6 +38,8 @@ Contributing to BaSiCPy
 
 We are happy about any contributions! Before you start, check out our :doc:`contributing guide <contributing>`.
 
+Please check our :doc:`code of conduct <codeofconduct>` before you contribute.
+
 .. toctree::
    :caption: General
    :maxdepth: 2
@@ -49,6 +51,7 @@ We are happy about any contributions! Before you start, check out our :doc:`cont
    release_notes
    contributors
    contributing
+   codeofconduct
 
 
 Indices and tables
