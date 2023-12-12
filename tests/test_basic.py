@@ -277,9 +277,8 @@ def basic_object(request):
     return basic
 
 
-def test_basic_save_model(tmp_path: Path, basic_object):
-    model_dir = tmp_path / "test_model"
-
+def test_basic_save_model(tmp_path_factory, basic_object):
+    model_dir = Path(tmp_path_factory.mktemp("data")) / "test_model"
     # save the model
     basic_object.save_model(model_dir)
 
