@@ -74,6 +74,7 @@ However, thanks to [cloudhan/jax-windows-builder](https://github.com/cloudhan/ja
 
 ```bash
 pip install "jax[cpu]==0.4.11" -f https://whls.blob.core.windows.net/unstable/index.html --use-deprecated legacy-resolver
+pip install ml-dtypes==0.2.0
 pip install basicpy
 ```
 
