@@ -74,7 +74,7 @@ class TimelapseTransformMode(str, Enum):
 
 
 _SETTINGS_FNAME = "settings.json"
-_PROFILES_FNAME = "profiles.npy"
+_PROFILES_FNAME = "profiles.npz"
 
 
 # multiple channels should be handled by creating a `basic` object for each channel
@@ -665,8 +665,8 @@ class BaSiC(BaseModel):
         histogram_use_fitting_weight: bool = True,
         fourier_l0_norm_image_threshold: float = 0.1,
         fourier_l0_norm_fourier_radius=10,
-        fourier_l0_norm_threshold=1e-3,
-        fourier_l0_norm_cost_coef=1e4,
+        fourier_l0_norm_threshold=0.0,
+        fourier_l0_norm_cost_coef=30,
         early_stop: bool = True,
         early_stop_n_iter_no_change: int = 15,
         early_stop_torelance: float = 1e-6,
@@ -863,8 +863,12 @@ class BaSiC(BaseModel):
 
         # NOTE emit warning if profiles are all zeros? fit probably not run
         # save profiles
-        profiles = np.array((self.flatfield, self.darkfield))
-        np.save(path / _PROFILES_FNAME, profiles)
+        np.savez(
+            path / _PROFILES_FNAME,
+            flatfield=np.array(self.flatfield),
+            darkfield=np.array(self.darkfield),
+            baseline=np.array(self.baseline),
+        )
 
     @classmethod
     def load_model(cls, model_dir: PathLike) -> BaSiC:
@@ -878,7 +882,8 @@ class BaSiC(BaseModel):
             model = json.load(fp)
 
         profiles = np.load(path / _PROFILES_FNAME)
-        model["flatfield"] = profiles[0]
-        model["darkfield"] = profiles[1]
+        model["flatfield"] = profiles["flatfield"]
+        model["darkfield"] = profiles["darkfield"]
+        model["baseline"] = profiles["baseline"]
 
         return BaSiC(**model)

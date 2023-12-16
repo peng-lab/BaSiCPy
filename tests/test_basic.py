@@ -33,7 +33,7 @@ def synthesized_test_data(request):
     grid = np.array(
         np.meshgrid(
             *[np.linspace(-size // 2 + 1, size // 2, size) for size in sizes],
-            indexing="ij"
+            indexing="ij",
         )
     )
 
@@ -273,43 +273,45 @@ def basic_object(request):
     # set profiles
     basic.flatfield = np.full((128,) * dim, 1, dtype=np.float64)
     basic.darkfield = np.full((128,) * dim, 2, dtype=np.float64)
+    basic.baseline = np.ones(100, dtype=np.float64)
     return basic
 
 
-def test_basic_save_model(tmp_path: Path, basic_object):
-    model_dir = tmp_path / "test_model"
-
+def test_basic_save_model(tmp_path_factory, basic_object):
+    dim = basic_object.flatfield.ndim
+    model_dir = Path(tmp_path_factory.mktemp("data")) / f"test_save_model_{dim}"
     # save the model
     basic_object.save_model(model_dir)
 
     # check that the files exists
     assert (model_dir / "settings.json").exists()
-    assert (model_dir / "profiles.npy").exists()
+    assert (model_dir / "profiles.npz").exists()
 
     # load files and check for expected content
-    saved_profiles = np.load(model_dir / "profiles.npy")
-    profiles = np.array((basic_object.flatfield, basic_object.darkfield))
-    assert np.array_equal(saved_profiles, profiles)
+    saved_profiles = np.load(model_dir / "profiles.npz")
+    assert np.array_equal(saved_profiles["flatfield"], basic_object.flatfield)
+    assert np.array_equal(saved_profiles["darkfield"], basic_object.darkfield)
+    assert np.array_equal(saved_profiles["baseline"], basic_object.baseline)
 
     # TODO check settings contents
 
-    # remove files but not the folder to check for overwriting
-    (model_dir / "settings.json").unlink()
-    (model_dir / "profiles.npy").unlink()
-    # assert not (model_dir / "settings.json").exists()
-    # assert not (model_dir / "profiles.npy").exists()
-
+    model_dir2 = Path(tmp_path_factory.mktemp("data")) / f"test_save_model_{dim}_2"
+    model_dir2.mkdir()
     # an error raises when the model folder exists
     with pytest.raises(FileExistsError):
-        basic_object.save_model(model_dir)
+        basic_object.save_model(model_dir2)
 
     # overwrites if specified
     basic_object.save_model(model_dir, overwrite=True)
     assert (model_dir / "settings.json").exists()
-    assert (model_dir / "profiles.npy").exists()
+    assert (model_dir / "profiles.npz").exists()
+    basic_object.save_model(model_dir2, overwrite=True)
+    assert (model_dir2 / "settings.json").exists()
+    assert (model_dir2 / "profiles.npz").exists()
 
 
-def test_basic_save_load_model(tmp_path: Path, basic_object):
+def test_basic_save_load_model(tmp_path_factory, basic_object):
+    tmp_path = Path(tmp_path_factory.mktemp("data"))
     model_dir = tmp_path / "test_model"
     flatfield = basic_object.flatfield.copy()
     darkfield = basic_object.darkfield.copy()
@@ -322,19 +324,23 @@ def test_basic_save_load_model(tmp_path: Path, basic_object):
     assert np.allclose(basic2.darkfield, darkfield)
     assert basic_object.dict() == basic2.dict()
 
+    images = datasets.wsi_brain()
+    basic_object.fit(images)
+
 
 @pytest.fixture
 def profiles():
     # create and write mock profiles to file
-    profiles = np.zeros((2, 128, 128), dtype=np.float64)
+    flatfield = np.zeros((128, 128), dtype=np.float64)
+    darkfield = np.zeros((128, 128), dtype=np.float64)
     # unique profiles to check that they are in proper place
-    profiles[0] = 1
-    profiles[1] = 2
-    return profiles
+    baseline = np.ones(100, dtype=np.float64)
+    return flatfield, darkfield, baseline
 
 
 @pytest.fixture
-def model_path(tmp_path, profiles):
+def model_path(tmp_path_factory, profiles):
+    tmp_path = Path(tmp_path_factory.mktemp("data"))
     settings_json = """\
     {"epsilon": 0.2, "get_darkfield": false,
     "smoothness_darkfield": 0.0, "smoothness_flatfield": 0.0, "max_iterations": 500,
@@ -343,12 +349,17 @@ def model_path(tmp_path, profiles):
     """
     with open(tmp_path / "settings.json", "w") as fp:
         fp.write(settings_json)
-    np.save(tmp_path / "profiles.npy", profiles)
+    np.savez(
+        tmp_path / "profiles.npz",
+        flatfield=profiles[0],
+        darkfield=profiles[1],
+        baseline=profiles[2],
+    )
     return str(tmp_path)
 
 
 @pytest.mark.parametrize("raises_error", [(True), (False)], ids=["no_model", "model"])
-def test_basic_load_model(model_path: str, raises_error: bool, profiles: np.ndarray):
+def test_basic_load_model(model_path: str, raises_error: bool, profiles):
     if raises_error:
         with pytest.raises(FileNotFoundError):
             basic = BaSiC.load_model("/not/a/real/path")
@@ -362,6 +373,7 @@ def test_basic_load_model(model_path: str, raises_error: bool, profiles: np.ndar
         # check that the profiles are in the right places
         assert np.array_equal(basic.flatfield, profiles[0])
         assert np.array_equal(basic.darkfield, profiles[1])
+        assert np.array_equal(basic.baseline, profiles[2])
 
         # check that settings are not default
         assert basic.epsilon != BaSiC.__fields__["epsilon"].default
