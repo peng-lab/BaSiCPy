@@ -305,6 +305,9 @@ def test_basic_save_model(tmp_path_factory, basic_object):
     basic_object.save_model(model_dir, overwrite=True)
     assert (model_dir / "settings.json").exists()
     assert (model_dir / "profiles.npz").exists()
+    basic_object.save_model(model_dir2, overwrite=True)
+    assert (model_dir2 / "settings.json").exists()
+    assert (model_dir2 / "profiles.npz").exists()
 
 
 def test_basic_save_load_model(tmp_path_factory, basic_object):
