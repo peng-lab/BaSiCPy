@@ -1,5 +1,4 @@
 from pathlib import Path
-from time import sleep
 
 import numpy as np
 import pytest
@@ -296,25 +295,11 @@ def test_basic_save_model(tmp_path_factory, basic_object):
 
     # TODO check settings contents
 
-    # remove files but not the folder to check for overwriting
-    for filename in ["settings.json", "profiles.npz"]:
-        i = 0
-        while True:
-            try:
-                (model_dir / filename).unlink()
-                break
-            except PermissionError as e:
-                sleep(1)
-                i += 1
-                if i > 5:
-                    raise e
-
-    # assert not (model_dir / "settings.json").exists()
-    # assert not (model_dir / "profiles.npy").exists()
-
+    model_dir2 = Path(tmp_path_factory.mktemp("data")) / f"test_save_model_{dim}_2"
+    model_dir2.mkdir()
     # an error raises when the model folder exists
     with pytest.raises(FileExistsError):
-        basic_object.save_model(model_dir)
+        basic_object.save_model(model_dir2)
 
     # overwrites if specified
     basic_object.save_model(model_dir, overwrite=True)
