@@ -33,7 +33,7 @@ def synthesized_test_data(request):
     grid = np.array(
         np.meshgrid(
             *[np.linspace(-size // 2 + 1, size // 2, size) for size in sizes],
-            indexing="ij"
+            indexing="ij",
         )
     )
 
@@ -278,7 +278,8 @@ def basic_object(request):
 
 
 def test_basic_save_model(tmp_path_factory, basic_object):
-    model_dir = Path(tmp_path_factory.mktemp("data")) / "test_model"
+    dim = basic_object.flatfield.ndim
+    model_dir = Path(tmp_path_factory.mktemp("data")) / f"test_save_model_{dim}"
     # save the model
     basic_object.save_model(model_dir)
 
@@ -294,20 +295,19 @@ def test_basic_save_model(tmp_path_factory, basic_object):
 
     # TODO check settings contents
 
-    # remove files but not the folder to check for overwriting
-    (model_dir / "settings.json").unlink()
-    (model_dir / "profiles.npz").unlink()
-    # assert not (model_dir / "settings.json").exists()
-    # assert not (model_dir / "profiles.npy").exists()
-
+    model_dir2 = Path(tmp_path_factory.mktemp("data")) / f"test_save_model_{dim}_2"
+    model_dir2.mkdir()
     # an error raises when the model folder exists
     with pytest.raises(FileExistsError):
-        basic_object.save_model(model_dir)
+        basic_object.save_model(model_dir2)
 
     # overwrites if specified
     basic_object.save_model(model_dir, overwrite=True)
     assert (model_dir / "settings.json").exists()
     assert (model_dir / "profiles.npz").exists()
+    basic_object.save_model(model_dir2, overwrite=True)
+    assert (model_dir2 / "settings.json").exists()
+    assert (model_dir2 / "profiles.npz").exists()
 
 
 def test_basic_save_load_model(tmp_path_factory, basic_object):
