@@ -33,7 +33,7 @@ def synthesized_test_data(request):
     grid = np.array(
         np.meshgrid(
             *[np.linspace(-size // 2 + 1, size // 2, size) for size in sizes],
-            indexing="ij"
+            indexing="ij",
         )
     )
 
@@ -278,7 +278,8 @@ def basic_object(request):
 
 
 def test_basic_save_model(tmp_path_factory, basic_object):
-    model_dir = Path(tmp_path_factory.mktemp("data")) / "test_model"
+    dim = basic_object.flatfield.ndim
+    model_dir = Path(tmp_path_factory.mktemp("data")) / f"test_save_model_{dim}"
     # save the model
     basic_object.save_model(model_dir)
 
