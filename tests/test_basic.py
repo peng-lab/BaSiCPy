@@ -81,8 +81,6 @@ def test_basic_resize(synthesized_test_data):
     resized2 = basic._resize(images[:, None], target_size)
 
 
-'''
-
 # Test BaSiC fitting function (with synthetic data)
 def test_basic_fit_synthetic(synthesized_test_data):
 
@@ -101,6 +99,7 @@ def test_basic_fit_synthetic(synthesized_test_data):
     assert np.allclose(flatfield, basic.flatfield, rtol=1e-3, atol=1e-3)
 
 
+'''
 # Test BaSiC fitting function (with experimental data)
 def test_basic_fit_experimental(datadir):
 
