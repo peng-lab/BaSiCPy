@@ -39,7 +39,7 @@ See [Read the Docs](https://basicpy.readthedocs.io/en/latest/) for the detailed 
 
 ## Installation
 
-### For Mac (Intel chip), Linux or WSL2 users
+### For CPU version
 
  Install from PyPI
 
@@ -55,37 +55,15 @@ cd BaSiCPy
 pip install .
 ```
 
-### For Mac users with M1 / M2 chip
+### For GPU version
 
-BaSiCPy requires [`jax`](https://github.com/google/jax/),
-which has potential build issue with M1 chips.
-One easiest solution is using [Miniforge](https://github.com/conda-forge/miniforge)
-as explained [here](https://github.com/google/jax/issues/5501).
-In the Miniforge environment, please try the following:
-```bash
-conda install -c conda-forge jax jaxlib
-pip install basicpy
-```
+To use BaSiCPy with GPU acceleration:
 
-### For Windows users
+- 🧩 **Install PyTorch** according to your system configuration by following the [official PyTorch installation guide](https://pytorch.org/get-started/locally/).
+- 💡 **Install BaSiCPy** (PyTorch backend only):
+  ```bash
+  pip install basicpy
 
-BaSiCPy requires [`jax`](https://github.com/google/jax/) which does not support Windows officially.
-However, thanks to [cloudhan/jax-windows-builder](https://github.com/cloudhan/jax-windows-builder), we can install BaSiCPy as follows:
-
-```bash
-pip install "jax[cpu]==0.4.11" -f https://whls.blob.core.windows.net/unstable/index.html --use-deprecated legacy-resolver
-pip install ml-dtypes==0.2.0
-pip install basicpy
-```
-
-One may need to add
-```python
-import jax
-jax.config.update('jax_platform_name', 'cpu')
-```
-at the top of the script to ensure that JAX uses CPU.
-
-For details and latest updates, see [this issue](https://github.com/google/jax/issues/438).
 
 ### Install with dev dependencies
 
