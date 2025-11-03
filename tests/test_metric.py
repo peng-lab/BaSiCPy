@@ -7,10 +7,10 @@ import torch
 def test_entropy():
     rand_vals = np.random.rand(1000000) * 0.5
     rand_vals = torch.from_numpy(rand_vals.astype(np.float32))
-    _ = entropy(rand_vals, 0, 0.5, bins=100)
+    _ = entropy(rand_vals, torch.tensor([0]), torch.tensor([0.5]), bins=100)
     rand_vals = np.random.normal(scale=1.5, size=1000000)
     rand_vals = torch.from_numpy(rand_vals.astype(np.float32))
-    _ = entropy(rand_vals, -10, 10, bins=1000)
+    _ = entropy(rand_vals, torch.tensor([-10]), torch.tensor([10]), bins=1000)
 
 
 def test_fourier_L0_norm():
