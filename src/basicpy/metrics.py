@@ -65,7 +65,7 @@ def entropy(
 
 
 def fourier_L0_norm(
-    image: np.ndarray,
+    image: torch.tensor,
     threshold: float = 0.1,
     fourier_radius: float = 10,
     exclude_edges: bool = True,
