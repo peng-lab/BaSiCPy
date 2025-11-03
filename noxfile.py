@@ -6,7 +6,7 @@ from pathlib import Path
 
 from nox import Session, session
 
-python_versions = ["3.10", "3.9", "3.8"]
+python_versions = ["3.11", "3.10", "3.9", "3.8"]
 
 
 @session(python=python_versions)
@@ -47,15 +47,21 @@ def docs(session: Session) -> None:
 
 
 @session(name="docs-build", python=python_versions[0])
-def docs_build(session: Session) -> None:
-    """Build the documentation."""
-    args = session.posargs or ["docs", "docs/_build"]
-    session.install(".")
+def docs_build(session):
     session.install("-r", "docs/requirements.txt")
-    session.install("sphinx", "sphinx-autobuild")
+
+    session.install("-e", ".")
+
+    session.run(
+        "python",
+        "-c",
+        "import pydantic, sphinxcontrib.autodoc_pydantic as ap; "
+        "print('pydantic', pydantic.__version__); "
+        "print('autodoc-pydantic', ap.__version__)",
+    )
 
     build_dir = Path("docs", "_build")
     if build_dir.exists():
         shutil.rmtree(build_dir)
 
-    session.run("sphinx-build", *args)
+    session.run("sphinx-build", "-b", "html", "-n", "-T", "docs", "docs/_build")

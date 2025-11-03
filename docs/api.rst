@@ -20,9 +20,3 @@ BaSiC
 .. automodule:: basicpy.basicpy
    :members:
    :special-members: __init__
-
-Tools
-^^^^^
-
-.. automodule:: basicpy.tools
-   :members:
