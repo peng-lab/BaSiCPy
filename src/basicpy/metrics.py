@@ -6,11 +6,11 @@ import torch_dct as dct
 
 
 def entropy(
-    image: np.ndarray,
+    image: torch.tensor,
     vmin: float,
     vmax: float,
     bins: int = 256,
-    weights: Optional[np.ndarray] = None,
+    weights: Optional[torch.tensor] = None,
     clip: bool = True,
 ):
     """Calculate the entropy of an image.
