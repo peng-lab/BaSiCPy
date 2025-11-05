@@ -911,7 +911,6 @@ class BaSiC(BaseModel):
         logger.info(
             f"=== BaSiC transform finished in {time.monotonic()-start_time} seconds ==="
         )
-
         return output
 
     def fit_transform(
@@ -1232,7 +1231,6 @@ class BaSiC(BaseModel):
             weights = fitting_weight.to(images.dtype)
 
         def fit_and_calc_entropy(params):
-            # try:
             basic = self.model_copy(update=params)
             basic.fit(
                 images,
@@ -1255,20 +1253,12 @@ class BaSiC(BaseModel):
                 * vmin_factor
             )
 
-            # vmin_new = np.quantile(
-            #     transformed.cpu().data.numpy(),
-            #     histogram_qmin,
-            # )
-
-            # transformed_sorted, _ = torch.sort(transformed.flatten())
-            # vmin_new = transformed_sorted[int(transformed.numel()*histogram_qmin/100)] * vmin_factor
-
             if np.allclose(basic.flatfield, np.ones_like(basic.flatfield)):
                 return np.inf  # discard the case where flatfield is all ones
 
             r = autotune_cost(
                 transformed,
-                basic._flatfield_small,
+                basic.flatfield,
                 entropy_vmin=vmin_new,
                 entropy_vmax=vmin_new + val_range,
                 histogram_bins=histogram_bins,
