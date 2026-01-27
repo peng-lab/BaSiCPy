@@ -3,7 +3,8 @@
 import jax.numpy as jnp
 import scipy.fft as osp_fft
 from jax import lax
-from jax._src.numpy.util import _wraps
+from jax._src.numpy import util
+from jax._src.util import wraps as _wraps
 from jax._src.util import canonicalize_axis
 
 
