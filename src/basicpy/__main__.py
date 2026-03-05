@@ -1,9 +1,11 @@
 import argparse
 import logging
-from typing import Any, Optional
-import tifffile
-from basicpy import BaSiC
 import os
+from typing import Any, Optional
+
+import tifffile
+
+from basicpy import BaSiC
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",

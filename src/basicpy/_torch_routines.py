@@ -1,9 +1,10 @@
-import torch.nn as nn
-import torch
-import numpy as np
-import torch_dct as dct
-from typing import Tuple
 import math
+from typing import Tuple
+
+import numpy as np
+import torch
+import torch.nn as nn
+import torch_dct as dct
 
 
 def _tshrinkage(x, thresh):
@@ -27,7 +28,7 @@ class BaseFit(nn.Module):
         get_darkfield: bool = False,
         max_iterations: int = 500,
     ):
-        super(BaseFit, self).__init__()
+        super().__init__()
         """
         epsilon: Weight regularization term
         max_mu: The maximum value of mu
@@ -158,7 +159,7 @@ class BaseFit(nn.Module):
         self.register_buffer("D", D)
 
         while self._cond(vals):
-            vals = self._step_only_baseline(vals)
+            vals = self._step_only_baseline(vals)  # type: ignore[operator]
 
         k, I_R, B, Y, mu, fit_residual, value_diff = vals
         norm_ratio = torch.linalg.norm(fit_residual.ravel(), ord=2) / self.image_norm
@@ -167,7 +168,7 @@ class BaseFit(nn.Module):
 
 class ApproximateFit(BaseFit, nn.Module):
     def __init__(self, **kwargs):
-        super(ApproximateFit, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self._ent1 = 1.0
         self._ent2 = 10.0
 
@@ -361,7 +362,7 @@ class ApproximateFit(BaseFit, nn.Module):
 
 class LadmapFit(BaseFit, nn.Module):
     def __init__(self, **kwargs):
-        super(LadmapFit, self).__init__(**kwargs)
+        super().__init__(**kwargs)
 
     def _step(
         self,

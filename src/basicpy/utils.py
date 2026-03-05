@@ -1,9 +1,10 @@
-import tqdm
-import warnings
-import numpy as np
 import inspect
+import warnings
 from functools import wraps
+
+import numpy as np
 import torch
+import tqdm
 
 
 def _is_uint8_array_like(x) -> bool:

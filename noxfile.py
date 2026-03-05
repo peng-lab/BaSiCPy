@@ -1,12 +1,11 @@
 """Nox automation file."""
 
-import platform
 import shutil
 from pathlib import Path
 
 from nox import Session, session
 
-python_versions = ["3.11", "3.10", "3.9"]
+python_versions = ["3.11", "3.12", "3.13"]
 
 
 @session(python=python_versions)
@@ -23,7 +22,7 @@ def tests(session: Session) -> None:
     session.run("pytest", "--runslow")
 
 
-@session(python=python_versions[0])
+@session(python=python_versions[1])
 def docs(session: Session) -> None:
     """Build and serve the documentation with live reloading on file changes."""
     args = session.posargs or [
@@ -46,7 +45,7 @@ def docs(session: Session) -> None:
     session.run("sphinx-autobuild", *args)
 
 
-@session(name="docs-build", python=python_versions[0])
+@session(name="docs-build", python=python_versions[1])
 def docs_build(session):
     session.install("-r", "docs/requirements.txt")
 

@@ -1,7 +1,7 @@
 import numpy as np
+import torch
 
 from basicpy.metrics import entropy, fourier_L0_norm
-import torch
 
 
 def test_entropy():
