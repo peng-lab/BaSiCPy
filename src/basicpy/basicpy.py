@@ -7,6 +7,7 @@ import logging
 import dask.array as da
 import torch
 import warnings
+from pydantic import ConfigDict
 
 from skimage.transform import resize as skimage_resize
 import torch.nn.functional as F
@@ -143,11 +144,10 @@ class BaSiC(BaseModel):
     _darkfield_small: float = PrivateAttr(None)
     _converge_flag: bool = PrivateAttr(None)
 
-    class Config:
-        """Pydantic class configuration."""
-
-        arbitrary_types_allowed = True
-        extra = "forbid"
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        extra="forbid",
+    )
 
     @model_validator(mode="after")
     def _warn_about_settings(self):

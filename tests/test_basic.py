@@ -186,7 +186,7 @@ def test_basic_save_load_model(tmp_path_factory, basic_object):
 
     assert np.allclose(basic2.flatfield, flatfield)
     assert np.allclose(basic2.darkfield, darkfield)
-    assert basic_object.dict() == basic2.dict()
+    assert basic_object.model_dump() == basic2.model_dump()
 
     images = datasets.wsi_brain()
     basic_object.fit(images)
@@ -240,7 +240,7 @@ def test_basic_load_model(model_path: str, raises_error: bool, profiles):
         assert np.array_equal(basic.baseline, profiles[2])
 
         # check that settings are not default
-        assert basic.epsilon != BaSiC.__fields__["epsilon"].default
+        assert basic.epsilon != BaSiC.model_fields["epsilon"].default
 
 
 def test_no_accepting_wrong_argments() -> None:
