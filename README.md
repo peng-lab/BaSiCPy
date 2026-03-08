@@ -104,19 +104,16 @@ For the possible contribution types, see the [All Contributors documentation](ht
 <table>
   <tr>
     <td align="center"><a href="https://github.com/Nicholas-Schaub"><img src="https://avatars.githubusercontent.com/u/15925882?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Nicholas-Schaub</b></sub></a><br /><a href="#projectManagement-Nicholas-Schaub" title="Project Management">📆</a> <a href="https://github.com/peng-lab/BaSiCPy/pulls?q=is%3Apr+reviewed-by%3ANicholas-Schaub" title="Reviewed Pull Requests">👀</a> <a href="#infra-Nicholas-Schaub" title="Infrastructure (Hosting, Build-Tools, etc)">🚇</a> <a href="https://github.com/peng-lab/BaSiCPy/commits?author=Nicholas-Schaub" title="Tests">⚠️</a> <a href="https://github.com/peng-lab/BaSiCPy/commits?author=Nicholas-Schaub" title="Code">💻</a> <a href="#ideas-Nicholas-Schaub" title="Ideas, Planning, & Feedback">🤔</a></td>
-
     <td align="center"><a href="https://github.com/tdmorello"><img src="https://avatars.githubusercontent.com/u/34800427?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Tim Morello</b></sub></a><br /><a href="https://github.com/peng-lab/BaSiCPy/commits?author=tdmorello" title="Code">💻</a> <a href="https://github.com/peng-lab/BaSiCPy/commits?author=tdmorello" title="Documentation">📖</a> <a href="https://github.com/peng-lab/BaSiCPy/pulls?q=is%3Apr+reviewed-by%3Atdmorello" title="Reviewed Pull Requests">👀</a> <a href="https://github.com/peng-lab/BaSiCPy/commits?author=tdmorello" title="Tests">⚠️</a> <a href="#ideas-tdmorello" title="Ideas, Planning, & Feedback">🤔</a> <a href="#infra-tdmorello" title="Infrastructure (Hosting, Build-Tools, etc)">🚇</a></td>
-
     <td align="center"><a href="https://github.com/tying84"><img src="https://avatars.githubusercontent.com/u/11461947?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Tingying Peng</b></sub></a><br /><a href="#data-tying84" title="Data">🔣</a> <a href="#financial-tying84" title="Financial">💵</a> <a href="#projectManagement-tying84" title="Project Management">📆</a> <a href="#talk-tying84" title="Talks">📢</a> <a href="https://github.com/peng-lab/BaSiCPy/commits?author=tying84" title="Code">💻</a></td>
-
-    <td align="center"><a href="https://github.com/YuLiu-web"><img src="https://avatars.githubusercontent.com/u/70626217?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Yu Liu</b></sub></a><br /><a href="https://github.com/peng-lab/BaSiCPy/commits?author=YuLiu-web" title="Code">💻</a> <a href="https://github.com/peng-lab/BaSiCPy/commits?author=YuLiu-web" title="Tests">⚠️</a> <a href="#question-YuLiu-web" title="Answering Questions">💬</a></td>
-
     <td align="center"><a href="https://github.com/yfukai"><img src="https://avatars.githubusercontent.com/u/5919272?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Yohsuke T. Fukai</b></sub></a><br /><a href="#research-yfukai" title="Research">🔬</a> <a href="https://github.com/peng-lab/BaSiCPy/commits?author=yfukai" title="Code">💻</a> <a href="#ideas-yfukai" title="Ideas, Planning, & Feedback">🤔</a> <a href="https://github.com/peng-lab/BaSiCPy/pulls?q=is%3Apr+reviewed-by%3Ayfukai" title="Reviewed Pull Requests">👀</a> <a href="https://github.com/peng-lab/BaSiCPy/commits?author=yfukai" title="Tests">⚠️</a> <a href="#question-yfukai" title="Answering Questions">💬</a> <a href="#infra-yfukai" title="Infrastructure (Hosting, Build-Tools, etc)">🚇</a></td>
+    <td align="center"><a href="https://github.com/YuLiu-web"><img src="https://avatars.githubusercontent.com/u/70626217?v=4?s=100" width="100px;" alt=""/><br /><sub><b>YuLiu-web</b></sub></a><br /><a href="https://github.com/peng-lab/BaSiCPy/commits?author=YuLiu-web" title="Documentation">📖</a> <a href="#userTesting-YuLiu-web" title="User Testing">📓</a></td>
   </tr>
 </table>
 
 <!-- markdownlint-restore -->
 <!-- prettier-ignore-end -->
+
 <!-- ALL-CONTRIBUTORS-LIST:END -->
 
 For details on the contribution roles, see the [documentation](https://basicpy.readthedocs.io/en/latest/contributors.html).
