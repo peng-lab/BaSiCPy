@@ -140,7 +140,11 @@ def main(
     return
 
 
-if __name__ == "__main__":
+def cli():
     parser = build_parser()
     args = parser.parse_args()
     main(**vars(args))
+
+
+if __name__ == "__main__":
+    cli()
