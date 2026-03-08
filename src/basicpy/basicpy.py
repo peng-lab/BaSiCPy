@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 import logging
 import dask.array as da
 import torch
+import warnings
 
 from skimage.transform import resize as skimage_resize
 import torch.nn.functional as F
@@ -17,6 +18,7 @@ from basicpy._torch_routines import ApproximateFit, LadmapFit
 from basicpy.metrics import autotune_cost
 from basicpy.metrics_numpy import autotune_cost_numpy
 from basicpy.utils import maybe_tqdm, make_overlap_chunks
+from basicpy.utils import public_api
 import tqdm
 
 try:
@@ -147,6 +149,32 @@ class BaSiC(BaseModel):
         arbitrary_types_allowed = True
         extra = "forbid"
 
+    @model_validator(mode="after")
+    def _warn_about_settings(self):
+        if self.get_darkfield:
+            warnings.warn(
+                "get_darkfield=True: Estimating darkfield may lead to unstable "
+                "results. Please use with caution and refer to the documentation "
+                "for details: "
+                "https://basicpy.readthedocs.io/en/latest/bestpractice.html",
+                UserWarning,
+                stacklevel=3,
+            )
+
+        if self.smoothness_flatfield is not None and not (
+            0.01 <= self.smoothness_flatfield <= 10
+        ):
+            warnings.warn(
+                f"smoothness_flatfield={self.smoothness_flatfield} is outside the "
+                "recommended range [0.01, 10]. This value may be unsuitable for "
+                "your data. Consider using the autotune strategy to select it "
+                "automatically.",
+                UserWarning,
+                stacklevel=3,
+            )
+
+        return self
+
     @model_validator(mode="before")
     def debug_log_values(cls, values: Dict[str, Any]):
         """Use a validator to echo input values."""
@@ -155,6 +183,7 @@ class BaSiC(BaseModel):
             logger.debug(f"{k}: {v}")
         return values
 
+    @public_api
     def __call__(
         self,
         images: Union[np.ndarray, da.core.Array, torch.Tensor],
@@ -252,6 +281,7 @@ class BaSiC(BaseModel):
 
         return Im
 
+    @public_api
     def fit(
         self,
         images: np.ndarray,
@@ -592,6 +622,7 @@ class BaSiC(BaseModel):
             f"=== BaSiC fit finished in {time.monotonic()-start_time} seconds ==="
         )
 
+    @public_api
     def fit_only_baseline(
         self,
         images,
@@ -769,6 +800,7 @@ class BaSiC(BaseModel):
 
         return B
 
+    @public_api
     def transform(
         self,
         images: Union[np.ndarray, torch.Tensor, da.core.Array],
@@ -911,8 +943,10 @@ class BaSiC(BaseModel):
         logger.info(
             f"=== BaSiC transform finished in {time.monotonic()-start_time} seconds ==="
         )
+
         return output
 
+    @public_api
     def fit_transform(
         self,
         images: Union[np.ndarray, da.core.Array, torch.Tensor],
@@ -949,6 +983,7 @@ class BaSiC(BaseModel):
 
         return corrected
 
+    @public_api
     def autotune(
         self,
         images: np.ndarray,
@@ -1231,6 +1266,7 @@ class BaSiC(BaseModel):
             weights = fitting_weight.to(images.dtype)
 
         def fit_and_calc_entropy(params):
+            # try:
             basic = self.model_copy(update=params)
             basic.fit(
                 images,
@@ -1253,12 +1289,20 @@ class BaSiC(BaseModel):
                 * vmin_factor
             )
 
+            # vmin_new = np.quantile(
+            #     transformed.cpu().data.numpy(),
+            #     histogram_qmin,
+            # )
+
+            # transformed_sorted, _ = torch.sort(transformed.flatten())
+            # vmin_new = transformed_sorted[int(transformed.numel()*histogram_qmin/100)] * vmin_factor
+
             if np.allclose(basic.flatfield, np.ones_like(basic.flatfield)):
                 return np.inf  # discard the case where flatfield is all ones
 
             r = autotune_cost(
                 transformed,
-                basic.flatfield,
+                basic._flatfield_small,
                 entropy_vmin=vmin_new,
                 entropy_vmax=vmin_new + val_range,
                 histogram_bins=histogram_bins,
@@ -1371,6 +1415,7 @@ class BaSiC(BaseModel):
             print("Best smoothness_flatfield = {}.".format(self.smoothness_flatfield))
             print("Best smoothness_darkfield = {}.".format(self.smoothness_darkfield))
 
+    @public_api
     def autotune_hillclimbing(
         self,
         images: np.ndarray,

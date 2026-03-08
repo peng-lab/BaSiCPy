@@ -2,7 +2,7 @@ from typing import Optional
 
 import numpy as np
 import torch
-from scipy.fft import dctn
+import torch_dct as dct
 
 
 def entropy(
@@ -10,7 +10,7 @@ def entropy(
     vmin: float,
     vmax: float,
     bins: int = 256,
-    weights: Optional[torch.tensor] = None,
+    weights: Optional[np.ndarray] = None,
     clip: bool = True,
 ):
     """Calculate the entropy of an image.
@@ -42,11 +42,11 @@ def entropy(
         image = image[ind]
         if weights is not None:
             weights = weights[ind]
-    prob_density, edges = np.histogram(
-        image.cpu().data.numpy(),
+    prob_density, edges = torch.histogram(
+        image.cpu(),
         bins,
         range=(vmin.item(), vmax.item()),
-        weights=weights.cpu().data.numpy() if weights != None else None,
+        weight=weights.cpu() if weights != None else None,
         density=True,
     )
 
@@ -60,21 +60,19 @@ def entropy(
     #        np.sum(prob_density) * dx, 1
     #    ), f"{np.sum(prob_density) * dx} is not close to 1"
     prob_density = prob_density[prob_density > 0]
-    ent = -np.sum(prob_density * np.log(prob_density)) * dx
+    ent = -torch.sum(prob_density * torch.log(prob_density)) * dx
     return ent
 
 
 def fourier_L0_norm(
     image: np.ndarray,
-    device: str = "cpu",
     threshold: float = 0.1,
     fourier_radius: float = 10,
     exclude_edges: bool = True,
 ):
-    SF = np.abs(dctn(image, norm="ortho", type=2))
-    SF = torch.from_numpy(SF).to(device)
+    SF = dct.dct_2d(image).abs()
     xy = torch.meshgrid(
-        *[torch.arange(x).to(device) for x in image.shape], indexing="ij"
+        *[torch.arange(x).to(image.device) for x in image.shape], indexing="ij"
     )
     outside_radius = sum([x**2 for x in xy]) > fourier_radius**2
     if exclude_edges:
@@ -131,7 +129,6 @@ def autotune_cost(
 
     n = fourier_L0_norm(
         flatfield,
-        transformed_image.device,
         fourier_l0_norm_image_threshold,
         fourier_l0_norm_fourier_radius,
         exclude_edges=True,
