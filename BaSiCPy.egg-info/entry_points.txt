@@ -1,0 +1,2 @@
+[console_scripts]
+basicpy = basicpy.bin.run_basicpy:main

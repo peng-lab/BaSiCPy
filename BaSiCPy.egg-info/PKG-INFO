@@ -1,0 +1,96 @@
+Metadata-Version: 2.4
+Name: BaSiCPy
+Version: 0.0.1
+Summary: A python package for background and shading correction of optical microscopy images
+Home-page: https://github.com/yuliu96/BaSiCPy_torch
+Author: Yu Liu
+Author-email: liuyu9671@gmail.com
+License: MIT license
+Keywords: background shading flatfield darkfield biology optical microscopy image illumination
+Classifier: Development Status :: 2 - Pre-Alpha
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Natural Language :: English
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: torch
+Requires-Dist: pydantic>=2.0.0
+Requires-Dist: dask
+Requires-Dist: torch-dct
+Requires-Dist: tqdm
+Requires-Dist: hyperactive
+Requires-Dist: pathlib
+Provides-Extra: setup
+Requires-Dist: pytest-runner>=5.2; extra == "setup"
+Provides-Extra: test
+Requires-Dist: black>=19.10b0; extra == "test"
+Requires-Dist: codecov>=2.1.4; extra == "test"
+Requires-Dist: flake8>=3.8.3; extra == "test"
+Requires-Dist: flake8-debugger>=3.2.1; extra == "test"
+Requires-Dist: pytest>=5.4.3; extra == "test"
+Requires-Dist: pytest-cov>=2.9.0; extra == "test"
+Requires-Dist: pytest-raises>=0.11; extra == "test"
+Provides-Extra: dev
+Requires-Dist: pytest-runner>=5.2; extra == "dev"
+Requires-Dist: black>=19.10b0; extra == "dev"
+Requires-Dist: codecov>=2.1.4; extra == "dev"
+Requires-Dist: flake8>=3.8.3; extra == "dev"
+Requires-Dist: flake8-debugger>=3.2.1; extra == "dev"
+Requires-Dist: pytest>=5.4.3; extra == "dev"
+Requires-Dist: pytest-cov>=2.9.0; extra == "dev"
+Requires-Dist: pytest-raises>=0.11; extra == "dev"
+Requires-Dist: bump2version>=1.0.1; extra == "dev"
+Requires-Dist: coverage>=5.1; extra == "dev"
+Requires-Dist: ipython>=7.15.0; extra == "dev"
+Requires-Dist: m2r2>=0.2.7; extra == "dev"
+Requires-Dist: pytest-runner>=5.2; extra == "dev"
+Requires-Dist: Sphinx>=3.4.3; extra == "dev"
+Requires-Dist: sphinx_rtd_theme>=0.5.1; extra == "dev"
+Requires-Dist: tox>=3.15.2; extra == "dev"
+Requires-Dist: twine>=3.1.1; extra == "dev"
+Requires-Dist: wheel>=0.34.2; extra == "dev"
+Provides-Extra: all
+Requires-Dist: torch; extra == "all"
+Requires-Dist: pydantic>=2.0.0; extra == "all"
+Requires-Dist: dask; extra == "all"
+Requires-Dist: torch-dct; extra == "all"
+Requires-Dist: tqdm; extra == "all"
+Requires-Dist: hyperactive; extra == "all"
+Requires-Dist: pathlib; extra == "all"
+Requires-Dist: pytest-runner>=5.2; extra == "all"
+Requires-Dist: black>=19.10b0; extra == "all"
+Requires-Dist: codecov>=2.1.4; extra == "all"
+Requires-Dist: flake8>=3.8.3; extra == "all"
+Requires-Dist: flake8-debugger>=3.2.1; extra == "all"
+Requires-Dist: pytest>=5.4.3; extra == "all"
+Requires-Dist: pytest-cov>=2.9.0; extra == "all"
+Requires-Dist: pytest-raises>=0.11; extra == "all"
+Requires-Dist: bump2version>=1.0.1; extra == "all"
+Requires-Dist: coverage>=5.1; extra == "all"
+Requires-Dist: ipython>=7.15.0; extra == "all"
+Requires-Dist: m2r2>=0.2.7; extra == "all"
+Requires-Dist: pytest-runner>=5.2; extra == "all"
+Requires-Dist: Sphinx>=3.4.3; extra == "all"
+Requires-Dist: sphinx_rtd_theme>=0.5.1; extra == "all"
+Requires-Dist: tox>=3.15.2; extra == "all"
+Requires-Dist: twine>=3.1.1; extra == "all"
+Requires-Dist: wheel>=0.34.2; extra == "all"
+Dynamic: author
+Dynamic: author-email
+Dynamic: classifier
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: home-page
+Dynamic: keywords
+Dynamic: license
+Dynamic: license-file
+Dynamic: provides-extra
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary
+
+
