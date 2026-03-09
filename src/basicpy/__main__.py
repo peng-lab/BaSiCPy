@@ -126,7 +126,7 @@ def main(
         logger.info(f"{k}: {v}")
     logger.info("")
 
-    # 先只做配置校验，后面再接真正的 I/O 和 fit_transform
+    settings = {k: v for k, v in settings.items() if v is not None}
     basic = BaSiC(**settings)
 
     logger.info("BaSiC model initialized successfully.")
