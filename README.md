@@ -21,16 +21,21 @@ Reference:
 - A BaSiC Tool for Background and Shading Correction of Optical Microscopy Images
   by Tingying Peng, Kurt Thorn, Timm Schroeder, Lichao Wang, Fabian J Theis, Carsten Marr\*, Nassir Navab\*, Nature Communication 8:14836 (2017). [doi: 10.1038/ncomms14836](http://www.nature.com/articles/ncomms14836).
 
+## Backend note
+
+Starting from version **2.0**, BaSiCPy uses a **PyTorch backend** as the primary implementation.
+
+The earlier **JAX-based implementation** is still available through older releases of the package.
 
 ## Simple examples
 
 |Notebook|Description|Colab Link|
 | :------------------------: |:---------------:| :---------------------------------------------------: |
-| [timelapse_brightfield](https://github.com/peng-lab/BaSiCPy/tree/dev/docs/notebooks/timelapse_brightfield.ipynb)| 100 continuous brightfield frames of a time-lapse movie of differentiating mouse hematopoietic stem cells. | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/peng-lab/BaSiCPy/blob/dev/docs/notebooks/timelapse_brightfield.ipynb) |
-| [timelapse_nanog](https://github.com/peng-lab/BaSiCPy/tree/dev/docs/notebooks/timelapse_nanog.ipynb)| 189 continuous fluorescence frames of a time-lapse movie of differentiating mouse embryonic stem cells, which move much more slower compared to the fast moving hematopoietic stem cells, resulting in a much larger correlation between frames. Note that in this challenging case, the automatic parameters are no longer optimal, so we use the manual parameter setting (larger smooth regularization on both flat-field and dark-field) to improve BaSiC’s performance. | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/peng-lab/BaSiCPy/blob/dev/docs/notebooks/timelapse_nanog.ipynb) |
-| [WSI_brain](https://github.com/peng-lab/BaSiCPy/tree/dev/docs/notebooks/WSI_brain.ipynb)| you can stitch image tiles together to view the effect of shading correction | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/peng-lab/BaSiCPy/blob/dev/docs/notebooks/WSI_brain.ipynb) |
+| [timelapse_brightfield](https://github.com/peng-lab/BaSiCPy/blob/main/docs/notebooks/timelapse_brightfield.ipynb)| 100 continuous brightfield frames of a time-lapse movie of differentiating mouse hematopoietic stem cells. | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://drive.google.com/file/d/1Ku_7asOGM3i0NdYv2QJ52v3neNc07ONg/view?usp=sharing) |
+| [timelapse_nanog](https://github.com/peng-lab/BaSiCPy/blob/main/docs/notebooks/timelapse_nanog.ipynb)| 189 continuous fluorescence frames of a time-lapse movie of differentiating mouse embryonic stem cells, which move much more slower compared to the fast moving hematopoietic stem cells, resulting in a much larger correlation between frames. Note that in this challenging case, the automatic parameters are no longer optimal, so we use the manual parameter setting (larger smooth regularization on both flat-field and dark-field) to improve BaSiC’s performance. | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://drive.google.com/file/d/1uLZ0N5DVH3zdGQqhc76QczakmT7KRaDC/view?usp=sharing) |
+| [WSI_brain](https://github.com/peng-lab/BaSiCPy/blob/main/docs/notebooks/WSI_brain.ipynb)| you can stitch image tiles together to view the effect of shading correction | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://drive.google.com/file/d/1k9u-iLzRXOVh4hOXxY79FlZMCSfVCmyi/view?usp=sharing) |
 
-You can also find examples of running the package at [notebooks folder](https://github.com/peng-lab/BaSiCPy/tree/dev/docs/notebooks). Data used in the examples and a description can be downloaded from [Zenodo](https://doi.org/10.5281/zenodo.6334809).
+You can also find examples of running the package at [notebooks folder](https://github.com/peng-lab/BaSiCPy/blob/main/docs/notebooks). Data used in the examples and a description can be downloaded from [Zenodo](https://doi.org/10.5281/zenodo.6334809).
 
 ---
 ## Usage
@@ -39,7 +44,7 @@ See [Read the Docs](https://basicpy.readthedocs.io/en/latest/) for the detailed 
 
 ## Installation
 
-### For Mac (Intel chip), Linux or WSL2 users
+### For CPU version
 
  Install from PyPI
 
@@ -55,47 +60,14 @@ cd BaSiCPy
 pip install .
 ```
 
-### For Mac users with M1 / M2 chip
+### For GPU version
 
-BaSiCPy requires [`jax`](https://github.com/google/jax/),
-which has potential build issue with M1 chips.
-One easiest solution is using [Miniforge](https://github.com/conda-forge/miniforge)
-as explained [here](https://github.com/google/jax/issues/5501).
-In the Miniforge environment, please try the following:
-```bash
-conda install -c conda-forge jax jaxlib
-pip install basicpy
-```
+To use BaSiCPy with GPU acceleration:
 
-### For Windows users
-
-BaSiCPy requires [`jax`](https://github.com/google/jax/) which does not support Windows officially.
-However, thanks to [cloudhan/jax-windows-builder](https://github.com/cloudhan/jax-windows-builder), we can install BaSiCPy as follows:
-
-```bash
-pip install "jax[cpu]==0.4.11" -f https://whls.blob.core.windows.net/unstable/index.html --use-deprecated legacy-resolver
-pip install ml-dtypes==0.2.0
-pip install basicpy
-```
-
-One may need to add
-```python
-import jax
-jax.config.update('jax_platform_name', 'cpu')
-```
-at the top of the script to ensure that JAX uses CPU.
-
-For details and latest updates, see [this issue](https://github.com/google/jax/issues/438).
-
-### Install with dev dependencies
-
-```console
-git clone https://github.com/peng-lab/BaSiCPy.git
-cd BaSiCPy
-python -m venv venv
-source venv/bin/activate
-pip install -e '.[dev]'
-```
+- 🧩 **Install PyTorch** according to your system configuration by following the [official PyTorch installation guide](https://pytorch.org/get-started/locally/).
+- 💡 **Install BaSiCPy** (PyTorch backend only):
+  ```bash
+  pip install basicpy
 
 ## Development
 

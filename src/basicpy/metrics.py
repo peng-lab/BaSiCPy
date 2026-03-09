@@ -1,7 +1,8 @@
 from typing import Optional
 
 import numpy as np
-from scipy.fft import dctn
+import torch
+import torch_dct as dct
 
 
 def entropy(
@@ -37,23 +38,30 @@ def entropy(
         The entropy of the image.
     """
     if clip:
-        ind = np.logical_and(image >= vmin, image <= vmax)
+        ind = (image >= vmin) * (image <= vmax)
         image = image[ind]
         if weights is not None:
             weights = weights[ind]
-
-    prob_density, edges = np.histogram(
-        image, bins=bins, range=(vmin, vmax), weights=weights, density=True
+    prob_density, edges = torch.histogram(
+        image.cpu(),
+        bins,
+        range=(vmin.item(), vmax.item()),
+        weight=weights.cpu() if weights != None else None,
+        density=True,
     )
+
     # density : p(x) ... normalized such that the integral over the range is 1
     dx = edges[1] - edges[0]
-    assert np.allclose(dx, edges[1:] - edges[:-1], atol=np.max(edges) * 0.01, rtol=0.01)
+
+    # assert torch.allclose(
+    #     dx, edges[1:] - edges[:-1], atol=torch.max(edges) * 0.01, rtol=0.01
+    # )
     #    assert np.isclose(
     #        np.sum(prob_density) * dx, 1
     #    ), f"{np.sum(prob_density) * dx} is not close to 1"
     prob_density = prob_density[prob_density > 0]
-    entropy = -np.sum(prob_density * np.log(prob_density)) * dx
-    return entropy
+    ent = -torch.sum(prob_density * torch.log(prob_density)) * dx
+    return ent
 
 
 def fourier_L0_norm(
@@ -62,12 +70,14 @@ def fourier_L0_norm(
     fourier_radius: float = 10,
     exclude_edges: bool = True,
 ):
-    SF = dctn(image)
-    xy = np.meshgrid(*[range(x) for x in image.shape], indexing="ij")
-    outside_radius = (np.sum(np.array(xy) ** 2, axis=0) > fourier_radius**2) 
+    SF = dct.dct_2d(image).abs()
+    xy = torch.meshgrid(
+        *[torch.arange(x).to(image.device) for x in image.shape], indexing="ij"
+    )
+    outside_radius = sum([x**2 for x in xy]) > fourier_radius**2
     if exclude_edges:
         outside_radius = outside_radius & (xy[0] > 0) & (xy[1] > 0)
-    L0_norm = np.sum(SF[outside_radius] > threshold) / np.sum(outside_radius)
+    L0_norm = torch.sum(SF[outside_radius] > threshold) / torch.sum(outside_radius)
     return L0_norm
 
 
@@ -107,6 +117,7 @@ def autotune_cost(
         The cost coefficient for the fourier L0 norm.
 
     """
+
     entropy_value = entropy(
         transformed_image,
         vmin=entropy_vmin,

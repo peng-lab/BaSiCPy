@@ -1,5 +1,5 @@
-pydantic>=1.9.1,<2.0.0
-autodoc_pydantic
+pydantic>=2.0.0
+autodoc_pydantic>=2.1
 enum-tools[sphinx]
 nbsphinx==0.9.2
 scanpydoc
@@ -9,6 +9,6 @@ sphinx-autobuild
 sphinx-autodoc-typehints
 sphinx-gallery==0.13.0
 sphinx-rtd-theme
-
+pandoc
 ipykernel
 matplotlib
