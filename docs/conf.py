@@ -24,7 +24,7 @@ author = "BaSiCPy collaboration"
 
 # The full version, including alpha/beta/rc tags
 
-release = "1.2.0"
+release = "2.0.0-dev0"
 
 
 # -- General configuration ---------------------------------------------------
