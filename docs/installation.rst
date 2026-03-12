@@ -58,3 +58,7 @@ One can use `venv` as:
    python -m venv venv
    source venv/bin/activate
    pip install -e '.[dev]'
+
+.. note::
+
+   Test rebuild 2026-03-12
