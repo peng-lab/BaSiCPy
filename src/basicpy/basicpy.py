@@ -1,26 +1,24 @@
 """Main BaSiC class."""
 
-from pydantic import BaseModel, Field, PrivateAttr, model_validator
-import numpy as np
-from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
-import logging
-import dask.array as da
-import torch
-import warnings
-from pydantic import ConfigDict
-
-from skimage.transform import resize as skimage_resize
-import torch.nn.functional as F
-import time
-import torch_dct as dct
 import copy
+import logging
+import time
+import warnings
+from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
+
+import dask.array as da
+import numpy as np
+import torch
+import torch.nn.functional as F
+import torch_dct as dct
+import tqdm
+from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, model_validator
+from skimage.transform import resize as skimage_resize
 
 from basicpy._torch_routines import ApproximateFit, LadmapFit
 from basicpy.metrics import autotune_cost
 from basicpy.metrics_numpy import autotune_cost_numpy
-from basicpy.utils import maybe_tqdm, make_overlap_chunks
-from basicpy.utils import public_api
-import tqdm
+from basicpy.utils import make_overlap_chunks, maybe_tqdm, public_api
 
 try:
     from hyperactive import Hyperactive
@@ -29,12 +27,10 @@ except ImportError:
     Hyperactive = None
     HillClimbingOptimizer = None
 
-from pathlib import Path
+import gc
 import json
 import math
-import gc
-from skimage.filters import threshold_otsu
-
+from pathlib import Path
 
 # initialize logger with the package name
 logger = logging.getLogger(__name__)
@@ -72,10 +68,10 @@ class BaSiC(BaseModel):
         False,
         description="When True, will estimate the darkfield shading component.",
     )
-    smoothness_flatfield: float = Field(
+    smoothness_flatfield: Optional[float] = Field(
         None, description="Weight of the flatfield term in the Lagrangian."
     )
-    smoothness_darkfield: float = Field(
+    smoothness_darkfield: Optional[float] = Field(
         None, description="Weight of the darkfield term in the Lagrangian."
     )
     sparse_cost_darkfield: float = Field(
@@ -128,21 +124,21 @@ class BaSiC(BaseModel):
     )
 
     # Private attributes for internal processing
-    _score: float = PrivateAttr(None)
-    _reweight_score: float = PrivateAttr(None)
-    _weight: float = PrivateAttr(None)
-    _weight_dark: float = PrivateAttr(None)
-    _residual: float = PrivateAttr(None)
-    _S: float = PrivateAttr(None)
-    _B: float = PrivateAttr(None)
-    _D_R: float = PrivateAttr(None)
-    _D_Z: float = PrivateAttr(None)
-    _smoothness_flatfield: float = PrivateAttr(None)
-    _smoothness_darkfield: float = PrivateAttr(None)
-    _sparse_cost_darkfield: float = PrivateAttr(None)
-    _flatfield_small: float = PrivateAttr(None)
-    _darkfield_small: float = PrivateAttr(None)
-    _converge_flag: bool = PrivateAttr(None)
+    _score: Optional[float] = PrivateAttr(None)
+    _reweight_score: Optional[float] = PrivateAttr(None)
+    _weight: Any = PrivateAttr(None)
+    _weight_dark: Any = PrivateAttr(None)
+    _residual: Any = PrivateAttr(None)
+    _S: Any = PrivateAttr(None)
+    _B: Any = PrivateAttr(None)
+    _D_R: Any = PrivateAttr(None)
+    _D_Z: Optional[float] = PrivateAttr(None)
+    _smoothness_flatfield: Optional[float] = PrivateAttr(None)
+    _smoothness_darkfield: Optional[float] = PrivateAttr(None)
+    _sparse_cost_darkfield: Optional[float] = PrivateAttr(None)
+    _flatfield_small: Any = PrivateAttr(None)  # torch.Tensor
+    _darkfield_small: Any = PrivateAttr(None)  # torch.Tensor
+    _converge_flag: Optional[bool] = PrivateAttr(None)
 
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
@@ -392,11 +388,18 @@ class BaSiC(BaseModel):
             meanD = Im.mean(0)
             meanD = meanD / meanD.mean()
             W_meanD = dct.dct_2d(meanD, norm="ortho")
-            self._smoothness_flatfield = torch.sum(torch.abs(W_meanD)) / (400) * 0.5
+            self._smoothness_flatfield = float(
+                (torch.sum(torch.abs(W_meanD)) / 400 * 0.5).item()
+            )
         else:
             self._smoothness_flatfield = self.smoothness_flatfield
         if self.smoothness_darkfield is None:
-            self._smoothness_darkfield = self._smoothness_flatfield * 0.1
+            flatfield_val = (
+                self._smoothness_flatfield
+                if self._smoothness_flatfield is not None
+                else 0.0
+            )
+            self._smoothness_darkfield = flatfield_val * 0.1
         else:
             self._smoothness_darkfield = self.smoothness_darkfield
         if self.sparse_cost_darkfield is None:
@@ -447,7 +450,7 @@ class BaSiC(BaseModel):
             device=self.device,
         )
         last_S = None
-        last_D = None
+        # last_D = None  # Unused for now, kept for potential future use
         S = None
         D = None
         B = None
@@ -458,7 +461,9 @@ class BaSiC(BaseModel):
                     sparse_cost_darkfield=self.sparse_cost_darkfield,
                 )
             )
-            fitting_step = LadmapFit(**fit_params).to(self.device)
+            fitting_step: Union[LadmapFit, ApproximateFit] = LadmapFit(**fit_params).to(
+                self.device
+            )
         else:
             fitting_step = ApproximateFit(**fit_params).to(self.device)
 
@@ -543,12 +548,17 @@ class BaSiC(BaseModel):
                 )
                 temp_diff = torch.sum(torch.abs(S - last_S))
                 if temp_diff < 1e-7:
-                    mad_darkfield = 0
+                    mad_darkfield: float = 0.0
                 else:
-                    mad_darkfield = temp_diff / (
-                        max(torch.sum(torch.abs(last_S)), 1e-6)
+                    mad_darkfield = float(
+                        (
+                            temp_diff
+                            / torch.max(
+                                torch.sum(torch.abs(last_S)), torch.tensor(1e-6)
+                            )
+                        ).item()
                     )
-                self._reweight_score = max(mad_flatfield, mad_darkfield)
+                self._reweight_score = float(max(mad_flatfield.item(), mad_darkfield))
                 logger.debug(f"reweighting score: {self._reweight_score}")
                 logger.info(
                     f"Iteration {i} elapsed time: "
@@ -559,7 +569,7 @@ class BaSiC(BaseModel):
                     logger.info("Reweighting converged.")
                     break
             last_S = S
-            last_D = D
+            # last_D = D  # Unused for now, kept for potential future use
 
         if (i == self.max_reweight_iterations - 1) and (not converged):
             self._converge_flag = False
@@ -595,31 +605,35 @@ class BaSiC(BaseModel):
         self._flatfield_small = S
         self._darkfield_small = D
 
-        self.flatfield = F.interpolate(
+        self.flatfield = F.interpolate(  # type: ignore[assignment]
             S[None],
             images.shape[-2:],
             mode="bilinear",
             align_corners=True,
         )[0]
-        self.darkfield = F.interpolate(
+        self.darkfield = F.interpolate(  # type: ignore[assignment]
             D[None],
             images.shape[-2:],
             mode="bilinear",
             align_corners=True,
         )[0]
         if ndim == 3:
-            self.flatfield = self.flatfield[0]
-            self.darkfield = self.darkfield[0]
-            self._flatfield_small = self._flatfield_small[0]
-            self._darkfield_small = self._darkfield_small[0]
-        self.baseline = B * mean_S
+            self.flatfield = self.flatfield[0]  # type: ignore[assignment]
+            self.darkfield = self.darkfield[0]  # type: ignore[assignment]
+            self._flatfield_small = self._flatfield_small[0]  # type: ignore[index]
+            self._darkfield_small = self._darkfield_small[0]  # type: ignore[index]
+        self.baseline = B * mean_S  # type: ignore[assignment]
 
-        self.flatfield = self.flatfield.cpu().numpy()
-        self.darkfield = self.darkfield.cpu().numpy()
-        self.baseline = self.baseline.cpu().numpy()
+        # Convert tensors to numpy arrays - these are tensors at this point
+        if hasattr(self.flatfield, "cpu"):
+            self.flatfield = self.flatfield.cpu().numpy()  # type: ignore[assignment,attr-defined]  # noqa: E501
+        if hasattr(self.darkfield, "cpu"):
+            self.darkfield = self.darkfield.cpu().numpy()  # type: ignore[assignment,attr-defined]  # noqa: E501
+        if self.baseline is not None and hasattr(self.baseline, "cpu"):
+            self.baseline = self.baseline.cpu().numpy()  # type: ignore[assignment,attr-defined]  # noqa: E501
 
         logger.info(
-            f"=== BaSiC fit finished in {time.monotonic()-start_time} seconds ==="
+            f"=== BaSiC fit finished in {time.monotonic() - start_time} seconds ==="
         )
 
     @public_api
@@ -630,7 +644,6 @@ class BaSiC(BaseModel):
         S,
         D,
     ):
-        ndim = images.ndim
         if images.ndim == 3:
             images = images[:, None, ...]
             if fitting_weight is not None:
@@ -706,11 +719,18 @@ class BaSiC(BaseModel):
             meanD = Im.mean(0)
             meanD = meanD / meanD.mean()
             W_meanD = dct.dct_2d(meanD, norm="ortho")
-            self._smoothness_flatfield = torch.sum(torch.abs(W_meanD)) / (400) * 0.5
+            self._smoothness_flatfield = float(
+                (torch.sum(torch.abs(W_meanD)) / 400 * 0.5).item()
+            )
         else:
             self._smoothness_flatfield = self.smoothness_flatfield
         if self.smoothness_darkfield is None:
-            self._smoothness_darkfield = self._smoothness_flatfield * 0.1
+            flatfield_val = (
+                self._smoothness_flatfield
+                if self._smoothness_flatfield is not None
+                else 0.0
+            )
+            self._smoothness_darkfield = flatfield_val * 0.1
         else:
             self._smoothness_darkfield = self.smoothness_darkfield
         if self.sparse_cost_darkfield is None:
@@ -754,11 +774,11 @@ class BaSiC(BaseModel):
         W = torch.ones_like(Im, dtype=torch.float32) * Ws
         if flag_segmentation:
             W[Ws == 0] = self.epsilon
-        W_D = torch.zeros(
-            Im.shape[1:],
-            dtype=torch.float32,
-            device=self.device,
-        )
+        # W_D = torch.zeros(
+        #     Im.shape[1:],
+        #     dtype=torch.float32,
+        #     device=self.device,
+        # )  # Unused for now, kept for potential future use
 
         if self.fitting_mode == "ladmap":
             fit_params.update(
@@ -766,7 +786,9 @@ class BaSiC(BaseModel):
                     sparse_cost_darkfield=self.sparse_cost_darkfield,
                 )
             )
-            fitting_step = LadmapFit(**fit_params).to(self.device)
+            fitting_step: Union[LadmapFit, ApproximateFit] = LadmapFit(**fit_params).to(
+                self.device
+            )
         else:
             fitting_step = ApproximateFit(**fit_params).to(self.device)
 
@@ -857,7 +879,7 @@ class BaSiC(BaseModel):
         chunk_inds = make_overlap_chunks(images.shape[0], s, overlap=1)
 
         if isinstance(images, torch.Tensor):
-            output = torch.zeros(
+            output: Union[torch.Tensor, np.ndarray, list] = torch.zeros(
                 images.shape,
                 device=images.device,
                 dtype=torch.float32,
@@ -889,20 +911,27 @@ class BaSiC(BaseModel):
                 fitting_weight_chunk = None
             # Convert to the correct format
             if isinstance(images, torch.Tensor):
-                flatfield = torch.from_numpy(self.flatfield).to(images.device)
-                darkfield = torch.from_numpy(self.darkfield).to(images.device)
-                im_float = images_chunk.to(torch.float)
+                flatfield = torch.from_numpy(self.flatfield).to(  # type: ignore[arg-type,union-attr]  # noqa: E501
+                    images.device
+                )
+                darkfield = torch.from_numpy(self.darkfield).to(  # type: ignore[arg-type,union-attr]  # noqa: E501
+                    images.device
+                )
+                im_float = images_chunk.to(torch.float)  # type: ignore[union-attr]
             elif isinstance(images, np.ndarray):
-                flatfield = self.flatfield
-                darkfield = self.darkfield
-                im_float = images_chunk.astype(np.float32)
+                flatfield = self.flatfield  # type: ignore[assignment]
+                darkfield = self.darkfield  # type: ignore[assignment]
+                im_float = images_chunk.astype(np.float32)  # type: ignore[attr-defined,union-attr]  # noqa: E501
             elif isinstance(images, da.core.Array):
-                flatfield = self.flatfield
-                darkfield = self.darkfield
-                im_float = images_chunk.compute().astype(np.float32)
+                flatfield = self.flatfield  # type: ignore[assignment]
+                darkfield = self.darkfield  # type: ignore[assignment]
+                im_float = images_chunk.compute().astype(  # type: ignore[attr-defined,union-attr]  # noqa: E501
+                    np.float32
+                )
             else:
                 raise ValueError(
-                    "Input must be either numpy.ndarray, dask.core.Array, or torch.Tensor."
+                    "Input must be either numpy.ndarray, "
+                    "dask.core.Array, or torch.Tensor."
                 )
 
             if is_timelapse:
@@ -932,17 +961,19 @@ class BaSiC(BaseModel):
                 output_chunks = (im_float - darkfield[None]) / flatfield[None]
             if isinstance(images, da.core.Array):
                 if i != len(chunk_inds) - 1:
-                    output.append(output_chunks[:-1])
+                    output.append(output_chunks[:-1])  # type: ignore[attr-defined,union-attr]  # noqa: E501
                 else:
-                    output.append(output_chunks)
+                    output.append(output_chunks)  # type: ignore[attr-defined,union-attr]  # noqa: E501
             else:
                 output[min(images_inds) : max(images_inds) + 1] = output_chunks
         if isinstance(output, list):
             output = da.concatenate(output, axis=0)
 
         logger.info(
-            f"=== BaSiC transform finished in {time.monotonic()-start_time} seconds ==="
+            f"=== BaSiC transform finished in "
+            f"{time.monotonic() - start_time} seconds ==="
         )
+        return output  # type: ignore[return-value]
 
         return output
 
@@ -1095,7 +1126,8 @@ class BaSiC(BaseModel):
 
         if self.fitting_mode == "ladmap":
             print(
-                "Autotune is not applicable to LADMAP mode, please try autotune_hillclimbing instead."
+                "Autotune is not applicable to LADMAP mode, "
+                "please try autotune_hillclimbing instead."
             )
             return
 
@@ -1103,7 +1135,7 @@ class BaSiC(BaseModel):
             [0.01, 0.1, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.5, 3, 4, 5, 6, 7, 8, 10]
         )
         flatfield_pool_coarse = np.array([0.01, 0.1, 0.5, 2, 8, 10])
-        second_flag = True
+        # second_flag = True  # Unused for now, kept for potential future use
         if search_space_flatfield is None:
             pass
         else:
@@ -1169,9 +1201,10 @@ class BaSiC(BaseModel):
             ]
 
         if isinstance(images, torch.Tensor):
-            images = images.to(torch.float)
+            images_tensor = images.to(torch.float)
         else:
-            images = torch.from_numpy(images.astype(np.float32))
+            images_tensor = torch.from_numpy(images.astype(np.float32))
+        images = images_tensor  # type: ignore[assignment]
         r = images[0].numel() / (1024 * 1024)
         if basic.device == "none":
             basic.device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -1199,15 +1232,15 @@ class BaSiC(BaseModel):
         device_available = 1 if torch.cuda.is_available() else 0
         if device_available:
             free, _ = torch.cuda.mem_get_info()
-            if (images.numel() * 4) / free < 0.1:
+            if (images.numel() * 4) / free < 0.1:  # type: ignore[attr-defined,union-attr]  # noqa: E501
                 device = "cuda"
             else:
                 device = "cpu"
         else:
             device = "cpu"
 
-        images = images.to(device).to(torch.float)
-        size_r = images.numel() / 2**24
+        images = images.to(device).to(torch.float)  # type: ignore[attr-defined,union-attr]  # noqa: E501
+        size_r = images.numel() / 2**24  # type: ignore[attr-defined,union-attr]
 
         if size_r < 1:
             size_r = 1
@@ -1220,8 +1253,10 @@ class BaSiC(BaseModel):
             if isinstance(fitting_weight, torch.Tensor):
                 pass
             else:
-                fitting_weight = torch.from_numpy(fitting_weight)
-            fitting_weight = fitting_weight.to(device)
+                fitting_weight = torch.from_numpy(  # type: ignore[assignment]  # noqa: E501
+                    fitting_weight
+                )
+            fitting_weight = fitting_weight.to(device)  # type: ignore[assignment,attr-defined,union-attr]  # noqa: E501
 
         basic.fit(
             images,
@@ -1263,7 +1298,7 @@ class BaSiC(BaseModel):
         if fitting_weight is None or not histogram_use_fitting_weight:
             weights = None
         else:
-            weights = fitting_weight.to(images.dtype)
+            weights = fitting_weight.to(images.dtype)  # type: ignore[attr-defined,assignment,union-attr]  # noqa: E501
 
         def fit_and_calc_entropy(params):
             # try:
@@ -1295,7 +1330,9 @@ class BaSiC(BaseModel):
             # )
 
             # transformed_sorted, _ = torch.sort(transformed.flatten())
-            # vmin_new = transformed_sorted[int(transformed.numel()*histogram_qmin/100)] * vmin_factor
+            # vmin_new = transformed_sorted[
+            #     int(transformed.numel()*histogram_qmin/100)
+            # ] * vmin_factor
 
             if np.allclose(basic.flatfield, np.ones_like(basic.flatfield)):
                 return np.inf  # discard the case where flatfield is all ones
@@ -1329,11 +1366,11 @@ class BaSiC(BaseModel):
             cost_coarse.append(a)
             flatfield_coarse.append(basic.flatfield)
 
-        cost_coarse = torch.tensor(cost_coarse)
-        flatfield_coarse = np.stack(flatfield_coarse, 0)
+        cost_coarse_tensor = torch.tensor(cost_coarse)
+        flatfield_coarse = np.stack(flatfield_coarse, 0)  # type: ignore[assignment]
 
-        best_ind = torch.argmin(cost_coarse)
-        if best_ind == len(cost_coarse) - 1:
+        best_ind = int(torch.argmin(cost_coarse_tensor).item())
+        if best_ind == len(cost_coarse_tensor) - 1:
             second_best_ind = best_ind - 1
         elif best_ind == 0:
             second_best_ind = 1
@@ -1409,11 +1446,11 @@ class BaSiC(BaseModel):
 
         if not self.get_darkfield:
             print("\nAutotune is done.")
-            print("Best smoothness_flatfield = {}.".format(self.smoothness_flatfield))
+            print(f"Best smoothness_flatfield = {self.smoothness_flatfield}.")
         else:
             print("Autotune is done.")
-            print("Best smoothness_flatfield = {}.".format(self.smoothness_flatfield))
-            print("Best smoothness_darkfield = {}.".format(self.smoothness_darkfield))
+            print(f"Best smoothness_flatfield = {self.smoothness_flatfield}.")
+            print(f"Best smoothness_darkfield = {self.smoothness_darkfield}.")
 
     @public_api
     def autotune_hillclimbing(
@@ -1509,7 +1546,6 @@ class BaSiC(BaseModel):
                 )
 
         # calculate the histogram range
-        device = images.device
         if isinstance(images, torch.Tensor):
             images_numpy = images.cpu().numpy()
         else:

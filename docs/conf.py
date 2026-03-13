@@ -40,16 +40,21 @@ extensions = [
     "sphinx.ext.napoleon",
     "sphinx.ext.todo",
     "sphinxarg.ext",
-    "sphinxcontrib.autodoc_pydantic",
     "nbsphinx",
-    "enum_tools.autoenum",
+    # enum_tools.autoenum temporarily disabled - not compatible with Sphinx 9.x
+    # "enum_tools.autoenum",
 ]
+
+# autodoc_pydantic removed - not compatible with Pydantic v2
+# Standard sphinx.ext.autodoc works fine with Pydantic v2 models
 
 autodoc_member_order = "bysource"
 todo_include_todos = False
 typehints_defaults = "comma"
-autodoc_pydantic_model_show_json = True
-autodoc_pydantic_settings_show_json = True
+# Suppress warnings about Pydantic v2 compatibility
+typehints_fully_qualified = False
+# Handle Pydantic v2 type imports gracefully
+suppress_warnings = ["autodoc.import_object"]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
@@ -57,7 +62,13 @@ templates_path = ["_templates"]
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "notebooks"]
+
+# nbsphinx configuration - notebooks excluded from build due to Pandoc requirement
+# To include notebooks, install pandoc: sudo apt-get install pandoc (Linux) or brew install pandoc (macOS)
+# Then remove "notebooks" from exclude_patterns above and uncomment the nbgallery in tutorials.rst
+nbsphinx_allow_errors = True
+nbsphinx_execute = "never"  # Don't execute notebooks during build
 
 
 # -- Options for HTML output -------------------------------------------------

@@ -10,8 +10,12 @@ This section contains various tutorials showcasing illumination correction with
 .. Each notebook should have a least one markdown heading, which will be used as the
 .. name of the notebook for the notebook gallery
 
-.. nbgallery::
+.. Notebooks are temporarily disabled in the documentation build due to Pandoc requirement.
+.. To enable notebooks, install pandoc: sudo apt-get install pandoc (Linux) or brew install pandoc (macOS)
+.. Then uncomment the nbgallery section below.
 
-    notebooks/WSI_brain
-    notebooks/timelapse_brightfield
-    notebooks/timelapse_nanog
+.. .. nbgallery::
+..
+..     notebooks/WSI_brain
+..     notebooks/timelapse_brightfield
+..     notebooks/timelapse_nanog

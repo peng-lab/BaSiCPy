@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Union
 
 import numpy as np
 import torch
@@ -6,11 +6,11 @@ import torch_dct as dct
 
 
 def entropy(
-    image: np.ndarray,
-    vmin: float,
-    vmax: float,
+    image: Union[np.ndarray, torch.Tensor],
+    vmin: Union[float, torch.Tensor],
+    vmax: Union[float, torch.Tensor],
     bins: int = 256,
-    weights: Optional[np.ndarray] = None,
+    weights: Optional[Union[np.ndarray, torch.Tensor]] = None,
     clip: bool = True,
 ):
     """Calculate the entropy of an image.
@@ -37,16 +37,41 @@ def entropy(
     entropy : float
         The entropy of the image.
     """
+    # Convert to tensors if needed
+    if isinstance(image, np.ndarray):
+        image_tensor = torch.from_numpy(image)
+    else:
+        image_tensor = image.cpu() if image.is_cuda else image
+
+    if isinstance(vmin, torch.Tensor):
+        vmin_val = vmin.item()
+    else:
+        vmin_val = float(vmin)
+
+    if isinstance(vmax, torch.Tensor):
+        vmax_val = vmax.item()
+    else:
+        vmax_val = float(vmax)
+
+    if weights is not None:
+        if isinstance(weights, np.ndarray):
+            weights_tensor = torch.from_numpy(weights)
+        else:
+            weights_tensor = weights.cpu() if weights.is_cuda else weights
+    else:
+        weights_tensor = None
+
     if clip:
-        ind = (image >= vmin) * (image <= vmax)
-        image = image[ind]
-        if weights is not None:
-            weights = weights[ind]
+        ind = (image_tensor >= vmin_val) * (image_tensor <= vmax_val)
+        image_tensor = image_tensor[ind]
+        if weights_tensor is not None:
+            weights_tensor = weights_tensor[ind]
+
     prob_density, edges = torch.histogram(
-        image.cpu(),
+        image_tensor,
         bins,
-        range=(vmin.item(), vmax.item()),
-        weight=weights.cpu() if weights != None else None,
+        range=(vmin_val, vmax_val),
+        weight=weights_tensor,
         density=True,
     )
 
@@ -65,16 +90,24 @@ def entropy(
 
 
 def fourier_L0_norm(
-    image: np.ndarray,
+    image: Union[np.ndarray, torch.Tensor],
     threshold: float = 0.1,
     fourier_radius: float = 10,
     exclude_edges: bool = True,
 ):
-    SF = dct.dct_2d(image).abs()
+    # Convert to tensor if needed
+    if isinstance(image, np.ndarray):
+        image_tensor = torch.from_numpy(image)
+    else:
+        image_tensor = image
+    SF = dct.dct_2d(image_tensor).abs()
     xy = torch.meshgrid(
-        *[torch.arange(x).to(image.device) for x in image.shape], indexing="ij"
+        *[torch.arange(x).to(image_tensor.device) for x in image_tensor.shape],
+        indexing="ij",
     )
-    outside_radius = sum([x**2 for x in xy]) > fourier_radius**2
+    outside_radius = (
+        torch.sum(torch.stack([x**2 for x in xy]), dim=0) > fourier_radius**2
+    )
     if exclude_edges:
         outside_radius = outside_radius & (xy[0] > 0) & (xy[1] > 0)
     L0_norm = torch.sum(SF[outside_radius] > threshold) / torch.sum(outside_radius)
@@ -82,16 +115,16 @@ def fourier_L0_norm(
 
 
 def autotune_cost(
-    transformed_image: np.ndarray,
-    flatfield: np.ndarray,
-    entropy_vmin: float,
-    entropy_vmax: float,
+    transformed_image: Union[np.ndarray, torch.Tensor],
+    flatfield: Union[np.ndarray, torch.Tensor],
+    entropy_vmin: Union[float, torch.Tensor],
+    entropy_vmax: Union[float, torch.Tensor],
     histogram_bins: int = 1000,
     fourier_l0_norm_image_threshold: float = 0.1,
     fourier_l0_norm_fourier_radius: float = 10,
     fourier_l0_norm_threshold: float = 1e-3,
     fourier_l0_norm_cost_coef: float = 1e4,
-    weights: Optional[np.ndarray] = None,
+    weights: Optional[Union[np.ndarray, torch.Tensor]] = None,
 ):
     """Calculate the cost function for autotuning.
 

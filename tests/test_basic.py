@@ -4,10 +4,9 @@ import numpy as np
 import pytest
 from dask import array as da
 from pydantic import ValidationError
-from skimage.filters import threshold_otsu
 from skimage.transform import resize
-import torch
-from basicpy import BaSiC, datasets, metrics
+
+from basicpy import BaSiC, datasets
 
 # allowed max error for the synthetic test data prediction
 SYNTHETIC_TEST_DATA_MAX_ERROR = 0.35
