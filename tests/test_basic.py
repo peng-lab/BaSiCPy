@@ -192,6 +192,107 @@ def test_basic_save_load_model(tmp_path_factory, basic_object):
     basic_object.fit(images)
 
 
+def test_smoothness_fields_accept_explicit_none():
+    """Test to ensure that when loading a model, smoothness_flatfield and
+    smoothness_darkfield are accepted when `None` so a model may be loaded.
+    """
+    basic = BaSiC(smoothness_flatfield=None, smoothness_darkfield=None)
+    assert basic.smoothness_flatfield is None
+    assert basic.smoothness_darkfield is None
+    
+    
+def test_save_load_unfitted_roundtrip(tmp_path_factory):
+    """Test to ensure that a default BaSiC init save and reload is successful
+    and doesn't raise and that the `None` values roundtrip.
+    """
+    
+    tmp_path = Path(tmp_path_factory.mktemp("data"))
+    model_dir = tmp_path / "test_model"
+    
+    model = BaSiC()
+    model.save_model(model_dir)
+    model_reload = BaSiC.load_model(model_dir)
+    
+    assert model_reload.smoothness_flatfield is None
+    assert model_reload.smoothness_darkfield is None
+
+
+def test_smoothness_explicit_none_matches_omitted_default(synthesized_test_data):
+    """Tests that setting smoothness_flatfield and smoothness_darkfield to 
+    `None` is inert and equivalent to not setting them at all and does not
+    change any results. `None` whether explicit or not means BaSiC should auto-
+    derive these values so fits should be equivalent to a tolerance.
+    """
+    _, images, _ = synthesized_test_data
+
+    omitted = BaSiC(get_darkfield=True)  # smoothness omitted -> default None
+    explicit = BaSiC(
+        get_darkfield=True, smoothness_flatfield=None, smoothness_darkfield=None
+    )
+    omitted.fit(images)
+    explicit.fit(images)
+
+    # both auto-derive the same smoothness weights onto the private attrs
+    np.testing.assert_allclose(
+        float(explicit._smoothness_flatfield),
+        float(omitted._smoothness_flatfield),
+        rtol=1e-5, atol=1e-8
+    )
+    np.testing.assert_allclose(
+        float(explicit._smoothness_darkfield),
+        float(omitted._smoothness_darkfield),
+        rtol=1e-5, atol=1e-8
+    )
+
+    # and yield an identical correction
+    np.testing.assert_allclose(
+        np.asarray(explicit.transform(images)),
+        np.asarray(omitted.transform(images)),
+        rtol=1e-5, atol=1e-6
+    )
+
+
+def test_save_load_autoderived_smoothness_roundtrip(
+    synthesized_test_data, tmp_path_factory
+):
+    """Tests disk round-trip with auto-derived smoothness. Previously, BaSiC
+    accepted omitted smoothness_flatfield and smoothness_darkfield, but not an 
+    explicit `None` due to non-Optional typing of these fields. When BaSiC
+    objects were saved and loaded from disk, this threw ValidationError because
+    these values got saved as explicit `null` in JSON; BaSiC(**model) then
+    passes an explicit `None` to both of these fields causing pydantic to raise
+    ValidationError. Models could not be reloaded at all. Now explicitly setting
+    `null` for these fields should let the model round-trip.
+    """
+    _, images, _ = synthesized_test_data
+
+    basic = BaSiC(get_darkfield=True)  # smoothness left to auto-derive (None)
+    basic.fit(images)
+    
+    # fit resolves smoothness onto the private attrs; the public fields stay None
+    assert basic.smoothness_flatfield is None
+    assert basic._smoothness_flatfield is not None
+
+    before = np.asarray(basic.transform(images))
+
+    model_dir = Path(tmp_path_factory.mktemp("data")) / "autoderived_smoothness"
+    basic.save_model(model_dir)
+
+    # On stock 2.0.0 the next line raised pydantic ValidationError because the
+    # serialized ``null`` was rejected against the non-Optional ``float``
+    # annotation; with the fix it now succeeds.
+    basic2 = BaSiC.load_model(model_dir)
+
+    # round-trip correctness: correction is identical before and after save/load
+    after = np.asarray(basic2.transform(images))
+    np.testing.assert_allclose(after, before, rtol=1e-5, atol=1e-6)
+
+    # Ensures the reloaded model is still re-fittable and re-derives 
+    # its smoothness
+    basic2.fit(images)
+    assert basic2._smoothness_flatfield is not None
+
+
 @pytest.fixture
 def profiles():
     # create and write mock profiles to file
