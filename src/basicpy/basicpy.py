@@ -72,10 +72,10 @@ class BaSiC(BaseModel):
         False,
         description="When True, will estimate the darkfield shading component.",
     )
-    smoothness_flatfield: float = Field(
+    smoothness_flatfield: Optional[float] = Field(
         None, description="Weight of the flatfield term in the Lagrangian."
     )
-    smoothness_darkfield: float = Field(
+    smoothness_darkfield: Optional[float] = Field(
         None, description="Weight of the darkfield term in the Lagrangian."
     )
     sparse_cost_darkfield: float = Field(
