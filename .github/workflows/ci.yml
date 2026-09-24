@@ -26,6 +26,32 @@ jobs:
         run: |
           nox --sessions=tests --python=${{ matrix.python-version }}
 
+
+  latest-numpy-scipy:
+    runs-on: "ubuntu-latest"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install package and test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+          python -m pip install --upgrade numpy scipy
+          python -m pip install pytest pytest-benchmark pytest-datadir pytest-cov xdoctest
+          python -m pip check
+
+      - name: Report numerical dependency versions
+        run: |
+          python -c "import numpy, scipy; print(f'NumPy {numpy.__version__}; SciPy {scipy.__version__}')"
+
+      - name: Test with latest NumPy and SciPy
+        run: |
+          pytest --runslow
+
   docs:
     runs-on: "ubuntu-latest"
     steps:
